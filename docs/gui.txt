@@ -1,0 +1,10 @@
+GUI tools needed
+
+- team/runner modifications
+- course entry
+- si-card station control
+- speaker end
+  - access to all results
+  - switch between visualizations
+  - "dive in" -> see details about runners, runs
+  - 

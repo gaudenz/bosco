@@ -1,0 +1,14 @@
+
+Backend modules for the 24h orienteering
+
+Checker Modules needed for the 24h orienteering
+- run correctness
+- runner sequence
+
+result calculation
+- 
+
+result prediction
+- individual run time based on previous runs 
+  and expected winners time
+- team result at next "breakpoint"

@@ -1,0 +1,6 @@
+Visualization tools
+
+- bargraph until next breakpoint
+- results for individual courses
+- graphs for courses
+- runners expected next 
