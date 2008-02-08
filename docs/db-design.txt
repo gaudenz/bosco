@@ -1,0 +1,23 @@
+Database tables and properties:
+
+- team
+  - name
+  - number
+
+- runner
+  - givenname
+  - surname
+  - team
+  - yearofbirth
+
+- run
+  - si-card
+
+- control
+  - run
+  - number
+  - time
+
+- si-card
+  - number
+  - runner
