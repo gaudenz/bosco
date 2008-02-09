@@ -3,15 +3,21 @@ Database tables and properties:
 - team
   - name
   - number
+  - unofficial
 
 - runner
   - givenname
   - surname
   - team
+  - number
   - yearofbirth
 
 - run
   - si-card
+  - course
+
+- course
+  - code
 
 - control
   - run
