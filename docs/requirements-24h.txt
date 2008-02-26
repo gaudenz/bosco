@@ -1,5 +1,5 @@
-
 Vor dem Lauf
+- Test an Jura 3er Staffel an Auffahrt 
    - Import der Daten von Go2OL
      - neue Startnummern?
    - Import der Bahnen aus OCAD
@@ -8,9 +8,9 @@ Vor dem Lauf
      -> Ändern der Reihenfolge
      -> Ändern eines Läufers
         -> Name, Jahrgang, SI-Card
-     -> Löschen und hinzufügen von Teams (?)
-     -> Ändern der Kategorie (?)
-   - Erstellen einer Startliste (?)
+     -> Löschen und hinzufügen von Teams (ja)
+     -> Ändern der Kategorie (ja)
+   - Erstellen einer Startliste (ja)
 
 Während dem Lauf
    in der Auswertung:
@@ -18,30 +18,33 @@ Während dem Lauf
      - Zuordnung einer Bahn zu einem Läufer
      - Erfassen neuer SI-Cards
      - Erfassen von Ersatzposten 
-     - Auslesen eines Postens (?)
+     - Erfassen von ausgefallenen Läufer (24h OL)
+     - Kommunizieren der Zielzeit
+     - Möglichkeit eines beendeten Laufes ohne Badge!
+     - Möglichkeit der Disqualifikation (trotz Beendung des Wettkampfes)
+     - Auslesen eines Postens (nein)
        -> wie würde das den Bahnen zugeordnet?
        -> nur für gestartete Läufer (check, clear am start)
    für die Zuschauer/Läufer:
-     - Anzeige der erwarteten Läufer
+     - Anzeige der erwarteten Läufer (Bildschirm oder Beamer -> Beni)
      - Zwischenrangliste
+       - nach Blöcken (Start, Nacht, Tag)
        - einzelne Bahnen
-       - Gesamtrangliste:
+       - Gesamtzwischenrangliste:
          - nach absolvierten Lkm
-         - nach absolvierten Bahnen (?)
    für den Speaker:
      - erwartete Läufer
      - nächster Einlauf eines Teams, falls Bahn erfasst wurde
      - Zwischenranglisten:
+       - nach Blöcken (Start, Nacht, Tag)
        - einzelne Bahnen
        - nach absolvierten Lkm
        - nach absolvierten Bahnen
-       - Hochrechnungen (?)
-   für das OK:
-     - Liste der Läufer im Wald (?) 
-       -> wie geht das, wissen wir wer startet?
+       - Hochrechnungen (nice to have)
    
 Nach dem Lauf:
-   - Export der Rangliste für SOLV Webseite
+   - Export der Rangliste für SOLV Webseite (bis spätestens Mo Mittag)
      -> Einzelläufe für einzelne Bahnen
      -> Gesamtrangliste (ev. nur als PDF)
-   - Ranglisten zum ausdrucken/vesenden/UBOL Webseite (?)
+   - Ranglisten zum ausdrucken/vesenden/UBOL Webseite (Link oder PDF)
+
