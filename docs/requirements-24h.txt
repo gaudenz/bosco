@@ -1,0 +1,47 @@
+
+Vor dem Lauf
+   - Import der Daten von Go2OL
+     - neue Startnummern?
+   - Import der Bahnen aus OCAD
+     - in welchem Format werden die geliefert? (XML?)
+   - Mutationen beim Einchecken
+     -> Ändern der Reihenfolge
+     -> Ändern eines Läufers
+        -> Name, Jahrgang, SI-Card
+     -> Löschen und hinzufügen von Teams (?)
+     -> Ändern der Kategorie (?)
+   - Erstellen einer Startliste (?)
+
+Während dem Lauf
+   in der Auswertung:
+     - Einlesen der SI-Cards 
+     - Zuordnung einer Bahn zu einem Läufer
+     - Erfassen neuer SI-Cards
+     - Erfassen von Ersatzposten 
+     - Auslesen eines Postens (?)
+       -> wie würde das den Bahnen zugeordnet?
+       -> nur für gestartete Läufer (check, clear am start)
+   für die Zuschauer/Läufer:
+     - Anzeige der erwarteten Läufer
+     - Zwischenrangliste
+       - einzelne Bahnen
+       - Gesamtrangliste:
+         - nach absolvierten Lkm
+         - nach absolvierten Bahnen (?)
+   für den Speaker:
+     - erwartete Läufer
+     - nächster Einlauf eines Teams, falls Bahn erfasst wurde
+     - Zwischenranglisten:
+       - einzelne Bahnen
+       - nach absolvierten Lkm
+       - nach absolvierten Bahnen
+       - Hochrechnungen (?)
+   für das OK:
+     - Liste der Läufer im Wald (?) 
+       -> wie geht das, wissen wir wer startet?
+   
+Nach dem Lauf:
+   - Export der Rangliste für SOLV Webseite
+     -> Einzelläufe für einzelne Bahnen
+     -> Gesamtrangliste (ev. nur als PDF)
+   - Ranglisten zum ausdrucken/vesenden/UBOL Webseite (?)
