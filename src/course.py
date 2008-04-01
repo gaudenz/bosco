@@ -1,7 +1,4 @@
 #/usr/bin/env python
-#    course.py - Classes for orienteering courses. Everything here is
-#                static during an event. Dynamic data (e.g. runs) is
-#                handled by the classes in run.py
 #
 #    Copyright (C) 2008  Gaudenz Steinlin <gaudenz@soziologie.ch>
 #
@@ -18,7 +15,14 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+"""
+course.py - Classes for orienteering courses. Everything here is
+            static during an event. Dynamic data (e.g. runs) is
+            handled by the classes in run.py
+"""
+
 from storm.locals import *
+from ranking import Rankable
 
 class SIStation(Storm):
     """SI Control Station. Each si station bleongs to a control, but each
@@ -33,8 +37,8 @@ class SIStation(Storm):
     __storm_table__ = 'sistation'
 
     id = Int(primary=True)
-    control_id = Int()
-    control = Reference(control_id, 'Control.id')
+    _control_id = Int(name='control')
+    control = Reference(_control_id, 'Control.id')
 
     def __init__(self, id):
         self.id = id
@@ -48,10 +52,12 @@ class Control(Storm):
 
     id = Int(primary=True)
     code = Unicode()
-    sistations = ReferenceSet(id, 'SIStation.control_id')
+    sistations = ReferenceSet(id, 'SIStation._control_id')
 
-    def __init__(self, code):
+    def __init__(self, code, sistation = None):
         self.code = code
+        if sistation:
+            self.sistations.add(sistation)
 
 class ControlSequence(Storm):
     """Connects controls and courses. The sequence_number defines the
@@ -65,10 +71,10 @@ class ControlSequence(Storm):
     id = Int(primary=True)
     length = Int()
     climb = Int()
-    course_id = Int()
-    course = Reference(course_id, 'Course.id')
-    control_id = Int()
-    control = Reference(control_id, 'Control.id')
+    _course_id = Int(name='course')
+    course = Reference(_course_id, 'Course.id')
+    _control_id = Int(name='control')
+    control = Reference(_control_id, 'Control.id')
     sequence_number = Int()
 
     def __init__(self, control, sequence_number = None,
@@ -78,7 +84,7 @@ class ControlSequence(Storm):
         self.length = length
         self.climb = climb
         
-class Course(Storm):
+class Course(Storm, Rankable):
     """Base class for all kinds of courses. Special kinds of courses should
        be derived from this class. Derived class must at least override the
        append or validate methods. This class implements an unordered set
@@ -92,33 +98,18 @@ class Course(Storm):
     code = Unicode()
     length = Int()
     climb = Int()
-    runs = ReferenceSet(id, 'Run.course_id')
-    controls = ReferenceSet(id, ControlSequence.course_id,
-                            ControlSequence.control_id, Control.id)
-    sequence = ReferenceSet(id, 'ControlSequence.course_id')
+    members = ReferenceSet(id, 'Run._course_id')
+    controls = ReferenceSet(id, ControlSequence._course_id,
+                            ControlSequence._control_id, Control.id)
+    sequence = ReferenceSet(id, 'ControlSequence._course_id')
 
-    def __init__(self, code, length = None, climb = None):
+    def __init__(self, code, length = None, climb = None, expected_speed = None):
         self.code = code
         self.length = length
         self.climb = climb
+        self.expected_speed = expected_speed
+        self._validators = {}
         
-    def append(self, control):
-        """Append a single control to the course."""
-        self.sequence.add(ControlSequence(control))
-
-    def extend(self, control_list):
-        """Extend the course with the controls from control_list."""
-        for c in control_list:
-            self.append(c)
-
-    def validate(self, run):
-        """Check if run is a valid run for this course."""
-        pass
-    
-class SequenceCourse(Course):
-    """Course with a defined sequence of controls. This is the standard
-       orienteering course."""
-
     def __max_index(self):
         max = 0
         for control in self.sequence:
@@ -131,39 +122,35 @@ class SequenceCourse(Course):
             if control.sequence_number == index:
                 return True
         return False
-    
+
     def append(self, control, length = None, climb = None):
+        """Append a single control to the course."""
         self.sequence.add(ControlSequence(control, self.__max_index() + 1,
                                           length, climb))
 
     def insert(self, control, index, length = None, climb = None):
         """Insert an additional control into the course at an arbitrary
            postition."""
-        pass
+        raise Exception('Not yet implemented')
+
+    def extend(self, control_list):
+        """Extend the course with the controls from control_list."""
+        for c in control_list:
+            self.append(c)
+
+    def expected_time(self):
+        """Returns the expected time for this course."""
+        try:
+            return timedelta(minutes=(self.length + self.climb/100)*self.expected_speed)
+        except TypeError:
+            return None
+
+    def validator(self, validator_class):
+        """Returns a validator object for this run of the specified class. Validator
+        objects are cached."""
+        if validator_class not in self._validators:
+            # create validator instance
+            self._validators[validator_class] = validator_class(self)
+        return self._validators[validator_class]
     
-    def validate(self, run):
-        """Validate the run if it is valid for this course."""
-
-        punchlist = run.punches.order_by('punchtime')
-        controllist = [ i.control for i in self.sequence.order_by('sequence_number') ]
-        # Iterate over all punches of this run
-        i = 0
-        for punch in punchlist:
-            while i < len(controllist):
-                if controllist[i].sistations.count() == 0:
-                    # Control has no si-stations, got to next control
-                    i += 1
-                    continue
-                elif controllist[i] is punch.sistation.control:
-                    # This punch matches the control, got to next control and punch
-                    i += 1
-                    break
-                else:
-                    # Try next punch
-                    break
-
-        if i < len(controllist):
-            # No more punches, but controls left
-            return False
-        else:
-            return True
+    

@@ -17,8 +17,21 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from storm.locals import *
+from copy import copy
 
-class Runner(Storm):
+from ranking import Rankable, RankableItem
+
+class AbstractRunner(object, RankableItem):
+    """Base class for all runner like classes (runners, teams). This
+    class defines the interface for all objects that work with any kind
+    of runners or teams."""
+
+    name = None
+    number = None
+    official = None
+    sicards = None
+
+class Runner(AbstractRunner, Storm):
     __storm_table__ = 'runner'
 
     id = Int(primary=True)
@@ -29,9 +42,9 @@ class Runner(Storm):
     sex = Unicode()
     startblock = Int()
     starttime = Date()
-    category_id = Int()
-    category = Reference(category_id, 'Category.id')
-    club_id = Int()
+    _category_id = Int(name='category')
+    category = Reference(_category_id, 'Category.id')
+    club = Int()
     address1 = Unicode()
     address2 = Unicode()
     zipcode = Unicode()
@@ -41,26 +54,51 @@ class Runner(Storm):
     startfee = Int()
     paid = Bool()
     comment = Unicode()
-    team_id = Int()
-    team = Reference(team_id, 'Team.id')
-    sicards = ReferenceSet(id, 'SICard.runner_id')
+    _team_id = Int(name='team')
+    team = Reference(_team_id, 'Team.id')
+    sicards = ReferenceSet(id, 'SICard._runner_id')
 
-    def __init__(self, sname, gname):
+    def __init__(self, sname, gname, sicard = None):
         self.surname = sname
         self.given_name = gname
+        if sicard:
+            self.sicards.add(sicard)
+
+    def __unicode__(self):
+        return '%s, %s' % (self.surname, self.given_name)
+
+    def _get_run(self): 
+        runs = []
+        for si in self.sicards:
+            for r in si.runs:
+                runs.append(r)
+                
+        if len(runs) == 1:
+            return runs[0]
+        elif len(runs) > 1:
+            raise UnscoreableException('%s runs for runner %' % (len(runs), self))
+        else:
+            raise UnscoreableException('No run found for runner %s' % self)
+
+                
+    def start(self):
+        return self._get_run().start()
+
+    def finish(self):
+        return self._get_run().finish()
         
-class Team(Storm):
+class Team(AbstractRunner, Storm):
     __storm_table__ = 'team'
     
     id = Int(primary=True)
     number = Unicode()
     name = Unicode()
     official = Bool()
-    responsible_id = Int()
-    responsible = Reference(responsible_id, 'Runner.id')
-    category_id = Int()
-    category = Reference(category_id, 'Category.id')
-    members = ReferenceSet(id, 'Runner.team_id')
+    _responsible_id = Int(name='responsible')
+    responsible = Reference(_responsible_id, 'Runner.id')
+    _category_id = Int(name='category')
+    category = Reference(_category_id, 'Category.id')
+    members = ReferenceSet(id, 'Runner._team_id')
 
     def __init__(self, number, name, responsible, category, official = True):
         self.number = number
@@ -69,24 +107,42 @@ class Team(Storm):
         self.official = official
         self.responsible = responsible
 
+    def __unicode__(self):
+        return self.name
+
+    def _get_runs(self):
+        runs = []
+        for m in self.members:
+            for si in m.sicards:
+                runs.extend(list(si.runs.find(Run.complete == True)))
+        runs.sort(key = lambda x: x.finish())
+        return runs
+
+    runs = property(_get_runs)
+        
+
 class SICard(Storm):
     __storm_table__ = 'sicard'
 
     id = Int(primary=True)
-    runner_id = Int()
-    runner = Reference(runner_id, 'Runner.id')
-    runs = ReferenceSet(id, 'Run.sicard_id')
+    _runner_id = Int(name='runner')
+    runner = Reference(_runner_id, 'Runner.id')
+    runs = ReferenceSet(id, 'Run._sicard_id')
 
     def __init__(self, nr):
         self.id = nr
 
-class Category(Storm):
+class Category(Storm, Rankable):
     __storm_table__ = 'category'
 
     id = Int(primary=True)
     name = Unicode()
-    runners = ReferenceSet(id, 'Runner.category_id')
-    teams = ReferenceSet(id, 'Team.category_id')
+    members = ReferenceSet(id, 'Runner._category_id')
+    teams = ReferenceSet(id, 'Team._category_id')
 
     def __init__(self, name):
         self.name = name
+
+    def __unicode__(self):
+        return unicode(self.name)
+

@@ -27,8 +27,8 @@ import re
 
 import conf
 from runner import Runner, Team, SICard, Category
-from course import Control, SequenceCourse, Course, SIStation
-from run import Run, Punch, punchlist
+from course import Control, Course, Course, SIStation
+from run import Run, Punch
 
 class Importer:
     """Base class for all Importer classes to import event
@@ -68,11 +68,17 @@ class CSVImporter(Importer):
 class Team24hImporter(CSVImporter):
     """Import participant data for 24h event from CSV file."""
 
+    RUNNER_NUMBERS       = ['A', 'B', 'C', 'D', 'E', 'F']
+    TEAM_NUMBER_FORMAT   = u'%03d'
+    RUNNER_NUMBER_FORMAT = u'%(team)s%(runner)s'
+    
     def import_data(self, store):
 
         # Create categories
         cat_24h = Category(u'24h')
+        next_24h = 1
         cat_12h = Category(u'12h')
+        next_12h = 101
 
         for t in self.data:
 
@@ -88,9 +94,13 @@ class Team24hImporter(CSVImporter):
 
             # Create the team
             if t['Kurz'] == '24h':
-                team = Team(t['ID'], t['Teamname'], responsible, cat_24h)
+                team = Team(Team24hImporter.TEAM_NUMBER_FORMAT % next_24h,
+                            t['Teamname'], responsible, cat_24h)
+                next_24h += 1
             elif t['Kurz'] == '12h':
-                team = Team(t['ID'], t['Teamname'], responsible, cat_12h)
+                team = Team(Team24hImporter.TEAM_NUMBER_FORMAT % next_12h,
+                            t['Teamname'], responsible, cat_12h)
+                next_12h += 1
 
             # Create individual runners
             num = 0
@@ -109,7 +119,9 @@ class Team24hImporter(CSVImporter):
                 elif t['Memsex%s' % str(i)] == 'F':
                     runner.sex = u'female'
                 runner.dateofbirth = date(int(t['Memyear%s' % str(i)]), 1, 1) 
-                runner.number = unicode(int(team.number)*10 + i + 1)
+                runner.number = Team24hImporter.RUNNER_NUMBER_FORMAT % \
+                                {'team' : team.number,
+                                 'runner' : Team24hImporter.RUNNER_NUMBERS[num]}
 
                 # Add SI Card if valid
                 if int(t['Memcardnr%s' % int(i)]) > 0:
@@ -165,19 +177,7 @@ class SIRunImporter(Importer):
 
         for line in self.__runs:
             course_code = line[SIRunImporter.COURSE]
-            course = store.find(Course,
-                                Course.code == course_code).one()
-            if not course:
-                raise RunImportException("Could not find course '%s'" % course_code)
-
             cardnr = line[SIRunImporter.CARDNR]
-            card = store.get(SICard, int(cardnr))
-            if not card:
-                raise RunImportException("Could not find SI-Card Nr. '%s'" % cardnr)
-            
-            run = Run(course, card)
-            store.add(run)
-            store.flush()
             
             punches = []
             punches.append((SIStation.START,
@@ -194,9 +194,10 @@ class SIRunImporter(Importer):
                 i += 2
 
             
-            run.add_punchlist(punchlist(punches, store))
+            run = Run(int(cardnr), course_code, punches, store)
+            run.complete = True
+            store.add(run)
 
-            run.complete_run()
 
 class OCADXMLCourseImporter(Importer):
     """Import Course Data from an OCAD XML File produced by OCAD 9."""
@@ -267,6 +268,7 @@ class OCADXMLCourseImporter(Importer):
                 # search for control in Store
                 control = store.find(Control, Control.code == code).one()
                 if control is None:
+                    # Create new control
                     control = store.add(Control(code))
 
                 # add SI Stations if requested
@@ -297,7 +299,7 @@ class OCADXMLCourseImporter(Importer):
                 # Get Course properties
                 course_code = unicode(c_el.findtext('CourseName').strip())
                 (length, climb) = OCADXMLCourseImporter.__length(var, 'total')
-                course = SequenceCourse(course_code, length, climb)
+                course = Course(course_code, length, climb)
                 store.add(course)
 
                 # Set start point
@@ -365,7 +367,8 @@ class DuplicateSequenceException(Exception):
 
 if __name__ == '__main__':
     # Read program options
-    opt = OptionParser()
+    opt = OptionParser(usage = 'usage: %prog [options] command importfile', 
+                       description = 'Available commands are \'teams\', \'runs\' and \'courses\'.')
     opt.add_option('-e', '--encoding', action='store', default='utf-8',
                    help='Encoding of the imported file.')
     opt.add_option('-c', '--stations', action='store_true', default=False,

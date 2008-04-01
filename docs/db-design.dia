@@ -258,7 +258,7 @@
         </dia:composite>
         <dia:composite type="umlattribute">
           <dia:attribute name="name">
-            <dia:string>#responsible_id#</dia:string>
+            <dia:string>#responsible#</dia:string>
           </dia:attribute>
           <dia:attribute name="type">
             <dia:string>#integer#</dia:string>
@@ -281,7 +281,7 @@
         </dia:composite>
         <dia:composite type="umlattribute">
           <dia:attribute name="name">
-            <dia:string>#category_id#</dia:string>
+            <dia:string>#category#</dia:string>
           </dia:attribute>
           <dia:attribute name="type">
             <dia:string>#integer#</dia:string>
@@ -647,7 +647,7 @@
         </dia:composite>
         <dia:composite type="umlattribute">
           <dia:attribute name="name">
-            <dia:string>#nation_id#</dia:string>
+            <dia:string>#nation#</dia:string>
           </dia:attribute>
           <dia:attribute name="type">
             <dia:string>#integer#</dia:string>
@@ -739,7 +739,7 @@
         </dia:composite>
         <dia:composite type="umlattribute">
           <dia:attribute name="name">
-            <dia:string>#category_id#</dia:string>
+            <dia:string>#category#</dia:string>
           </dia:attribute>
           <dia:attribute name="type">
             <dia:string>#integer#</dia:string>
@@ -762,7 +762,7 @@
         </dia:composite>
         <dia:composite type="umlattribute">
           <dia:attribute name="name">
-            <dia:string>#club_id#</dia:string>
+            <dia:string>#club#</dia:string>
           </dia:attribute>
           <dia:attribute name="type">
             <dia:string>#integer#</dia:string>
@@ -992,7 +992,7 @@
         </dia:composite>
         <dia:composite type="umlattribute">
           <dia:attribute name="name">
-            <dia:string>#team_id#</dia:string>
+            <dia:string>#team#</dia:string>
           </dia:attribute>
           <dia:attribute name="type">
             <dia:string>#integer#</dia:string>
@@ -1094,7 +1094,7 @@
           <dia:attribute name="parameters">
             <dia:composite type="umlparameter">
               <dia:attribute name="name">
-                <dia:string>#team_id#</dia:string>
+                <dia:string>#team#</dia:string>
               </dia:attribute>
               <dia:attribute name="type">
                 <dia:string>##</dia:string>
@@ -1167,16 +1167,16 @@
     </dia:object>
     <dia:object type="UML - Class" version="0" id="O2">
       <dia:attribute name="obj_pos">
-        <dia:point val="7.4,33.35"/>
+        <dia:point val="7.3,34.3"/>
       </dia:attribute>
       <dia:attribute name="obj_bb">
-        <dia:rectangle val="7.35,33.3;20.55,37.6"/>
+        <dia:rectangle val="7.25,34.25;19.4,38.55"/>
       </dia:attribute>
       <dia:attribute name="elem_corner">
-        <dia:point val="7.4,33.35"/>
+        <dia:point val="7.3,34.3"/>
       </dia:attribute>
       <dia:attribute name="elem_width">
-        <dia:real val="13.1"/>
+        <dia:real val="12.050000000000001"/>
       </dia:attribute>
       <dia:attribute name="elem_height">
         <dia:real val="4.2000000000000002"/>
@@ -1291,7 +1291,7 @@
         </dia:composite>
         <dia:composite type="umlattribute">
           <dia:attribute name="name">
-            <dia:string>#runner_id#</dia:string>
+            <dia:string>#runner#</dia:string>
           </dia:attribute>
           <dia:attribute name="type">
             <dia:string>#integer#</dia:string>
@@ -1345,7 +1345,7 @@
           <dia:attribute name="parameters">
             <dia:composite type="umlparameter">
               <dia:attribute name="name">
-                <dia:string>#runner_id#</dia:string>
+                <dia:string>#runner#</dia:string>
               </dia:attribute>
               <dia:attribute name="type">
                 <dia:string>##</dia:string>
@@ -1373,13 +1373,13 @@
         <dia:point val="29.3,6.45"/>
       </dia:attribute>
       <dia:attribute name="obj_bb">
-        <dia:rectangle val="29.25,6.4;40.35,11.7"/>
+        <dia:rectangle val="29.25,6.4;39.3,11.7"/>
       </dia:attribute>
       <dia:attribute name="elem_corner">
         <dia:point val="29.3,6.45"/>
       </dia:attribute>
       <dia:attribute name="elem_width">
-        <dia:real val="11"/>
+        <dia:real val="9.9499999999999993"/>
       </dia:attribute>
       <dia:attribute name="elem_height">
         <dia:real val="5.2000000000000011"/>
@@ -1494,7 +1494,7 @@
         </dia:composite>
         <dia:composite type="umlattribute">
           <dia:attribute name="name">
-            <dia:string>#sicard_id#</dia:string>
+            <dia:string>#sicard#</dia:string>
           </dia:attribute>
           <dia:attribute name="type">
             <dia:string>#integer#</dia:string>
@@ -1517,13 +1517,13 @@
         </dia:composite>
         <dia:composite type="umlattribute">
           <dia:attribute name="name">
-            <dia:string>#course_id#</dia:string>
+            <dia:string>#course#</dia:string>
           </dia:attribute>
           <dia:attribute name="type">
             <dia:string>#integer#</dia:string>
           </dia:attribute>
           <dia:attribute name="value">
-            <dia:string>#not null#</dia:string>
+            <dia:string>#null#</dia:string>
           </dia:attribute>
           <dia:attribute name="comment">
             <dia:string>##</dia:string>
@@ -1976,13 +1976,13 @@
         <dia:point val="29,14.75"/>
       </dia:attribute>
       <dia:attribute name="obj_bb">
-        <dia:rectangle val="28.95,14.7;41.1,20"/>
+        <dia:rectangle val="28.95,14.7;40.75,20"/>
       </dia:attribute>
       <dia:attribute name="elem_corner">
         <dia:point val="29,14.75"/>
       </dia:attribute>
       <dia:attribute name="elem_width">
-        <dia:real val="12.050000000000001"/>
+        <dia:real val="11.699999999999999"/>
       </dia:attribute>
       <dia:attribute name="elem_height">
         <dia:real val="5.2000000000000011"/>
@@ -2097,7 +2097,7 @@
         </dia:composite>
         <dia:composite type="umlattribute">
           <dia:attribute name="name">
-            <dia:string>#run_id#</dia:string>
+            <dia:string>#run#</dia:string>
           </dia:attribute>
           <dia:attribute name="type">
             <dia:string>#integer#</dia:string>
@@ -2120,7 +2120,7 @@
         </dia:composite>
         <dia:composite type="umlattribute">
           <dia:attribute name="name">
-            <dia:string>#sistation_id#</dia:string>
+            <dia:string>#sistation#</dia:string>
           </dia:attribute>
           <dia:attribute name="type">
             <dia:string>#integer#</dia:string>
@@ -2176,13 +2176,13 @@
         <dia:point val="7.4,13.1"/>
       </dia:attribute>
       <dia:attribute name="obj_bb">
-        <dia:rectangle val="1.45,12.015;8.15,36.8"/>
+        <dia:rectangle val="1.45,12.015;8.05,37.75"/>
       </dia:attribute>
       <dia:attribute name="orth_points">
         <dia:point val="7.4,13.1"/>
         <dia:point val="1.5,13.1"/>
-        <dia:point val="1.5,36.05"/>
-        <dia:point val="7.4,36.05"/>
+        <dia:point val="1.5,37"/>
+        <dia:point val="7.3,37"/>
       </dia:attribute>
       <dia:attribute name="orth_orient">
         <dia:enum val="0"/>
@@ -2218,7 +2218,7 @@
         </dia:composite>
         <dia:composite>
           <dia:attribute name="role">
-            <dia:string>#runner_id#</dia:string>
+            <dia:string>#runner#</dia:string>
           </dia:attribute>
           <dia:attribute name="multiplicity">
             <dia:string>##</dia:string>
@@ -2286,7 +2286,7 @@
         </dia:composite>
         <dia:composite>
           <dia:attribute name="role">
-            <dia:string>#team_id#</dia:string>
+            <dia:string>#team#</dia:string>
           </dia:attribute>
           <dia:attribute name="multiplicity">
             <dia:string>##</dia:string>
@@ -2354,7 +2354,7 @@
         </dia:composite>
         <dia:composite>
           <dia:attribute name="role">
-            <dia:string>#responsible_id#</dia:string>
+            <dia:string>#responsible#</dia:string>
           </dia:attribute>
           <dia:attribute name="multiplicity">
             <dia:string>##</dia:string>
@@ -2377,14 +2377,14 @@
     </dia:object>
     <dia:object type="UML - Association" version="1" id="O10">
       <dia:attribute name="obj_pos">
-        <dia:point val="20.5,35.25"/>
+        <dia:point val="19.35,36.2"/>
       </dia:attribute>
       <dia:attribute name="obj_bb">
-        <dia:rectangle val="20.45,8.065;30.05,35.765"/>
+        <dia:rectangle val="19.3,8.065;30.05,36.715"/>
       </dia:attribute>
       <dia:attribute name="orth_points">
-        <dia:point val="20.5,35.25"/>
-        <dia:point val="26.3,35.25"/>
+        <dia:point val="19.35,36.2"/>
+        <dia:point val="26.3,36.2"/>
         <dia:point val="26.3,9.15"/>
         <dia:point val="29.3,9.15"/>
       </dia:attribute>
@@ -2422,7 +2422,7 @@
         </dia:composite>
         <dia:composite>
           <dia:attribute name="role">
-            <dia:string>#sicard_id#</dia:string>
+            <dia:string>#sicard#</dia:string>
           </dia:attribute>
           <dia:attribute name="multiplicity">
             <dia:string>##</dia:string>
@@ -2448,13 +2448,13 @@
         <dia:point val="47,3.75"/>
       </dia:attribute>
       <dia:attribute name="obj_bb">
-        <dia:rectangle val="39.55,2.665;47.05,10.7"/>
+        <dia:rectangle val="38.5,2.665;47.05,10.7"/>
       </dia:attribute>
       <dia:attribute name="orth_points">
         <dia:point val="47,3.75"/>
-        <dia:point val="43.65,3.75"/>
-        <dia:point val="43.65,9.95"/>
-        <dia:point val="40.3,9.95"/>
+        <dia:point val="43.125,3.75"/>
+        <dia:point val="43.125,9.95"/>
+        <dia:point val="39.25,9.95"/>
       </dia:attribute>
       <dia:attribute name="orth_orient">
         <dia:enum val="0"/>
@@ -2490,7 +2490,7 @@
         </dia:composite>
         <dia:composite>
           <dia:attribute name="role">
-            <dia:string>#course_id#</dia:string>
+            <dia:string>#course#</dia:string>
           </dia:attribute>
           <dia:attribute name="multiplicity">
             <dia:string>##</dia:string>
@@ -2516,12 +2516,12 @@
         <dia:point val="73.1,21.35"/>
       </dia:attribute>
       <dia:attribute name="obj_bb">
-        <dia:rectangle val="66.0502,10.665;73.15,21.865"/>
+        <dia:rectangle val="66.0502,10.665;75.7001,21.865"/>
       </dia:attribute>
       <dia:attribute name="orth_points">
         <dia:point val="73.1,21.35"/>
-        <dia:point val="72.4502,21.35"/>
-        <dia:point val="72.4502,11.75"/>
+        <dia:point val="75.6001,21.35"/>
+        <dia:point val="75.6001,11.75"/>
         <dia:point val="66.8002,11.75"/>
       </dia:attribute>
       <dia:attribute name="orth_orient">
@@ -2558,7 +2558,7 @@
         </dia:composite>
         <dia:composite>
           <dia:attribute name="role">
-            <dia:string>#control_id#</dia:string>
+            <dia:string>#control#</dia:string>
           </dia:attribute>
           <dia:attribute name="multiplicity">
             <dia:string>##</dia:string>
@@ -2584,7 +2584,7 @@
         <dia:point val="29.3,8.35"/>
       </dia:attribute>
       <dia:attribute name="obj_bb">
-        <dia:rectangle val="25.3,7.265;29.75,18.2"/>
+        <dia:rectangle val="26.35,7.265;29.75,18.2"/>
       </dia:attribute>
       <dia:attribute name="orth_points">
         <dia:point val="29.3,8.35"/>
@@ -2626,7 +2626,7 @@
         </dia:composite>
         <dia:composite>
           <dia:attribute name="role">
-            <dia:string>#run_id#</dia:string>
+            <dia:string>#run#</dia:string>
           </dia:attribute>
           <dia:attribute name="multiplicity">
             <dia:string>##</dia:string>
@@ -2652,13 +2652,13 @@
         <dia:point val="45.2003,20.75"/>
       </dia:attribute>
       <dia:attribute name="obj_bb">
-        <dia:rectangle val="40.3,17.165;46.85,21.265"/>
+        <dia:rectangle val="39.95,17.165;45.45,21.265"/>
       </dia:attribute>
       <dia:attribute name="orth_points">
         <dia:point val="45.2003,20.75"/>
         <dia:point val="41.7003,20.75"/>
         <dia:point val="41.7003,18.25"/>
-        <dia:point val="41.05,18.25"/>
+        <dia:point val="40.7,18.25"/>
       </dia:attribute>
       <dia:attribute name="orth_orient">
         <dia:enum val="0"/>
@@ -2694,7 +2694,7 @@
         </dia:composite>
         <dia:composite>
           <dia:attribute name="role">
-            <dia:string>#sistation_id#</dia:string>
+            <dia:string>#sistation#</dia:string>
           </dia:attribute>
           <dia:attribute name="multiplicity">
             <dia:string>##</dia:string>
@@ -2923,7 +2923,7 @@ CREATE TYPE sex AS ENUM ('male', 'female') ;#</dia:string>
         <dia:point val="7.4,41.9875"/>
       </dia:attribute>
       <dia:attribute name="obj_bb">
-        <dia:rectangle val="1.95,20.015;8.15,42.5025"/>
+        <dia:rectangle val="3,20.015;8.15,42.5025"/>
       </dia:attribute>
       <dia:attribute name="orth_points">
         <dia:point val="7.4,41.9875"/>
@@ -2965,7 +2965,7 @@ CREATE TYPE sex AS ENUM ('male', 'female') ;#</dia:string>
         </dia:composite>
         <dia:composite>
           <dia:attribute name="role">
-            <dia:string>#category_id#</dia:string>
+            <dia:string>#category#</dia:string>
           </dia:attribute>
           <dia:attribute name="multiplicity">
             <dia:string>##</dia:string>
@@ -3033,7 +3033,7 @@ CREATE TYPE sex AS ENUM ('male', 'female') ;#</dia:string>
         </dia:composite>
         <dia:composite>
           <dia:attribute name="role">
-            <dia:string>#category_id#</dia:string>
+            <dia:string>#category#</dia:string>
           </dia:attribute>
           <dia:attribute name="multiplicity">
             <dia:string>##</dia:string>
@@ -3180,7 +3180,7 @@ CREATE TYPE sex AS ENUM ('male', 'female') ;#</dia:string>
         </dia:composite>
         <dia:composite type="umlattribute">
           <dia:attribute name="name">
-            <dia:string>#course_id#</dia:string>
+            <dia:string>#course#</dia:string>
           </dia:attribute>
           <dia:attribute name="type">
             <dia:string>#integer#</dia:string>
@@ -3203,7 +3203,7 @@ CREATE TYPE sex AS ENUM ('male', 'female') ;#</dia:string>
         </dia:composite>
         <dia:composite type="umlattribute">
           <dia:attribute name="name">
-            <dia:string>#control_id#</dia:string>
+            <dia:string>#control#</dia:string>
           </dia:attribute>
           <dia:attribute name="type">
             <dia:string>#integer#</dia:string>
@@ -3347,7 +3347,7 @@ CREATE TYPE sex AS ENUM ('male', 'female') ;#</dia:string>
         </dia:composite>
         <dia:composite>
           <dia:attribute name="role">
-            <dia:string>#course_id#</dia:string>
+            <dia:string>#course#</dia:string>
           </dia:attribute>
           <dia:attribute name="multiplicity">
             <dia:string>##</dia:string>
@@ -3801,13 +3801,13 @@ CREATE TYPE sex AS ENUM ('male', 'female') ;#</dia:string>
         <dia:point val="45.2003,18.85"/>
       </dia:attribute>
       <dia:attribute name="obj_bb">
-        <dia:rectangle val="45.1503,18.8;55.2003,22.5"/>
+        <dia:rectangle val="45.1503,18.8;54.1503,22.5"/>
       </dia:attribute>
       <dia:attribute name="elem_corner">
         <dia:point val="45.2003,18.85"/>
       </dia:attribute>
       <dia:attribute name="elem_width">
-        <dia:real val="9.9499999999999993"/>
+        <dia:real val="8.9000000000000004"/>
       </dia:attribute>
       <dia:attribute name="elem_height">
         <dia:real val="3.6000000000000001"/>
@@ -3922,7 +3922,7 @@ CREATE TYPE sex AS ENUM ('male', 'female') ;#</dia:string>
         </dia:composite>
         <dia:composite type="umlattribute">
           <dia:attribute name="name">
-            <dia:string>#control_id#</dia:string>
+            <dia:string>#control#</dia:string>
           </dia:attribute>
           <dia:attribute name="type">
             <dia:string>#integer#</dia:string>
@@ -3955,13 +3955,13 @@ CREATE TYPE sex AS ENUM ('male', 'female') ;#</dia:string>
         <dia:point val="62.1,21.35"/>
       </dia:attribute>
       <dia:attribute name="obj_bb">
-        <dia:rectangle val="54.4003,20.265;62.15,22.3"/>
+        <dia:rectangle val="53.3503,20.265;62.15,22.3"/>
       </dia:attribute>
       <dia:attribute name="orth_points">
         <dia:point val="62.1,21.35"/>
-        <dia:point val="58.6252,21.35"/>
-        <dia:point val="58.6252,21.55"/>
-        <dia:point val="55.1503,21.55"/>
+        <dia:point val="58.1001,21.35"/>
+        <dia:point val="58.1001,21.55"/>
+        <dia:point val="54.1003,21.55"/>
       </dia:attribute>
       <dia:attribute name="orth_orient">
         <dia:enum val="0"/>
@@ -3997,7 +3997,7 @@ CREATE TYPE sex AS ENUM ('male', 'female') ;#</dia:string>
         </dia:composite>
         <dia:composite>
           <dia:attribute name="role">
-            <dia:string>#control_id#</dia:string>
+            <dia:string>#control#</dia:string>
           </dia:attribute>
           <dia:attribute name="multiplicity">
             <dia:string>##</dia:string>
