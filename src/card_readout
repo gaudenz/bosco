@@ -1,0 +1,201 @@
+#!/usr/bin/env python
+#
+#    Copyright (C) 2008  Gaudenz Steinlin <gaudenz@soziologie.ch>
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+"""
+cardreadout - GUI for SI Card readout station
+"""
+
+import wx
+from storm.locals import *
+
+from run import Run, RunException
+from sireader import SIReader
+import conf
+
+class SIReadoutFrame(wx.Frame):
+
+    def __init__(self, store, *args, **kwargs):
+        super(type(self), self).__init__(*args, **kwargs)
+
+        self._store = store
+        self._run = None
+        
+        # Set up sireader
+        self._sireader = SIReader('/dev/ttyUSB0')
+        
+        panel = wx.Panel(self, -1)
+
+        # text field for data read out
+        self._readout_field = wx.StaticText(panel, -1, '')
+        
+        # course text input field and lavel
+        course_label = wx.StaticText(panel, -1, 'Bahncode:')
+        self._course_input = wx.TextCtrl(panel, -1, style=wx.TE_PROCESS_ENTER)
+        self.Bind(wx.EVT_TEXT_ENTER, self.SaveRun, self._course_input)
+        
+        # course save input field
+        self._save_button = wx.Button(panel, wx.ID_SAVE)
+        self.Bind(wx.EVT_BUTTON, self.SaveRun, self._save_button)
+        self._save_button.Disable()
+
+        # add sicard button
+        sicard_button = wx.Button(panel, -1, 'Add SI Card...')
+        sicard_button.Disable()
+        
+        # exit button
+        exit_button = wx.Button(panel, wx.ID_EXIT)
+        self.Bind(wx.EVT_BUTTON, self.OnClose, exit_button)
+
+        # Position elements
+        sizer = wx.GridBagSizer(6,2)
+        sizer.Add(self._readout_field, (0,0), (6,1), flag=wx.EXPAND)
+        sizer.Add(course_label, (0,1))
+        sizer.Add(self._course_input, (1,1))
+        sizer.Add(self._save_button, (2,1))
+        sizer.Add(sicard_button, (3,1))
+        sizer.Add(exit_button, (5,1))
+        sizer.AddGrowableCol(0)
+        sizer.AddGrowableRow(4)
+
+        panel.SetSizerAndFit(sizer)
+        
+        # Set up Status bar
+        self._status_bar = wx.StatusBar(self)
+        self._status_bar.SetFieldsCount(2)
+        self._status_bar.SetStatusWidths([-1, 100])
+        self._status_bar.SetStatusText('Waiting for SI Card...', 0)
+        self._status_bar.SetStatusText(self._sireader.port, 1)
+        self.SetStatusBar(self._status_bar)
+
+        # Add timer to periodically poll the si reader
+        self.Bind(wx.EVT_TIMER, self.OnTimer)
+        self._timer = wx.Timer(self)
+        self._timer.Start(milliseconds=1000, oneShot=False)
+        self.Bind(wx.EVT_CLOSE, self.OnWindowClose)
+
+        (px, py) = panel.GetSize()
+        (sx, sy) = self._status_bar.GetSize()
+        self.SetClientSize((px+sx, py+sy))
+
+        self.Show(True)
+        
+    def OnClose(self, event):
+        self.Close(True)
+
+    def OnWindowClose(self, event):
+        self._timer.Stop()
+        del self._timer
+        del self._sireader
+        self.Destroy()
+        
+    def OnTimer(self, event):
+        """Called on a time event."""
+
+        if not self._sireader:
+            return True
+            
+        if self._sireader.poll_sicard():
+            if self._sireader.sicard:
+                # SI Card inserted
+                self._status_bar.SetStatusText('Reading SI Card %s (%s)...' % (self._sireader.sicard, self._sireader.cardtype), 0)
+                card_data = self._sireader.read_sicard()
+                text = ''
+                for i, p in enumerate(card_data['punches']):
+                    text += '%2s %3s %s\n' % (i, p[0], p[1])
+                self._readout_field.SetLabel(text)
+                self.MakeRun(card_data)
+                self._save_button.Enable()
+            else:
+                if not self._run is None:
+                    self._store.rollback()
+                    self._run = None
+                self._status_bar.SetStatusText('SI Card removed.', 0)
+                self._readout_field.SetLabel('')
+                self._course_input.SetValue('')
+                wx.FutureCall(5000, self.ResetStatusBar)
+                self._save_button.Disable()
+                
+
+    def ResetStatusBar(self):
+        self._status_bar.SetStatusText('Waiting for SI Card...', 0)
+
+    def MakeRun(self, card_data):
+
+        # search for incomplete run with this sicard
+        self._run = self._store.find(Run,
+                                     Run.sicard == card_data['card_number'],
+                                     Run.complete == False).one()
+        
+        if self._run is None:
+            try:
+                self._run = self._store.add(Run(card_data['card_number'], store=self._store))
+            except RunException, msg:
+                self.ErrorDialog(str(msg), 'Fehler beim Einlesen der SI Card')
+                return False
+        try:
+            self._run.add_punchlist(card_data['punches'])
+        except RunException, msg:
+            self.ErrorDialog(str(msg), 'Fehler beim Einlesen der SI Card')
+            return False
+
+        if self._run.course:
+            self._course_input.SetValue(self._run.course.code)
+        
+    def SetCourse(self, coursecode):
+        """
+        @param coursecode: Code of the course for the current run.
+        @type  coursecode: unicode
+        @return:           L{Course} object set for the run or None
+                           if no course with this code was found.
+        """
+
+        try:
+            self._run.set_coursecode(coursecode)
+        except RunException, msg:
+            self.ErrorDialog(str(msg), 'Fehler im Bahncode')
+            return False
+        
+        return True
+
+    def SaveRun(self, event):
+        """Commits the current run to the database and clears self._run."""
+
+        if self._run is None:
+            return False
+        
+        if not self.SetCourse(self._course_input.GetValue()):
+            return False
+        
+        try:
+            self._run.complete = True
+            self._store.commit()
+            self._run = None
+        except Exception, msg:
+            self.ErrorDialog(str(msg), 'Fehler beim Speichern des Laufs')
+            return False
+
+        self._sireader.ack_sicard()
+        return True
+        
+    def ErrorDialog(self, msg, title):
+        dlg =  wx.MessageDialog(self, msg, title,
+                                wx.OK | wx.ICON_ERROR)
+        dlg.ShowModal()
+        dlg.Destroy()
+        
+app = wx.App()
+frame = SIReadoutFrame(Store(create_database(conf.db_uri)), None, -1, "SI Card Auslesen")
+app.MainLoop()
