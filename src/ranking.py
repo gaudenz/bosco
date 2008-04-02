@@ -36,8 +36,9 @@ class RankableItem:
     def finish(self):
         raise UnscoreableException('You have to override finish to rank this object with this scoreing strategy.')
 
-    def complete(self):
-        raise ValidationError('You have to override complete to validate this object with this validation strategy.')
+    def _get_complete(self):
+        raise ValidationError('You have to override the complete property to validate this object with this validation strategy.')
+    complete = property(_get_complete)
     
 class Rankable:
     """Defines the interface for rankable objects like courses and categories."""

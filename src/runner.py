@@ -89,8 +89,11 @@ class Runner(AbstractRunner, Storm):
 
     def _get_punches(self):
         return self._get_run().punches
-    
     punches = property(_get_punches)
+
+    def _get_complete(self):
+        return self._get_run().complete
+    complete = property(_get_complete)
         
 class Team(AbstractRunner, Storm):
     __storm_table__ = 'team'
