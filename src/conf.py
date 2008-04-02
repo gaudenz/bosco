@@ -18,3 +18,6 @@
 
 # Database URI
 db_uri = 'postgres:24h'
+
+# Directory with templates
+template_dir = 'templates'
