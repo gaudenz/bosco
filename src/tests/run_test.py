@@ -67,7 +67,10 @@ class RunTest(unittest.TestCase):
                               
         cards.append(SICard(768765))
         self._runners.append(Runner(u'Hans', u'Müller', cards[2]))
-                              
+
+        cards.append(SICard(113456))
+        self._runners.append(Runner(u'The', u'Missing', cards[3]))
+        
         for r in self._runners:
             r.category = self._cat_ind
             self._store.add(r)
@@ -117,6 +120,16 @@ class RunTest(unittest.TestCase):
                   ]
         self._runs[2].add_punchlist(punches)
         self._runs[2].complete = True
+
+        self._runs.append(Run(cards[3], self._course))
+        self._store.add(self._runs[3])
+        punches = [ (SIStation.START, datetime(2008,3,19,8,31,25)),
+                    (131,datetime(2008,3,19,8,33,39)),
+                    (200,datetime(2008,3,19,8,35,35)),
+                    (SIStation.FINISH,datetime(2008,3,19,8,36,25)),
+                  ]
+        self._runs[3].add_punchlist(punches)
+        self._runs[3].complete = True
 
         self._store.commit()
 
@@ -178,30 +191,44 @@ class RunTest(unittest.TestCase):
         score = SelfStartTimeScoreingStrategy()
         validator = self._course.validator(SequenceCourseValidationStrategy)
         ranking = [ r for r in self._course.ranking(score, validator) ]
+        
         self.assertEquals(ranking[0]['rank'], 1)
         self.assertEquals(ranking[0]['validation'], ValidationStrategy.OK)
-        self.assertEquals(ranking[0]['item'], self._runs[0])
+        self.assertTrue(ranking[0]['item'] == self._runs[0] or ranking[0]['item'] == self._runs[2])
+        
         self.assertEquals(ranking[1]['rank'], 1)
         self.assertEquals(ranking[1]['validation'], ValidationStrategy.OK)
-        self.assertEquals(ranking[1]['item'], self._runs[2])
+        self.assertTrue(ranking[1]['item'] == self._runs[0] or ranking[1]['item'] == self._runs[2])
+
         self.assertEquals(ranking[2]['rank'], 3)
         self.assertEquals(ranking[2]['validation'], ValidationStrategy.OK)
         self.assertEquals(ranking[2]['item'], self._runs[1])
+
+        self.assertEquals(ranking[3]['rank'], None)
+        self.assertEquals(ranking[3]['validation'], ValidationStrategy.MISSING_CONTROLS)
+        self.assertEquals(ranking[3]['item'], self._runs[3])
 
     def test_ranking_category(self):
         """Test the correct ranking of runs in a category."""
         score = SelfStartTimeScoreingStrategy()
         validator = self._course.validator(SequenceCourseValidationStrategy)
         ranking = [ r for r in self._cat_ind.ranking(score, validator) ]
+
         self.assertEquals(ranking[0]['rank'], 1)
         self.assertEquals(ranking[0]['validation'], ValidationStrategy.OK)
-        self.assertEquals(ranking[0]['item'], self._runners[0])
+        self.assertTrue(ranking[0]['item'] == self._runners[0] or ranking[0]['item'] == self._runners[2])
+
         self.assertEquals(ranking[1]['rank'], 1)
-        self.assertEquals(ranking[2]['validation'], ValidationStrategy.OK)
-        self.assertEquals(ranking[1]['item'], self._runners[2])
+        self.assertEquals(ranking[1]['validation'], ValidationStrategy.OK)
+        self.assertTrue(ranking[1]['item'] == self._runners[0] or ranking[1]['item'] == self._runners[2])
+
         self.assertEquals(ranking[2]['rank'], 3)
         self.assertEquals(ranking[2]['validation'], ValidationStrategy.OK)
         self.assertEquals(ranking[2]['item'], self._runners[1])
+
+        self.assertEquals(ranking[3]['rank'], None)
+        self.assertEquals(ranking[3]['validation'], ValidationStrategy.MISSING_CONTROLS)
+        self.assertEquals(ranking[3]['item'], self._runners[3])
         
     
 if __name__ == '__main__':

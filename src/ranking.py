@@ -57,15 +57,15 @@ class Rankable:
         
         # Create list of (score, member) tuples and sort by score
         ranking_list = [(scoreing.score(m), validation.validate(m), m) for m in self.members]
-        ranking_list.sort(key = lambda x: x[1])
         ranking_list.sort(key = lambda x: x[0])
+        ranking_list.sort(key = lambda x: x[1])
 
         rank = 1
         for i, m in enumerate(ranking_list):
             # Only increase the rank if the current item scores higher than the previous item
             if i > 0 and ranking_list[i][0] > ranking_list[i-1][0]:
                 rank = i + 1
-            yield {'rank': rank,
+            yield {'rank': m[1] == ValidationStrategy.OK and rank or None, # only assign rank if run is OK
                    'score': m[0],
                    'validation': m[1],
                    'item': m[2],
