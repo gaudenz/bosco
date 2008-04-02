@@ -25,6 +25,7 @@ from storm.locals import *
 from storm.exceptions import NoStoreError
 import re
 
+from base import MyStorm
 from course import SIStation, Course
 from runner import SICard
 from ranking import RankableItem
@@ -46,7 +47,7 @@ class Punch(Storm):
         self.punchtime = punchtime
 
 
-class Run(Storm, RankableItem):
+class Run(MyStorm, RankableItem):
     """A run is directly connected to a single readout of an SI-Card.
        Competitors can have multiple runs during an event, but one
        run can not be associated to several SI-Card readouts. You have
@@ -102,21 +103,17 @@ class Run(Storm, RankableItem):
         """
         if self.complete and self.course is None:
             raise RunException("Can't complete a run without a Course.")
-        
-    def _get_store(self):
-        store = Store.of(self)
-        if store is None:
-            raise NoStoreError("Can't add punches without a store")
-        return store
 
+    def __str__(self):
+        runner = self.sicard.runner
+        return '%s %s' % (runner.given_name, runner.surname)
+    
     def add_punch(self, punch):
         """Adds a (stationnumber, punchtime) tuple to the run."""
 
         (number, punchtime) = punch
         
-        store = self._get_store()
-        
-        station = store.get(SIStation, number)
+        station = self._store.get(SIStation, number)
         if station is None:
             raise RunException('si-station number \'%s\' not found' % number)
 
@@ -132,8 +129,7 @@ class Run(Storm, RankableItem):
         @param coursecode: The code of the course.
         @type coursecode:  unicode
         """
-        store = self._get_store()
-        course = store.find(Course,
+        course = self._store.find(Course,
                             Course.code == code).one()
         if course is None:
             raise RunException("course '%s' not found" % code)

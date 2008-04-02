@@ -24,6 +24,8 @@ course.py - Classes for orienteering courses. Everything here is
 from storm.locals import *
 from ranking import Rankable
 
+from base import MyStorm
+
 class SIStation(Storm):
     """SI Control Station. Each si station bleongs to a control, but each
        control can have more than one si station (eg. if a station fails
@@ -43,7 +45,7 @@ class SIStation(Storm):
     def __init__(self, id):
         self.id = id
     
-class Control(Storm):
+class Control(MyStorm):
     """A control point. Control points are part of one or several courses.
        The possible orders of the control points in a course is defined
        with the ControlSequence relation."""
@@ -54,10 +56,44 @@ class Control(Storm):
     code = Unicode()
     sistations = ReferenceSet(id, 'SIStation._control_id')
 
-    def __init__(self, code, sistation = None):
+    def __init__(self, code, sistation = None, store = None):
+        """
+        @param code:      Code for this control.
+        @type code:       unicode
+        @param sistation: SI-Station for this control. If this is an integer,
+                          a corresponding SIStation object is created if necessary.
+                          If sistation is None a SIStation with id int(code) ist added.
+        @type sistation:  SIStation object or int
+        @param store:     Storm store for the sistation. A store is needed if
+                          sistation is given as int. The newly created object is
+                          automatically added to this store.
+        """
+        
         self.code = code
-        if sistation:
-            self.sistations.add(sistation)
+        if store is not None:
+            self._store = store
+
+        if sistation is None:
+            sistation = int(code)
+            
+        self.add_sistation(sistation)
+
+    def add_sistation(self, sistation):
+        """Add an SIStation to this Control.
+
+        @param sistation: SI-Station for this control. If this is an integer,
+                          a corresponding SIStation object is created if necessary.
+        @type sistation:  SIStation object or int
+        """
+        
+        if type(sistation) == int:
+            station_nr = sistation
+            sistation = self._store.get(SIStation, sistation)
+            if sistation is None:
+                sistation = SIStation(station_nr)
+                
+        self.sistations.add(sistation)
+        
 
 class ControlSequence(Storm):
     """Connects controls and courses. The sequence_number defines the
@@ -84,7 +120,7 @@ class ControlSequence(Storm):
         self.length = length
         self.climb = climb
         
-class Course(Storm, Rankable):
+class Course(MyStorm, Rankable):
     """Base class for all kinds of courses. Special kinds of courses should
        be derived from this class. Derived class must at least override the
        append or validate methods. This class implements an unordered set
@@ -123,6 +159,9 @@ class Course(Storm, Rankable):
         self.climb = climb
         self.expected_speed = expected_speed
         self._validators = {}
+
+    def __storm_loaded__(self):
+        self._validators = {}
         
     def __max_index(self):
         max = 0
@@ -138,7 +177,19 @@ class Course(Storm, Rankable):
         return False
 
     def append(self, control, length = None, climb = None):
-        """Append a single control to the course."""
+        """Append a single control to the course.
+
+        @param control: next control. The control is automatically created
+                        if it does not yet exist.
+        @type control:  Control object or unicode
+        """
+        if type(control) is unicode:
+            controlcode = control
+            control = self._store.find(Control, Control.code == controlcode).one()
+            if control is None:
+                control = Control(controlcode, store = self._store)
+            
+                
         self.sequence.add(ControlSequence(control, self.__max_index() + 1,
                                           length, climb))
 

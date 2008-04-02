@@ -19,6 +19,7 @@
 from storm.locals import *
 from copy import copy
 
+from base import MyStorm
 from ranking import Rankable, RankableItem
 
 class AbstractRunner(object, RankableItem):
@@ -31,7 +32,7 @@ class AbstractRunner(object, RankableItem):
     official = None
     sicards = None
 
-class Runner(AbstractRunner, Storm):
+class Runner(AbstractRunner, MyStorm):
     __storm_table__ = 'runner'
 
     id = Int(primary=True)
@@ -58,12 +59,16 @@ class Runner(AbstractRunner, Storm):
     team = Reference(_team_id, 'Team.id')
     sicards = ReferenceSet(id, 'SICard._runner_id')
 
-    def __init__(self, sname, gname, sicard = None):
+    def __init__(self, sname, gname, sicard = None, category = None, store = None):
         self.surname = sname
         self.given_name = gname
-        if sicard:
-            self.sicards.add(sicard)
-
+        if store is not None:
+            self._store = store
+        if sicard is not None:
+            self.add_sicard(sicard)
+        if category is not None:
+            self.set_category(category)
+        
     def __unicode__(self):
         return '%s, %s' % (self.surname, self.given_name)
 
@@ -80,7 +85,33 @@ class Runner(AbstractRunner, Storm):
         else:
             raise UnscoreableException('No run found for runner %s' % self)
 
-                
+
+    def add_sicard(self, cardnr):
+        """Adds an SI-Card by it's id. If the card does not exist it is created on the fly.
+        If the card is already assigned to another runner it is removed from this runner!
+        
+        @param cardnr: sicard id
+        @type cardnr:  int or sicard object
+        """
+        if type(cardnr) == int:
+            sicard = self._store.get(SICard, cardnr)
+            if sicard is None:
+                sicard = SICard(cardnr)
+        else:
+            sicard = cardnr
+            
+        self.sicards.add(sicard)
+
+    def set_category(self, category_name):
+        """Sets the category for this runner. Categories are NOT created on the fly!"""
+        if type(category_name) == unicode:
+            category = self._store.find(Category, Category.name == category_name).one()
+            if category is None:
+                raise RunnerException("Category '%s' not found." % category_name)
+        else:
+            category = category_name
+        self.category = category
+        
     def start(self):
         return self._get_run().start()
 
@@ -154,3 +185,5 @@ class Category(Storm, Rankable):
     def __unicode__(self):
         return unicode(self.name)
 
+class RunnerException(Exception):
+    pass
