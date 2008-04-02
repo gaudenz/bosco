@@ -32,6 +32,7 @@ class SIReadoutFrame(wx.Frame):
 
         self._store = store
         self._run = None
+        self._reset_timer = None
         
         # Set up sireader
         self._sireader = SIReader('/dev/ttyUSB0')
@@ -110,6 +111,8 @@ class SIReadoutFrame(wx.Frame):
         if self._sireader.poll_sicard():
             if self._sireader.sicard:
                 # SI Card inserted
+                if self._reset_timer is not None:
+                    self._reset_timer.Stop()
                 self._status_bar.SetStatusText('Reading SI Card %s (%s)...' % (self._sireader.sicard, self._sireader.cardtype), 0)
                 card_data = self._sireader.read_sicard()
                 text = ''
@@ -125,12 +128,13 @@ class SIReadoutFrame(wx.Frame):
                 self._status_bar.SetStatusText('SI Card removed.', 0)
                 self._readout_field.SetLabel('')
                 self._course_input.SetValue('')
-                wx.FutureCall(5000, self.ResetStatusBar)
+                self._reset_timer = wx.FutureCall(5000, self.ResetStatusBar)
                 self._save_button.Disable()
                 
 
     def ResetStatusBar(self):
         self._status_bar.SetStatusText('Waiting for SI Card...', 0)
+        self._reset_timer = None
 
     def MakeRun(self, card_data):
 
