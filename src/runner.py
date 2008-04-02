@@ -86,6 +86,11 @@ class Runner(AbstractRunner, Storm):
 
     def finish(self):
         return self._get_run().finish()
+
+    def _get_punches(self):
+        return self._get_run().punches
+    
+    punches = property(_get_punches)
         
 class Team(AbstractRunner, Storm):
     __storm_table__ = 'team'

@@ -27,7 +27,7 @@ import re
 
 from course import SIStation, Course
 from runner import SICard
-
+from ranking import RankableItem
 
 class Punch(Storm):
     __storm_table__ = 'punch'
@@ -46,7 +46,7 @@ class Punch(Storm):
         self.punchtime = punchtime
 
 
-class Run(Storm):
+class Run(Storm, RankableItem):
     """A run is directly connected to a single readout of an SI-Card.
        Competitors can have multiple runs during an event, but one
        run can not be associated to several SI-Card readouts. You have

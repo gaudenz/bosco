@@ -35,6 +35,9 @@ class RankableItem:
     
     def finish(self):
         raise UnscoreableException('You have to override finish to rank this object with this scoreing strategy.')
+
+    def complete(self):
+        raise ValidationError('You have to override complete to validate this object with this validation strategy.')
     
 class Rankable:
     """Defines the interface for rankable objects like courses and categories."""
@@ -42,11 +45,14 @@ class Rankable:
     members = None
 
     def ranking(self, scoreing, validation):
-        """Generator returning (rank, score, RankableItem) tuples. The order of the
+        """Generator returning a dictionary. The order of the
         ranking is defined by the scoreing strategy. Strategy has the be a subclass
         of ScoreingStrategy compatible with the RankableItem objects of this Rankable.
         The ranking is generated in lowest first order. The overcome this restriction 
-        seperate RankingStrategies should be implemented."""
+        seperate RankingStrategies should be implemented.
+
+        @rtype: generator wich produces dictionaries with the keys 'rank', 'score', 'validation',
+                'item', 'info'"""
         
         # Create list of (score, member) tuples and sort by score
         ranking_list = [(scoreing.score(m), validation.validate(m), m) for m in self.members]
@@ -58,7 +64,12 @@ class Rankable:
             # Only increase the rank if the current item scores higher than the previous item
             if i > 0 and ranking_list[i][0] > ranking_list[i-1][0]:
                 rank = i + 1
-            yield (rank, m[0], m[1], m[2])
+            yield {'rank': rank,
+                   'score': m[0],
+                   'validation': m[1],
+                   'item': m[2],
+                   'info': None,
+                   }
 
 class AbstractScoreingStrategy(object):
     """Defines a strategy for scoring objects (runs, runners, teams). The scoreing 
