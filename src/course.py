@@ -104,6 +104,20 @@ class Course(Storm, Rankable):
     sequence = ReferenceSet(id, 'ControlSequence._course_id')
 
     def __init__(self, code, length = None, climb = None, expected_speed = None):
+        """
+        @param code:          Descriptive code for this course. Usually 3 characters long. For
+                              'normal' events this corresponds to the category name.
+        @type code:           unicode
+        @param length:        Length of the course in meters
+        @type length:         int
+        @param climb:         Altitude differences in meters
+        @type climb:          int
+        @param expected_speed:Expected speed on this course in minutes per kilometer.
+        @type expected_speed: int
+
+        @todo: Implement expected speed as storm property. Should this really be in the DB?
+        """
+        
         self.code = code
         self.length = length
         self.climb = climb
@@ -141,7 +155,7 @@ class Course(Storm, Rankable):
     def expected_time(self):
         """Returns the expected time for this course."""
         try:
-            return timedelta(minutes=(self.length + self.climb/100)*self.expected_speed)
+            return timedelta(minutes=(self.length + self.climb/100)/1000*self.expected_speed)
         except TypeError:
             return None
 
