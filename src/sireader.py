@@ -121,8 +121,6 @@ class SIReader(object):
         if not self._proto_config['ext_proto']:
             raise SIReaderException('This module only supports stations in "Extended Protocol" mode.')
 
-        self.sicard = None
-        self.cardtype = None
         self.port = port
         self.baudrate = self._serial.baudrate
 
@@ -191,10 +189,31 @@ class SIReader(object):
         return SIReader._crc(s) == crc
 
     @staticmethod
-    def _decode_cardnr_si5(number):
-        part1 = str(SIReader._to_int(number[0:2]))
-        part2 = str(SIReader._to_int(number[2:4]))
-        return int(part1 + part2)
+    def _decode_cardnr(number):
+        """Decodes a 4 byte cardnr to an int. SI-Card numbering is a bit odd:
+           SI-Card 5:   byte 0:   always 0 (not stored on the card)
+                        byte 1:   card series (stored on the card as CNS)
+                        byte 2,3: card number
+                        printed:  100'000*CNS + card number
+                        nr range: 1-499'999 
+           SI-Card 6/9: byte 0:   card series (apparently 0 on all currently sold cards)
+                        byte 1-3: card number
+                        printed:  only card number
+                        nr range: SI6: 500'000-999'999, SI9: 1'000'000-1'999'999
+           The card nr ranges guarantee that no ambigous values are possible
+           (500'000 = 0x07A120 > 0x04FFFF -> 465535 (highest actually possible value on a SI5))   
+        """
+        
+        if number[0] != '\x00':
+            raise SIReaderException('Unknown card series')
+        
+        nr = SIReader._to_int(number[1:4])
+        if nr < 500000:
+            # SI5 card
+            return ord(number[1])*100000 + SIReader._to_int(number[2:4])
+        else:
+            # SI6/9
+            return nr
 
     @staticmethod
     def _decode_time(raw_time, reftime = datetime.now()):
@@ -209,7 +228,7 @@ class SIReader(object):
         ref_day = reftime.replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=None)
         ref_hour = reftime - ref_day
         t_noon = timedelta(hours=12)
-        #print "t = %s\nd = %s\nt_ref = %s\nt_noon = %s" % (t, d, t_ref, t_noon)
+        
         if ref_hour < t_noon:
             # reference time is before noon
             if punchtime < ref_hour:
@@ -231,10 +250,10 @@ class SIReader(object):
     def _decode_si5(data, reftime = datetime.now()):
         """Decodes a data record read from an SI Card 5."""
         ret = {}
-        ret['card_number'] = SIReader._decode_cardnr_si5('\x00'
-                                                         + data[SIReader.SI5_CNS]
-                                                         + data[SIReader.SI5_CN1]
-                                                         + data[SIReader.SI5_CN0])
+        ret['card_number'] = SIReader._decode_cardnr('\x00'
+                                                     + data[SIReader.SI5_CNS]
+                                                     + data[SIReader.SI5_CN1]
+                                                     + data[SIReader.SI5_CN0])
         ret['punches'] = []        
         ret['punches'].append((SIStation.START,
                                SIReader._decode_time(data[SIReader.SI5_ST:SIReader.SI5_ST+2],
@@ -364,6 +383,16 @@ class SIReader(object):
         print "command '%s', data '%s'" % (hexlify(cmd), hexlify(data))
         return (cmd, data)
 
+class SIReaderReadout(SIReader):
+    """Class for 'classic' SI card readout. Reads out the whole card. If you don't know
+    about other readout modes (control mode) you probably want this class."""
+
+    def __init__(self, *args, **kwargs):
+        super(type(self), self).__init__(*args, **kwargs)
+        
+        self.sicard = None
+        self.cardtype = None
+
     def poll_sicard(self):
         """Polls for an SI-Card inserted or removed into the SI Station. Returns true on
         state changes and false otherwise. If other commands are received an Exception is
@@ -377,7 +406,7 @@ class SIReader(object):
             self.sicard = None
             self.cardtype = None
         elif c[0] == SIReader.C_SI5_DET:
-            self.sicard = self._decode_cardnr_si5(c[1])
+            self.sicard = self._decode_cardnr(c[1])
             self.cardtype = 'SI5'
         elif c[0] == SIReader.C_SI6_DET:
             self.sicard = self._to_int(c[1])
@@ -415,7 +444,20 @@ class SIReader(object):
         """Sends an ACK signal to the SI Station. After receiving an ACK signal
         the station blinks and beeps to signal correct card readout."""
         self._serial.write(SIReader.ACK)
+
+
+class SIReaderControl(SIReader):
+    """Class for reading an SI Station configured as control in autosend mode."""
+
+    def __init__(self, *args, **kwargs):
+        super(type(self), self).__init__(*args, **kwargs)
+        self._position = None
         
+    def poll_punch(self):
+        """Polls for new punches.
+        @retrun: (cardnr, punchtime) tuple
+        """
+
 class SIReaderException(Exception):
     pass
 

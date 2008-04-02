@@ -22,7 +22,7 @@ import wx
 from storm.locals import *
 
 from run import Run, RunException
-from sireader import SIReader
+from sireader import SIReaderReadout
 import conf
 
 class SIReadoutFrame(wx.Frame):
@@ -35,7 +35,7 @@ class SIReadoutFrame(wx.Frame):
         self._reset_timer = None
         
         # Set up sireader
-        self._sireader = SIReader('/dev/ttyUSB0')
+        self._sireader = SIReaderReadout('/dev/ttyUSB0')
         
         panel = wx.Panel(self, -1)
 
