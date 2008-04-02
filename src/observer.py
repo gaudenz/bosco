@@ -23,7 +23,7 @@ from storm.locals import *
 from run import Punch
 import conf
 
-class EventObserver():
+class EventObserver(object):
     """Observes an Event for new data (e.g. new punches)"""
 
     def __init__(self, interval = 5):
@@ -65,8 +65,6 @@ class EventObserver():
     def observe(self):
         """Does the actual observation."""
 
-        print "observing events"
-        
         # rollback store to end transaction
         self._store.rollback()
         
