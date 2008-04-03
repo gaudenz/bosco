@@ -63,6 +63,9 @@ class SIReader(object):
     P_PROTO       = '\x74\x01'
     P_SI6_CB      = '\x08'
 
+    # Backup memory record length
+    REC_LEN       = 8
+
     # General card data structure values
     TIME_RESET    = '\xEE\xEE'
     
@@ -93,12 +96,24 @@ class SIReader(object):
     SI9_RC        = 22
     SI9_1         = 56
 
-    def __init__(self, port):
+    # punch trigger in control mode data structure
+    T_OFFSET      = 8
+    T_CN          = 0
+    T_TIME        = 5
+
+    # backup memory in control mode 
+    BC_CN         = 3
+    BC_TIME       = 8
+
+    def __init__(self, port, debug = False):
         """Initializes communication with si station at port."""
-        self._serial = Serial(port, baudrate = 38400, timeout = 3)
+        self._serial = Serial(port, baudrate = 38400, timeout = 5)
         # flush possibly available input
         self._serial.flushInput()
         
+        self.station_code = None
+        self._debug = debug
+
         try:
             # try at 38400 baud, extended protocol
             self._send_command(SIReader.C_SET_MS, SIReader.P_MS_DIRECT)
@@ -134,7 +149,19 @@ class SIReader(object):
         for offset, c in enumerate(s[::-1]):
             value += ord(c) << offset*8
         return value
-    
+
+    @staticmethod
+    def _to_str(i, len):
+        """
+        @param i:   Integer to convert into str
+        @param len: Length of the return value. If i does not fit it's truncated.
+        @return:    string representation of i (MSB first)
+        """
+        string = ''
+        for offset in range(len-1, -1, -1):
+            string += chr((i >> offset*8) & 0xFF)
+        return string
+
     @staticmethod
     def _crc(s):
         """Compute the crc checksum of value. This implementation is
@@ -216,19 +243,22 @@ class SIReader(object):
             return nr
 
     @staticmethod
-    def _decode_time(raw_time, reftime = datetime.now()):
+    def _decode_time(raw_time, reftime = None):
         """Decodes a raw time value read from an si card into a datetime object.
         The returned time is the nearest time matching the data before reftime."""
 
         if raw_time == SIReader.TIME_RESET:
             return None
 
+        if reftime is None:
+            reftime = datetime.now()
+
         #punchtime is in the range 0h-12h!
         punchtime = timedelta(seconds = SIReader._to_int(raw_time))
         ref_day = reftime.replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=None)
         ref_hour = reftime - ref_day
         t_noon = timedelta(hours=12)
-        
+
         if ref_hour < t_noon:
             # reference time is before noon
             if punchtime < ref_hour:
@@ -247,7 +277,7 @@ class SIReader(object):
                 return ref_day + punchtime
                 
     @staticmethod
-    def _decode_si5(data, reftime = datetime.now()):
+    def _decode_si5(data, reftime = None):
         """Decodes a data record read from an SI Card 5."""
         ret = {}
         ret['card_number'] = SIReader._decode_cardnr('\x00'
@@ -283,7 +313,7 @@ class SIReader(object):
         return ret
     
     @staticmethod
-    def _decode_si6(data, reftime = datetime.now()):
+    def _decode_si6(data, reftime = None):
         """Decodes a data record read from an SI Card 6."""
         ret = {}
         ret['card_number'] = SIReader._to_int(data[SIReader.SI6_CN:SIReader.SI6_CN+4])
@@ -314,7 +344,7 @@ class SIReader(object):
         return ret
     
     @staticmethod
-    def _decode_si9(data, reftime = datetime.now()):
+    def _decode_si9(data, reftime = None):
         """Decodes a data record read from an SI Card 9."""
         
         ret = {}
@@ -371,6 +401,7 @@ class SIReader(object):
         cmd = self._serial.read()
         length = self._serial.read()
         station = self._serial.read(2)
+        self.station_code = SIReader._to_int(station)
         data = self._serial.read(ord(length)-2)
         crc = self._serial.read(2)
         etx = self._serial.read()
@@ -380,7 +411,9 @@ class SIReader(object):
         if not SIReader._crc_check(cmd + length + station + data, crc):
             raise SIReaderException('CRC check failed')
 
-        print "command '%s', data '%s'" % (hexlify(cmd), hexlify(data))
+        if self._debug:
+            print "command '%s', data %s" % (hexlify(cmd), [hexlify(c) for c in data])
+
         return (cmd, data)
 
 class SIReaderReadout(SIReader):
@@ -451,12 +484,44 @@ class SIReaderControl(SIReader):
 
     def __init__(self, *args, **kwargs):
         super(type(self), self).__init__(*args, **kwargs)
-        self._position = None
+        self._next_offset = None
         
     def poll_punch(self):
         """Polls for new punches.
-        @retrun: (cardnr, punchtime) tuple
+        @retrun: list of (cardnr, punchtime) tuples, empty list if no new punches are available
         """
+
+        punches = []
+        while True:
+            try:
+                c = self._read_command(timeout = 0)
+            except SIReaderTimeout:
+                break 
+        
+            if c[0] == SIReader.C_TRANS_REC:
+                cur_offset = SIReader._to_int(c[1][SIReader.T_OFFSET:SIReader.T_OFFSET+3])
+                if self._next_offset is not None:
+                    while self._next_offset < cur_offset:
+                        # recover lost punches
+                        punches.append(self._read_punch(self._next_offset))
+                        self._next_offset += SIReader.REC_LEN
+
+                self._next_offset = cur_offset + SIReader.REC_LEN
+            punches.append( (self._decode_cardnr(c[1][SIReader.T_CN:SIReader.T_CN+4]), 
+                             self._decode_time(c[1][SIReader.T_TIME:SIReader.T_TIME+2])) )
+        else:
+            raise SIReaderException('Unexpected command %s received' % hex(ord(c[0])))
+        
+        return punches
+        
+    def _read_punch(self, offset):
+        """Reads a punch from the SI Stations backup memory.
+        @param offset: Position in the backup memory to read
+        @warining:     Only supports firmwares 5.55+ older firmwares have an incompatible record format!
+        """
+        c = self._send_command(SIReader.C_GET_BACKUP, SIReader._to_str(offset, 3)+chr(SIReader.REC_LEN))
+        return (self._decode_cardnr('\x00'+c[1][SIReader.BC_CN:SIReader.BC_CN+3]), 
+                self._decode_time(c[1][SIReader.BC_TIME:SIReader.BC_TIME+2]))
 
 class SIReaderException(Exception):
     pass

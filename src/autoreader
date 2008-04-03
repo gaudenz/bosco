@@ -1,0 +1,63 @@
+#!/usr/bin/env python
+#
+#    Copyright (C) 2008  Gaudenz Steinlin <gaudenz@soziologie.ch>
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+"""
+autoreader - Automatic readout of SI Station configured as control in autosend mode
+"""
+
+from storm.locals import *
+from time import sleep
+from traceback import print_exc
+import sys
+
+from sireader import SIReaderControl
+from run import Run, RunException
+import conf
+
+def register_punch(station, cardnr, punchtime):
+
+    # search for incomplete run with this sicard
+    run = store.find(Run,
+                     Run.sicard == cardnr,
+                     Run.complete == False).one()
+    
+    if run is None:
+        run = store.add(Run(cardnr, store=store))
+
+    run.add_punch((station, punchtime))
+
+
+store = Store(create_database(conf.db_uri))
+sireader = SIReaderControl(sys.argv[1])
+
+while True:
+    try:
+        punches = sireader.poll_punch()
+        for p in punches:
+            print "Punch received from %s at %s" % (p[0], p[1])
+            try:
+                register_punch(sireader.station_code, p[0], p[1])
+                store.commit()
+            except RunException, msg:
+                print_exc(file=sys.stdout)
+                store.rollback()
+    except Exception, msg:
+        store.rollback()
+        print_exc(file=sys.stdout)
+
+    sleep(1)
+    
+    
