@@ -36,6 +36,10 @@ class SIReadoutFrame(wx.Frame):
         
         # Set up sireader
         self._sireader = SIReaderReadout('/dev/ttyUSB0')
+
+        # Set Icon
+        icon = wx.Icon('sicard.xpm', wx.BITMAP_TYPE_XPM)
+        self.SetIcon(icon)
         
         panel = wx.Panel(self, -1)
 
