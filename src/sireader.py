@@ -275,25 +275,35 @@ class SIReader(object):
             else:
                 # t is in the late morning
                 return ref_day + punchtime
+
+    @staticmethod
+    def _append_punch(list, station, timedata, reftime):
+        time = SIReader._decode_time(timedata, reftime)
+        if time is not None:
+            list.append((station, time))
                 
     @staticmethod
     def _decode_si5(data, reftime = None):
         """Decodes a data record read from an SI Card 5."""
+
         ret = {}
         ret['card_number'] = SIReader._decode_cardnr('\x00'
                                                      + data[SIReader.SI5_CNS]
                                                      + data[SIReader.SI5_CN1]
                                                      + data[SIReader.SI5_CN0])
-        ret['punches'] = []        
-        ret['punches'].append((SIStation.START,
-                               SIReader._decode_time(data[SIReader.SI5_ST:SIReader.SI5_ST+2],
-                                                     reftime)))
-        ret['punches'].append((SIStation.FINISH,
-                               SIReader._decode_time(data[SIReader.SI5_FT:SIReader.SI5_FT+2],
-                                                     reftime)))
-        ret['punches'].append((SIStation.CHECK,
-                               SIReader._decode_time(data[SIReader.SI5_CT:SIReader.SI5_CT+2],
-                                                     reftime)))
+        ret['punches'] = []
+        SIReader._append_punch(ret['punches'],
+                               SIStation.START,
+                               data[SIReader.SI5_ST:SIReader.SI5_ST+2],
+                               reftime)
+        SIReader._append_punch(ret['punches'],
+                               SIStation.FINISH,
+                               data[SIReader.SI5_FT:SIReader.SI5_FT+2],
+                               reftime)
+        SIReader._append_punch(ret['punches'],
+                               SIStation.CHECK,
+                               data[SIReader.SI5_CT:SIReader.SI5_CT+2],
+                               reftime)
 
         punch_count = ord(data[SIReader.SI5_RC]) - 1 # RC is the index of the next punch
         if punch_count > 30:
@@ -305,8 +315,10 @@ class SIReader(object):
             if i % 16 == 0:
                 # first byte of each block is reserved for punches 31-36
                 i += 1
-            ret['punches'].append((ord(data[SIReader.SI5_1 + i]),
-                                   SIReader._decode_time(data[SIReader.SI5_1 + i + 1:SIReader.SI5_1 + i + 3], reftime)))
+            SIReader._append_punch(ret['punches'],
+                                   ord(data[SIReader.SI5_1 + i]),
+                                   data[SIReader.SI5_1 + i + 1:SIReader.SI5_1 + i + 3],
+                                   reftime)
             i += 3
             p += 1
 
@@ -319,18 +331,22 @@ class SIReader(object):
         ret['card_number'] = SIReader._to_int(data[SIReader.SI6_CN:SIReader.SI6_CN+4])
 
         ret['punches'] = []
-        ret['punches'].append((SIStation.START,
-                               SIReader._decode_time(data[SIReader.SI6_ST:SIReader.SI6_ST+2],
-                                                     reftime)))
-        ret['punches'].append((SIStation.FINISH,
-                               SIReader._decode_time(data[SIReader.SI6_FT:SIReader.SI6_FT+2],
-                                                     reftime)))
-        ret['punches'].append((SIStation.CHECK,
-                               SIReader._decode_time(data[SIReader.SI6_CT:SIReader.SI6_CT+2],
-                                                     reftime)))
-        ret['punches'].append((SIStation.CLEAR,
-                               SIReader._decode_time(data[SIReader.SI6_LT:SIReader.SI6_LT+2],
-                                                     reftime)))
+        SIReader._append_punch(ret['punches'],
+                               SIStation.START,
+                               data[SIReader.SI5_ST:SIReader.SI6_ST+2],
+                               reftime)
+        SIReader._append_punch(ret['punches'],
+                               SIStation.FINISH,
+                               data[SIReader.SI5_FT:SIReader.SI6_FT+2],
+                               reftime)
+        SIReader._append_punch(ret['punches'],
+                               SIStation.CHECK,
+                               data[SIReader.SI5_CT:SIReader.SI6_CT+2],
+                               reftime)
+        SIReader._append_punch(ret['punches'],
+                               SIStation.CHECK,
+                               data[SIReader.SI5_CT:SIReader.SI6_LT+2],
+                               reftime)
 
         punch_count = ord(data[SIReader.SI6_RC]) # RC is the punch count on the SI Card 6
         if punch_count > 64:
@@ -338,8 +354,10 @@ class SIReader(object):
             punch_count = 64
             
         for i in range(punch_count):
-            ret['punches'].append((ord(data[SIReader.SI6_1 + i*4 + 1]),
-                                   SIReader._decode_time(data[SIReader.SI6_1 + i*4 + 2:SIReader.SI6_1 + i*4 + 4], reftime)))
+            SIReader._append_punch(ret['punches'],
+                                   ord(data[SIReader.SI6_1 + i*4 + 1]),
+                                   data[SIReader.SI6_1 + i*4 + 2:SIReader.SI6_1 + i*4 + 4],
+                                   reftime)
 
         return ret
     
@@ -351,23 +369,28 @@ class SIReader(object):
         ret['card_number'] = SIReader._to_int(data[SIReader.SI9_CN:SIReader.SI9_CN+3])
 
         ret['punches'] = []
-        ret['punches'].append((SIStation.START,
-                               SIReader._decode_time(data[SIReader.SI9_ST:SIReader.SI9_ST+2],
-                                                     reftime)))
-        ret['punches'].append((SIStation.FINISH,
-                               SIReader._decode_time(data[SIReader.SI9_FT:SIReader.SI9_FT+2],
-                                                     reftime)))
-        ret['punches'].append((SIStation.CHECK,
-                               SIReader._decode_time(data[SIReader.SI9_CT:SIReader.SI9_CT+2],
-                                                     reftime)))
+        SIReader._append_punch(ret['punches'],
+                               SIStation.START,
+                               data[SIReader.SI5_ST:SIReader.SI9_ST+2],
+                               reftime)
+        SIReader._append_punch(ret['punches'],
+                               SIStation.FINISH,
+                               data[SIReader.SI5_FT:SIReader.SI9_FT+2],
+                               reftime)
+        SIReader._append_punch(ret['punches'],
+                               SIStation.CHECK,
+                               data[SIReader.SI5_CT:SIReader.SI9_CT+2],
+                               reftime)
 
         punch_count = ord(data[SIReader.SI9_RC]) # RC is the punch count on the SI Card 6
         if punch_count > 50:
             raise SIReaderException('SI Card 9 with invalid punch count')
             
         for i in range(punch_count):
-            ret['punches'].append((ord(data[SIReader.SI9_1 + i*4 + 1]),
-                                   SIReader._decode_time(data[SIReader.SI9_1 + i*4 + 2:SIReader.SI9_1 + i*4 + 4], reftime)))
+            SIReader._append_punch(ret['punches'],
+                                   ord(data[SIReader.SI9_1 + i*4 + 1]),
+                                   data[SIReader.SI9_1 + i*4 + 2:SIReader.SI9_1 + i*4 + 4],
+                                   reftime)
 
         return ret
 
