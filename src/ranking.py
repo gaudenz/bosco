@@ -21,14 +21,15 @@ ranking.py - Classes to produce rankings of objects that implement
              Rankable specifies the interface of rankable classes.
 """
 
+from datetime import timedelta
+
+from storm.locals import Store
+
 class RankableItem:
     """Defines the interface for all rankable items (currently Runner, Team, Run).
     This interfaces specifies the methods to access information about the RankableItem
     like name and score (time, points, ...) in an independent way. This is ensures that
     RankingFormatters don't need information about the objects in the ranking."""
-
-    name = None
-    description = None
 
     def start(self):
         raise UnscoreableException('You have to override start to rank this object with this scoreing strategy.')
@@ -39,38 +40,76 @@ class RankableItem:
     def _get_complete(self):
         raise ValidationError('You have to override the complete property to validate this object with this validation strategy.')
     complete = property(_get_complete)
+
+    def __str__(self):
+        return 'override __str__ for a more meaningful value'
+
+class Ranking(object):
+    """A Ranking objects combines a scoreing strategy, a validation strategy and a
+    rankable object (course or category) and computes a ranking. The Ranking object
+    is an interable object, which means you can use it much like a list. It returns
+    a new iterator on every call to __iter__.
+    The order of the ranking is defined by the scoreing strategy. Strategy has the be a subclass
+    of ScoreingStrategy compatible with the RankableItem objects of this Rankable.
+    The ranking is generated in lowest first order. The overcome this restriction 
+    seperate RankingStrategies should be implemented.
+
+    The iterator returns dictionaries with the keys 'rank', 'score', 'validation',
+    'item', 'info'.
+
+    The complete ranking is only computed on the first call to __iter__. Subsequent calls
+    return a ranking from cached data. Ranking objects can be registered with an
+    EventObserver object to automatically invalidate the cache on changes.
+    """
+
+    def __init__(self, rankable, scoreing, validation):
+        self._rankable = rankable
+        self._scoreing = scoreing
+        self._validation = validation
+        self._ranking_list = None
+
+    def __iter__(self):
+
+        def ranking_generator(ranking_list, scoreing, validation):
+
+            rank = 1
+            for i, m in enumerate(ranking_list):
+                # Only increase the rank if the current item scores higher than the previous item
+                if i > 0 and ranking_list[i][0] > ranking_list[i-1][0]:
+                    rank = i + 1
+                yield {'rank': m[1] == ValidationStrategy.OK and rank or None, # only assign rank if run is OK
+                       'score': m[0],
+                       'validation': m[1],
+                       'item': m[2],
+                       'info': None,
+                       }
+
+        if self._ranking_list is None:
+            # Create list of (score, member) tuples and sort by score
+            self._ranking_list = [(self._scoreing.score(m), self._validation.validate(m), m)
+                                    for m in self._rankable.members]
+            self._ranking_list.sort(key = lambda x: x[0])
+            self._ranking_list.sort(key = lambda x: x[1])
+
+        # return the generator
+        return ranking_generator(self._ranking_list, self._scoreing, self._validation)
+
+    def update(self, event):
+        """Invalidates the cache.
+        @param event: type of update event, currently not used
+        """
+        
+        # Invalidate ranking list and rollback store
+        Store.of(self._rankable).rollback()
+        self._ranking_list = None
+    
     
 class Rankable:
-    """Defines the interface for rankable objects like courses and categories."""
-
-    members = None
-
-    def ranking(self, scoreing, validation):
-        """Generator returning a dictionary. The order of the
-        ranking is defined by the scoreing strategy. Strategy has the be a subclass
-        of ScoreingStrategy compatible with the RankableItem objects of this Rankable.
-        The ranking is generated in lowest first order. The overcome this restriction 
-        seperate RankingStrategies should be implemented.
-
-        @rtype: generator wich produces dictionaries with the keys 'rank', 'score', 'validation',
-                'item', 'info'"""
-        
-        # Create list of (score, member) tuples and sort by score
-        ranking_list = [(scoreing.score(m), validation.validate(m), m) for m in self.members]
-        ranking_list.sort(key = lambda x: x[0])
-        ranking_list.sort(key = lambda x: x[1])
-
-        rank = 1
-        for i, m in enumerate(ranking_list):
-            # Only increase the rank if the current item scores higher than the previous item
-            if i > 0 and ranking_list[i][0] > ranking_list[i-1][0]:
-                rank = i + 1
-            yield {'rank': m[1] == ValidationStrategy.OK and rank or None, # only assign rank if run is OK
-                   'score': m[0],
-                   'validation': m[1],
-                   'item': m[2],
-                   'info': None,
-                   }
+    """Defines the interface for rankable objects like courses and categories.
+    The following attributes must be available in subclasses:
+    - members
+    """
+    pass
 
 class AbstractScoreingStrategy(object):
     """Defines a strategy for scoring objects (runs, runners, teams). The scoreing 
@@ -97,7 +136,11 @@ class AbstractTimeScoreingStrategy(AbstractScoreingStrategy):
     def score(self, obj):
         """Returns a timedelta object as the score by calling start and finish on 
         the object."""
-        return self._finish(obj) - self._start(obj)
+        try:
+            return self._finish(obj) - self._start(obj)
+        except TypeError:
+            # is this really the best thing to do?
+            return timedelta(0)
         
 class MassStartTimeScoreingStrategy(AbstractTimeScoreingStrategy):
     """Returns time scores relative to a fixed mass start time."""
