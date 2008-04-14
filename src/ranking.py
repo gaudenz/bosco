@@ -22,6 +22,7 @@ ranking.py - Classes to produce rankings of objects that implement
 """
 
 from datetime import timedelta
+from copy import copy
 
 from storm.locals import Store
 
@@ -278,6 +279,10 @@ class Relay24hScoreingStrategy(AbstractScoreingStrategy, ValidationStrategy):
     and scores teams for the 24h relay."""
 
     def __init__(self, starttime):
+        """
+        @param starttime: Start time of the event.
+        @type starttime:  datetime.datetime
+        """
         self._starttime = starttime
 
     def _loop_over_runs(self, team):
@@ -287,7 +292,7 @@ class Relay24hScoreingStrategy(AbstractScoreingStrategy, ValidationStrategy):
         (validation_code, number_of_omitted_runners)."""
         
         # collect team members and runs
-        members = team.members.order_by('number')
+        members = list(team.members.order_by('number'))
         runs = team.runs
 
         # check runner order
