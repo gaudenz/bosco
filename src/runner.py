@@ -63,7 +63,7 @@ class Runner(AbstractRunner, MyStorm):
         self.surname = sname
         self.given_name = gname
         if store is not None:
-            self._store = store
+            store.add(self)
         if sicard is not None:
             self.add_sicard(sicard)
         if category is not None:
@@ -88,24 +88,33 @@ class Runner(AbstractRunner, MyStorm):
 
     def add_sicard(self, cardnr):
         """Adds an SI-Card by it's id. If the card does not exist it is created on the fly.
-        If the card is already assigned to another runner it is removed from this runner!
+        If the card is already assigned to another runner an exception is raised.
         
         @param cardnr: sicard id
         @type cardnr:  int or sicard object
         """
         if type(cardnr) == int:
-            sicard = self._store.get(SICard, cardnr)
+            sicard = Store.of(self).get(SICard, cardnr)
             if sicard is None:
                 sicard = SICard(cardnr)
         else:
             sicard = cardnr
-            
-        self.sicards.add(sicard)
+
+        if sicard.runner == self or sicard.runner == None:
+            return self.sicards.add(sicard)
+        
+        raise RunnerException("SI-Card %s already assigned to runner %s" %
+                              (cardnr, "%s %s (%s)" %
+                                       (sicard.runner.given_name,
+                                        sicard.runner.surname,
+                                        sicard.runner.number)
+                               )
+                              )
 
     def set_category(self, category_name):
         """Sets the category for this runner. Categories are NOT created on the fly!"""
         if type(category_name) == unicode:
-            category = self._store.find(Category, Category.name == category_name).one()
+            category = Store.of(self).find(Category, Category.name == category_name).one()
             if category is None:
                 raise RunnerException("Category '%s' not found." % category_name)
         else:
