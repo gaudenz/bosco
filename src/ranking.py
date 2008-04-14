@@ -433,6 +433,9 @@ class Relay24hScore(object):
             else:
                 return 0
 
+    def __str__(self):
+        return "Runs: %s, Time: %s" % (self._runs, self._time) 
+
 class UnscoreableException(Exception):
     pass
 
