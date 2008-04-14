@@ -136,7 +136,7 @@ class SIRunImporter(Importer):
        SE1;345213;2008-02-20 12:14:00.000000;2008-02-20 13:27:06.080200;2008-02-20 12:10:21.000000;2008-02-20 12:10:07.002000;32;2008-02-20 12:19:23.000000;76;2008-02-20 12:20:57.300000;...
        """
 
-    timestamp_re = re.compile('([0-9]{4})-([0-9]{2})-([0-9]{2}) ([0-9]{2}):([0-9]{2}):([0-9]{2}).([0-9]{6})')
+    timestamp_re = re.compile('([0-9]{4})-([0-9]{2})-([0-9]{2}) ([0-9]{2}):([0-9]{2}):([0-9]{2})(\.([0-9]{6}))?')
 
     COURSE = 0
     CARDNR = 1
@@ -164,8 +164,10 @@ class SIRunImporter(Importer):
         if match is None:
             raise RunImportException('Invalid time format: %s' % punchtime)
         
-        (year, month, day, hour, minute, second, microsecond) = \
+        (year, month, day, hour, minute, second, dummy, microsecond) = \
                match.groups()
+        if microsecond is None:
+            microsecond = 0
         
         return datetime(int(year), int(month), int(day), int(hour),
                         int(minute), int(second), int(microsecond))
@@ -210,7 +212,7 @@ class SIRunImporter(Importer):
                            line[SIRunImporter.FINISH])
             i = SIRunImporter.BASE
             while i < len(line):
-                self.add_punches(int(line[i]), line[i+1])
+                self.add_punch(int(line[i]), line[i+1])
                 i += 2
 
             
