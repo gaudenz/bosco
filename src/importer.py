@@ -21,8 +21,11 @@ from storm.locals import *
 from csv import reader
 from optparse import OptionParser
 from datetime import datetime, date
-from elementtree.ElementTree import parse
-from sys import exit
+from sys import exit, hexversion
+if hexversion > 0x20500f0:
+    from xml.etree.ElementTree import parse
+else:
+    from elementtree.ElementTree import parse
 import re
 
 import conf
