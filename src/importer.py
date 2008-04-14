@@ -156,35 +156,65 @@ class SIRunImporter(Importer):
     def __datetime(punchtime):
         """Create a datetime object from a punchtime given as string in the
            format YYYY-MM-DD HH:MM:SS.ssssss."""
+
+        if punchtime == '':
+            return None
+
+        match = SIRunImporter.timestamp_re.match(punchtime)
+        if match is None:
+            raise RunImportException('Invalid time format: %s' % punchtime)
         
         (year, month, day, hour, minute, second, microsecond) = \
-               SIRunImporter.timestamp_re.match(punchtime).groups()
+               match.groups()
         
         return datetime(int(year), int(month), int(day), int(hour),
                         int(minute), int(second), int(microsecond))
 
+    def add_punch(self, station, timestring, mandatory = True):
+        """
+        Adds a punch to the list of punches.
+
+        @param mandatory: If true an exception is raised if the time is empty.
+        @type mandatory: boolean
+        """
+        
+        time = self.__datetime(timestring)
+        if time is not None:
+            self._punches.append((station, time))
+        elif not mandatory:
+            return
+        else:
+            raise RunImportException('Empty time for non mandatory field.')
+            
     def import_data(self, store):
 
         for line in self.__runs:
             course_code = line[SIRunImporter.COURSE]
             cardnr = line[SIRunImporter.CARDNR]
             
-            punches = []
-            punches.append((SIStation.START,
-                            self.__datetime(line[SIRunImporter.START])))
-            punches.append((SIStation.FINISH,
-                            self.__datetime(line[SIRunImporter.FINISH])))
-            punches.append((SIStation.CHECK,
-                            self.__datetime(line[SIRunImporter.CHECK])))
-            punches.append((SIStation.CLEAR,
-                            self.__datetime(line[SIRunImporter.CLEAR])))
+            self._punches = []
+
+            # These fields may be empty
+            self.add_punch(SIStation.START,
+                           line[SIRunImporter.START],
+                           mandatory = False)
+            self.add_punch(SIStation.CHECK,
+                           line[SIRunImporter.CHECK],
+                           mandatory = False)
+            self.add_punch(SIStation.CLEAR,
+                           line[SIRunImporter.CLEAR],
+                           mandatory = False)
+
+            # These fields must be present
+            self.add_punch(SIStation.FINISH,
+                           line[SIRunImporter.FINISH])
             i = SIRunImporter.BASE
             while i < len(line):
-                punches.append((int(line[i]), self.__datetime(line[i+1])))
+                self.add_punches(int(line[i]), line[i+1])
                 i += 2
 
             
-            run = Run(int(cardnr), course_code, punches, store)
+            run = Run(int(cardnr), course_code, self._punches, store)
             run.complete = True
             store.add(run)
 
