@@ -63,7 +63,7 @@ class Runner(AbstractRunner, MyStorm):
         self.surname = sname
         self.given_name = gname
         if store is not None:
-            store.add(self)
+            self._store = store
         if sicard is not None:
             self.add_sicard(sicard)
         if category is not None:
@@ -94,7 +94,7 @@ class Runner(AbstractRunner, MyStorm):
         @type cardnr:  int or sicard object
         """
         if type(cardnr) == int:
-            sicard = Store.of(self).get(SICard, cardnr)
+            sicard = self._store.get(SICard, cardnr)
             if sicard is None:
                 sicard = SICard(cardnr)
         else:
@@ -114,7 +114,7 @@ class Runner(AbstractRunner, MyStorm):
     def set_category(self, category_name):
         """Sets the category for this runner. Categories are NOT created on the fly!"""
         if type(category_name) == unicode:
-            category = Store.of(self).find(Category, Category.name == category_name).one()
+            category = self._store.find(Category, Category.name == category_name).one()
             if category is None:
                 raise RunnerException("Category '%s' not found." % category_name)
         else:
