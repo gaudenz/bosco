@@ -62,7 +62,8 @@ class Control(MyStorm):
         @type code:       unicode
         @param sistation: SI-Station for this control. If this is an integer,
                           a corresponding SIStation object is created if necessary.
-                          If sistation is None a SIStation with id int(code) ist added.
+                          If sistation is None a SIStation with id int(code) ist added
+                          if possible.
         @type sistation:  SIStation object or int
         @param store:     Storm store for the sistation. A store is needed if
                           sistation is given as int. The newly created object is
@@ -74,9 +75,13 @@ class Control(MyStorm):
             self._store = store
 
         if sistation is None:
-            sistation = int(code)
-            
-        self.add_sistation(sistation)
+            try:
+                sistation = int(code)
+            except ValueError:
+                pass
+
+        if sistation is not None:
+            self.add_sistation(sistation)
 
     def add_sistation(self, sistation):
         """Add an SIStation to this Control.
