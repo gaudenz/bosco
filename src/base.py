@@ -19,6 +19,7 @@ base.py - Base classes
 """
 
 from storm.locals import *
+from storm.exceptions import NoStoreError
 
 class MyStorm(Storm):
     """
