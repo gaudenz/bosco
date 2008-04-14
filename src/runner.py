@@ -139,7 +139,7 @@ class Team(AbstractRunner, Storm):
     category = Reference(_category_id, 'Category.id')
     members = ReferenceSet(id, 'Runner._team_id')
 
-    def __init__(self, number, name, responsible, category, official = True):
+    def __init__(self, number, name, category, responsible = None, official = True):
         self.number = number
         self.name = name
         self.category = category

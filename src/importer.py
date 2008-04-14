@@ -82,24 +82,14 @@ class Team24hImporter(CSVImporter):
 
         for t in self.data:
 
-            # search for team responsible by SOLV number
-            responsible = store.find(Runner, Runner.solvnr == t['DatenbankId']).one()
-            if not responsible:
-                responsible = Runner(t['NName'], t['VName'])
-                responsible.address1 = t['Straße']
-                responsible.zipcode = t['PLZ']
-                responsible.city = t['Wohnort']
-                responsible.email = t['EMail']
-                responsible.solvnr = t['DatenbankId']
-
             # Create the team
             if t['Kurz'] == '24h':
                 team = Team(Team24hImporter.TEAM_NUMBER_FORMAT % next_24h,
-                            t['Teamname'], responsible, cat_24h)
+                            t['Teamname'], cat_24h)
                 next_24h += 1
             elif t['Kurz'] == '12h':
                 team = Team(Team24hImporter.TEAM_NUMBER_FORMAT % next_12h,
-                            t['Teamname'], responsible, cat_12h)
+                            t['Teamname'], cat_12h)
                 next_12h += 1
 
             # Create individual runners
