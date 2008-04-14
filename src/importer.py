@@ -236,9 +236,8 @@ class OCADXMLCourseImporter(Importer):
                       '/Control/ControlCode',
                       )
 
-    def __init__(self, fname, stations, finish, start):
+    def __init__(self, fname, finish, start):
         self.__tree = parse(fname)
-        self.__stations = stations
         self.__finish = finish
         self.__start = start
         
@@ -291,9 +290,9 @@ class OCADXMLCourseImporter(Importer):
                 control = store.find(Control, Control.code == code).one()
                 if control is None:
                     # Create new control
-                    control = store.add(Control(code))
+                    control = Control(code, store=store)
 
-                # add SI Stations if requested
+                # add SI Stations for start and finish if requested
                 station = None
                 if self.__start and code_el.tag == 'StartPointCode':
                     station = store.get(SIStation, SIStation.START)
@@ -303,14 +302,7 @@ class OCADXMLCourseImporter(Importer):
                     station = store.get(SIStation, SIStation.FINISH)
                     if station is None:
                         station = store.add(SIStation(SIStation.FINISH))
-                elif self.__stations and code_el.tag == 'ControlCode':
-                    try:
-                        station = store.get(SIStation, int(code))
-                    except (TypeError, ValueError):
-                        raise InvalidStationNumberException("Can't use code '%s' as si station number" % code)
-                    if station is None:
-                        station = store.add(SIStation(int(code)))
-                if not station is None:
+                if station is not None:
                     control.sistations.add(station)
                     
         # Read courses
@@ -393,8 +385,6 @@ if __name__ == '__main__':
                        description = 'Available commands are \'teams\', \'runs\' and \'courses\'.')
     opt.add_option('-e', '--encoding', action='store', default='utf-8',
                    help='Encoding of the imported file.')
-    opt.add_option('-c', '--stations', action='store_true', default=False,
-                   help='Automatically add SI-Stations with the same numbers as the controls.')
     opt.add_option('-f', '--finish', action='store_true', default=False,
                    help='Connect all finish points to the special SI Station for the finish.')
     opt.add_option('-s', '--start', action='store_true', default=False,
@@ -414,8 +404,7 @@ if __name__ == '__main__':
         importer = SIRunImporter(filename, options.encoding)
     elif command == 'courses':
         # Import courses
-        importer = OCADXMLCourseImporter(filename, options.stations,
-                                         options.finish, options.start)
+        importer = OCADXMLCourseImporter(filename, options.finish, options.start)
     else:
         print "Unknown command '%s'" % command
         exit(1)
