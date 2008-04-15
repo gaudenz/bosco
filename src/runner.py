@@ -160,6 +160,8 @@ class Team(AbstractRunner, Storm):
 
     def _get_runs(self):
         runs = []
+        # import this here to avoid a circular import
+        from run import Run
         for m in self.members:
             for si in m.sicards:
                 runs.extend(list(si.runs.find(Run.complete == True)))
