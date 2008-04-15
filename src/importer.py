@@ -285,7 +285,11 @@ class OCADXMLCourseImporter(Importer):
         try:
             climb = int(node.findtext(climb_tag))
         except (TypeError,ValueError):
-            climb = None
+            if length is not None:
+                # Set climb to 0 if length is given
+                climb = 0
+            else:
+                climb = None
 
         return (length, climb)
 
