@@ -61,6 +61,12 @@ class CSVImporter(Importer):
 
         # Read values
         for line in csv:
+            try:
+                if line[0].strip()[0] == '#':
+                    # skip comment lines
+                    continue
+            except IndexError:
+                pass
             d = {}
             for i,v in enumerate(line):
                 d[labels[i]] = v.decode(encoding)
@@ -153,6 +159,12 @@ class SIRunImporter(Importer):
         csv = reader(open(fname, 'rb'), delimiter=';')
         self.__runs = []
         for line in csv:
+            try:
+                if line[0].strip()[0] == '#':
+                    # skip comment lines
+                    continue
+            except IndexError:
+                pass
             self.__runs.append([v.decode(encoding) for v in line])
 
     @staticmethod
