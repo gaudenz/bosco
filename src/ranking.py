@@ -366,15 +366,15 @@ class Relay24hScoreingStrategy(AbstractScoreingStrategy, ValidationStrategy):
         run_scoreing_relay = RelayTimeScoreingStrategy()
         
         failed = [ r for r in runs
-                   if not r.course.validator().validate(r) == ValidationStrategy.OK ]
-        fail_penalty = 0
+                   if not r.course.validator(SequenceCourseValidationStrategy).validate(r) == ValidationStrategy.OK ]
+        fail_penalty = timedelta(0)
         for f in failed:
             run_scoreing = f == runs[0] and run_scoreing_massstart or run_scoreing_relay
             penalty = f.course.expected_time() - run_scoreing.score(f)
             if penalty < timedelta(0):
                 # no negative penalty
                 penalty = timedelta(0)
-        fail_penalty += penalty
+            fail_penalty += penalty
 
         give_up_penalty = (self._omitted_runners(team)-1) * timedelta(minutes=30)
         
@@ -383,10 +383,11 @@ class Relay24hScoreingStrategy(AbstractScoreingStrategy, ValidationStrategy):
 
         valid_runs = [ r for r in runs
                        if r.finish() < finish_time
-                       and r.course.validator().validation.validate(r) == ValidationStrategy.OK ]
+                       and r.course.validator(SequenceCourseValidationStrategy).validate(r) == ValidationStrategy.OK ]
         
         return Relay24hScore(len(valid_runs),
-                             max(valid_runs, key=lambda x: x.finish()) - self._startime)
+                             max(valid_runs, key=lambda x: x.finish()).finish()
+                             - self._starttime)
 
 class Relay12hScoreingStrategy(Relay24hScoreingStrategy):
     """This class is both a valiadtion and a scoreing strategy. It implements the
