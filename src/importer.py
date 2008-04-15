@@ -400,8 +400,8 @@ if __name__ == '__main__':
                        description = 'Available commands are \'teams\', \'runs\' and \'courses\'.')
     opt.add_option('-e', '--encoding', action='store', default='utf-8',
                    help='Encoding of the imported file.')
-    opt.add_option('-f', '--finish', action='store_true', default=False,
-                   help='Connect all finish points to the special SI Station for the finish.')
+    opt.add_option('-f', '--finish', action='store_false', default=True,
+                   help="Don't Connect finish points to the special SI Station for the finish.")
     opt.add_option('-s', '--start', action='store_true', default=False,
                    help='Connect all start points to the special SI Station for the start. Only use this option if you use SI Stations for the start.')
     (options, (command, filename)) = opt.parse_args()
