@@ -108,9 +108,9 @@ class Team24hImporter(CSVImporter):
                 runner = Runner(t['Memfamilyname%s' % str(i)],
                                 t['Memfirstname%s' % str(i)])
                 if t['Memsex%s' % str(i)] == 'M':
-                    runner.sex = u'male'
+                    runner.sex = 'male'
                 elif t['Memsex%s' % str(i)] == 'F':
-                    runner.sex = u'female'
+                    runner.sex = 'female'
                 runner.dateofbirth = date(int(t['Memyear%s' % str(i)]), 1, 1) 
                 runner.number = Team24hImporter.RUNNER_NUMBER_FORMAT % \
                                 {'team' : team.number,

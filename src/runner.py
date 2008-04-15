@@ -40,7 +40,7 @@ class Runner(AbstractRunner, MyStorm):
     given_name = Unicode()
     surname = Unicode()
     dateofbirth = Date()
-    sex = Unicode()
+    sex = RawStr()
     startblock = Int()
     starttime = Date()
     _category_id = Int(name='category')
