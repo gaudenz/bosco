@@ -22,8 +22,9 @@ course.py - Classes for orienteering courses. Everything here is
 """
 
 from storm.locals import *
-from ranking import Rankable
+from datetime import timedelta
 
+from ranking import Rankable
 from base import MyStorm
 
 class SIStation(Storm):
