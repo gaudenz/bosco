@@ -25,7 +25,6 @@ from optparse import OptionParser
 import sys
 
 from observer import EventObserver
-from gui import UpdateableHtmlPanel
 import conf
 
 class RotatingRankingViewer(wx.Frame):
