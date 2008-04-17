@@ -187,7 +187,7 @@ class Category(Storm, Rankable):
 
     id = Int(primary=True)
     name = Unicode()
-    members = ReferenceSet(id, 'Runner._category_id')
+    runners = ReferenceSet(id, 'Runner._category_id')
     teams = ReferenceSet(id, 'Team._category_id')
 
     def __init__(self, name):
@@ -196,5 +196,11 @@ class Category(Storm, Rankable):
     def __unicode__(self):
         return unicode(self.name)
 
+    def _get_members(self):
+        l = list(self.runners)
+        l.extend(list(self.teams))
+        return l
+    members = property(_get_members)
+    
 class RunnerException(Exception):
     pass
