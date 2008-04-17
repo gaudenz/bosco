@@ -1,0 +1,25 @@
+<%inherit file="base.html"/>
+
+<%include file="header.html"/>
+
+<tr>
+  <td>
+    <font size="+2"><b>${info['title']}</b></font><br> 
+  <td>
+</tr>
+<tr>
+  <td>&nbsp;</td>
+</tr>
+<tr>
+  <td>
+<table>
+  % for r in ranking:
+  <tr>
+    <td valign="top">${r['rank'] and ('%3i.' % r['rank']) or ''}</td>
+    <td valign="top">${r['item']}</td>
+    <td valign="top">${r['rank'] and r['score'] or validation_codes[r['validation']]}</td>
+  </tr>
+  % endfor
+</table>
+  </td>
+</tr>

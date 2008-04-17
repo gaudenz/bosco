@@ -1,0 +1,19 @@
+<%inherit file="base.html"/>
+
+<%include file="header.html"/>
+
+${course['code']}
+(${course['length']/1000.0}km, ${course['climb']}m, ${course['controlcount']} cont.)
+
+<table>
+  % for r in ranking:
+  <tr>
+    <td>${r['rank']}.</td>
+    <td>${r['item']}</td>
+    <td>${r['item'].sicard.runner.dateofbirth}</td>
+    <td>${r['item'].sicard.runner.city}</td>
+    <td>${r['item'].sicard.runner.club}</td>
+    <td>${r['score']}</td>
+  </tr>
+  % endfor
+</table>
