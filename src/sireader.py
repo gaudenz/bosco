@@ -107,6 +107,7 @@ class SIReader(object):
 
     def __init__(self, port, debug = False):
         """Initializes communication with si station at port."""
+        self._serial = None
         self._serial = Serial(port, baudrate = 38400, timeout = 5)
         # flush possibly available input
         self._serial.flushInput()
@@ -140,7 +141,8 @@ class SIReader(object):
         self.baudrate = self._serial.baudrate
 
     def __del__(self):
-        self._serial.close()
+        if self._serial is not None:
+            self._serial.close()
         
     @staticmethod
     def _to_int(s):
