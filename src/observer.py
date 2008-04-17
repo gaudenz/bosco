@@ -31,16 +31,19 @@ class EventObserver(object):
     def _punch_notify(self, punch):
         
         # send notifications for run
-        if punch.run in self._registry:
-            self._notify(punch.run)
+        self._notify(punch.run)
             
         # send notifications for runner
-        if punch.run.sicard.runner in self._registry:
-            self._notify(punch.run.sicard.runner)
+        self._notify(punch.run.sicard.runner)
 
         # send notifications for team
-        if punch.run.sicard.runner.team in self._registry:
-            self._notify(punch.run.sicard.runner.team)
+        self._notify(punch.run.sicard.runner.team)
+
+        # send notifications for course
+        self._notify(punch.run.course)
+
+        # send notifications for category
+        self._notify(punch.run.sicard.runner.category)
             
     _tables = [(Punch, _punch_notify),
                ]
@@ -115,7 +118,10 @@ class EventObserver(object):
     
     def _notify(self, observable):
         """Notifies objects of an event."""
-        for obj in self._registry[observable]:
-            obj.update(observable)
+        try:
+            for obj in self._registry[observable]:
+                obj.update(observable)
+        except KeyError:
+            pass
 
     
