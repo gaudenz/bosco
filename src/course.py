@@ -154,16 +154,11 @@ class Course(MyStorm, Rankable):
         @type length:         int
         @param climb:         Altitude differences in meters
         @type climb:          int
-        @param expected_speed:Expected speed on this course in minutes per kilometer.
-        @type expected_speed: int
-
-        @todo: Implement expected speed as storm property. Should this really be in the DB?
         """
         
         self.code = code
         self.length = length
         self.climb = climb
-        self.expected_speed = expected_speed
         self._validators = {}
 
     def __storm_loaded__(self):
@@ -209,10 +204,12 @@ class Course(MyStorm, Rankable):
         for c in control_list:
             self.append(c)
 
-    def expected_time(self):
-        """Returns the expected time for this course."""
+    def expected_time(self, speed):
+        """Returns the expected time for this course.
+        @param speed: expected speed in minutes per kilometer
+        """
         try:
-            return timedelta(minutes=(self.length + self.climb/100)/1000*self.expected_speed)
+            return timedelta(minutes=(self.length + self.climb/100.0)/1000.0*speed)
         except TypeError:
             return None
 
