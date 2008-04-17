@@ -24,7 +24,7 @@ ranking.py - Classes to produce rankings of objects that implement
 from datetime import timedelta
 from copy import copy
 
-from storm.locals import Store
+from storm.locals import *
 
 class RankableItem:
     """Defines the interface for all rankable items (currently Runner, Team, Run).
@@ -248,21 +248,36 @@ class RelayTimeScoreingStrategy(MassStartTimeScoreingStrategy):
         team = obj.sicard.runner.team
         
         # Search through all runs to find the previous run
-        prev_run = None
-        for m in team.members:
-            for si in m.sicards:
-                for r in si.runs:
+        #prev_run = None
+        #for m in team.members:
+        #    for si in m.sicards:
+        #        for r in si.runs:
                     # Select this run if it finished later than prev_run and
                     # if the finish time is earlier than the finish time of
                     # the run to score
-                    if (prev_run == None or r.finish() > prev_run.finish()) \
-                       and  r.finish() < obj.finish():
-                        prev_run = r
+        #            if (prev_run == None or r.finish() > prev_run.finish()) \
+        #               and  r.finish() < obj.finish():
+        #                prev_run = r
 
-        if prev_run == None:
+        # This makes the whole thin dependant on Storm, but it is a huge perfomance
+        # win
+        from runner import Team
+        from run import Punch
+        from course import SIStation
+
+        store = Store.of(team)
+        starttime = store.execute(Select(Max(Punch.punchtime),
+                                         where = And(Team.id == team.id,
+                                                     Punch.sistation == SIStation.FINISH,
+                                                     Punch.punchtime < obj.punches.order_by('punchtime').first().punchtime,
+                                                     )
+                                         )
+                                  ).get_one()[0]
+                                                               
+        if starttime == None:
             return self._starttime
-
-        return prev_run.finish()
+        else:
+            return starttime
 
 class MassStartRelayTimeScoreingStrategy(RelayTimeScoreingStrategy):
 
