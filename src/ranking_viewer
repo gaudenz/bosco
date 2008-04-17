@@ -1,0 +1,113 @@
+#!/usr/bin/env python
+#
+#    Copyright (C) 2008  Gaudenz Steinlin <gaudenz@soziologie.ch>
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+"""
+ranking_viewer - application to view a ranking in full screen (for projector display)
+"""
+
+import wx
+import wx.html
+
+from optparse import OptionParser
+import sys
+
+from observer import EventObserver
+from gui import UpdateableHtmlPanel
+import conf
+
+class RotatingRankingViewer(wx.Frame):
+    """Rotates through a list of rankings in full screen."""
+    
+    def __init__(self, parent, rankings):
+        """
+        @param rankings: list of (ranking, duration) tuples. Each ranking is shown for duration
+                         seconds.
+        """
+
+        super(type(self), self).__init__(parent)
+        
+        self._rankings = rankings
+        
+        self._panel = wx.html.HtmlWindow(self)
+        self._panel.SetStandardFonts()
+
+        preview_btn = wx.Button(self._panel, label= "Print Preview")
+        self.Bind(wx.EVT_BUTTON, self.OnPrintPreview, preview_btn)
+
+        self.ShowNext()
+        self.ShowFullScreen(True)
+
+    def ShowNext(self):
+
+        # take next ranking from the list and show
+        (ranking, duration) = self._rankings.pop(0)
+        self._panel.SetPage(unicode(ranking))
+        
+        # add at the end of the stack
+        self._rankings.append((ranking, duration))
+
+        # schedule next panel change
+        wx.FutureCall(duration*1000, self.ShowNext)
+
+    def OnPrintPreview(self, event):
+        printing = wx.html.HtmlEasyPrinting()
+        printing.SetStandardFonts()
+        printing.PreviewText(unicode(self._rankings[-1][0]))
+        
+        
+if __name__ == '__main__':
+    # Read program options
+    opt = OptionParser(usage = 'usage: %prog [options]', 
+                       description = 'Displays rankings in full screen rotating through all configured rankings.')
+    opt.add_option('-r', '--rankings', action='store', default=None,
+                   help='Comma separted list of rankings to show.')
+    opt.add_option('-t', '--time', action='store', default='10',
+                   help="Time in seconds each ranking is shown. Either a single integer (same time for each ranking) or a comma separeted list.")
+    opt.add_option('-l', '--list', action='store_true', default=False,
+                   help='List all available rankings.')
+    (options, args) = opt.parse_args()
+
+    if options.list:
+        print 'Available rankings:', 
+        for r in conf.rankings:
+            print r,
+        print
+        sys.exit()
+
+    if options.rankings:
+        ranking_codes = options.rankings.split(',')
+    else:
+        ranking_codes = conf.rankings.keys()
+
+    ranking_times = options.time.split(',')
+    if len(ranking_times) == 1:
+        ranking_times *= len(ranking_codes)
+    if not len(ranking_times) == len(ranking_codes):
+        print "Ranking times and ranking codes must be the same length!"
+        sys.exit(1)
+
+    ranking_list = []
+    for i,k in enumerate(ranking_codes):
+        ranking_list.append((conf.rankings[k], int(ranking_times[i])))
+
+    # add EventObserver to cache for automatic updates
+    observer = EventObserver(conf.store)
+    conf.scoreing_cache.set_observer(observer)
+    conf.validation_cache.set_observer(observer)
+    
+    app = wx.App()
+    frame = RotatingRankingViewer(None, ranking_list)
+    app.MainLoop()
