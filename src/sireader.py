@@ -19,8 +19,10 @@ sireader.py - Classes to read out si card data from BSM-7/8 stations.
 """
 
 from serial import Serial
+from serial.serialutil import SerialException
 from datetime import datetime, timedelta, time
 from binascii import hexlify
+import os, re
 
 from course import SIStation
 
@@ -105,25 +107,61 @@ class SIReader(object):
     BC_CN         = 3
     BC_TIME       = 8
 
-    def __init__(self, port, debug = False):
-        """Initializes communication with si station at port."""
+    def __init__(self, port = None, debug = False):
+        """Initializes communication with si station at port.
+        @param port: Serial device for the connection if port is None it
+                     scans all available ports and connects to the first
+                     reader found
+        """
         self._serial = None
-        self._serial = Serial(port, baudrate = 38400, timeout = 5)
+        self._debug = debug
+        errors = ''
+        if port is not None:
+            self._connect_reader(port)
+            return
+        else:
+            scan_ports = [ os.path.join('/dev', f) for f in os.listdir('/dev') if
+                           re.match('ttyS.*|ttyUSB.*', f) ]
+            if len(scan_ports) == 0:
+                errors = 'no serial ports found'
+                
+            for port in scan_ports:
+                try:
+                    self._connect_reader(port)
+                    return
+                except SIReaderException, msg:
+                    errors = '%sport: %s: %s\n' % (errors, port, msg)
+                    pass
+
+        raise SIReaderException('No SI Reader found. Possible reasons: %s' % errors)
+
+    def _connect_reader(self, port):
+        """Connect to SI Reader.
+        @param port: serial port
+        """
+        
+        try:
+            self._serial = Serial(port, baudrate = 38400, timeout = 5)
+        except (SerialException, OSError):
+            raise SIReaderException("Could not open port '%s'" % port)
+        
         # flush possibly available input
         self._serial.flushInput()
         
         self.station_code = None
-        self._debug = debug
 
         try:
             # try at 38400 baud, extended protocol
             self._send_command(SIReader.C_SET_MS, SIReader.P_MS_DIRECT)
         except (SIReaderException, SIReaderTimeout):
-            self._serial.baudrate = 4800
+            try:
+                self._serial.baudrate = 4800
+            except (SerialException, OSError), msg:
+                raise SIReaderException('Could not set port speed to 4800: %s' % msg)
             try:
                 self._send_command(SIReader.C_SET_MS, SIReader.P_MS_DIRECT)
-            except SIReaderException:
-                raise SIReaderException('This module only works with BSM7/8 stations')
+            except SIReaderException, msg:
+                raise SIReaderException('This module only works with BSM7/8 stations: %s' % msg)
         # Read protocol configuration
         ret = self._send_command(SIReader.C_GET_SYS_VAL, SIReader.P_PROTO)
         config_byte = ord(ret[1][1])
@@ -335,19 +373,19 @@ class SIReader(object):
         ret['punches'] = []
         SIReader._append_punch(ret['punches'],
                                SIStation.START,
-                               data[SIReader.SI5_ST:SIReader.SI6_ST+2],
+                               data[SIReader.SI6_ST:SIReader.SI6_ST+2],
                                reftime)
         SIReader._append_punch(ret['punches'],
                                SIStation.FINISH,
-                               data[SIReader.SI5_FT:SIReader.SI6_FT+2],
+                               data[SIReader.SI6_FT:SIReader.SI6_FT+2],
                                reftime)
         SIReader._append_punch(ret['punches'],
                                SIStation.CHECK,
-                               data[SIReader.SI5_CT:SIReader.SI6_CT+2],
+                               data[SIReader.SI6_CT:SIReader.SI6_CT+2],
                                reftime)
         SIReader._append_punch(ret['punches'],
-                               SIStation.CHECK,
-                               data[SIReader.SI5_CT:SIReader.SI6_LT+2],
+                               SIStation.CLEAR,
+                               data[SIReader.SI6_LT:SIReader.SI6_LT+2],
                                reftime)
 
         punch_count = ord(data[SIReader.SI6_RC]) # RC is the punch count on the SI Card 6
@@ -373,15 +411,15 @@ class SIReader(object):
         ret['punches'] = []
         SIReader._append_punch(ret['punches'],
                                SIStation.START,
-                               data[SIReader.SI5_ST:SIReader.SI9_ST+2],
+                               data[SIReader.SI9_ST:SIReader.SI9_ST+2],
                                reftime)
         SIReader._append_punch(ret['punches'],
                                SIStation.FINISH,
-                               data[SIReader.SI5_FT:SIReader.SI9_FT+2],
+                               data[SIReader.SI9_FT:SIReader.SI9_FT+2],
                                reftime)
         SIReader._append_punch(ret['punches'],
                                SIStation.CHECK,
-                               data[SIReader.SI5_CT:SIReader.SI9_CT+2],
+                               data[SIReader.SI9_CT:SIReader.SI9_CT+2],
                                reftime)
 
         punch_count = ord(data[SIReader.SI9_RC]) # RC is the punch count on the SI Card 6
@@ -397,47 +435,54 @@ class SIReader(object):
         return ret
 
     def _send_command(self, command, parameters):
-        if self._serial.inWaiting() != 0:
-            raise SIReaderException('Input buffer must be empty before sending command. Currently %s bytes in the input buffer.' % self._serial.inWaiting())
-        command_string = command + chr(len(parameters)) + parameters
-        crc = SIReader._crc(command_string)
-        self._serial.write(SIReader.STX + command_string + crc + SIReader.ETX)
+        try:
+            if self._serial.inWaiting() != 0:
+                raise SIReaderException('Input buffer must be empty before sending command. Currently %s bytes in the input buffer.' % self._serial.inWaiting())
+            command_string = command + chr(len(parameters)) + parameters
+            crc = SIReader._crc(command_string)
+            self._serial.write(SIReader.STX + command_string + crc + SIReader.ETX)
+        except (SerialException, OSError),  msg:
+            raise SIReaderException('Could not send command: %s' % msg)
+        
         return self._read_command()
 
     def _read_command(self, timeout = None):
 
+        try:
+            if timeout != None:
+                old_timeout = self._serial.timeout
+                self._serial.timeout = timeout
+            char = self._serial.read()
+            if timeout != None:
+                self._serial.timeout = old_timeout
 
-        if timeout != None:
-            old_timeout = self._serial.timeout
-            self._serial.timeout = timeout
-        char = self._serial.read()
-        if timeout != None:
-            self._serial.timeout = old_timeout
+            if char == '':
+                raise SIReaderTimeout('No data available')
+            elif char == SIReader.NAK:
+                raise SIReaderException('Invalid command or parameter.')
+            elif char != SIReader.STX:
+                self._serial.flushInput()
+                raise SIReaderException('Invalid start byte %s' % hex(ord(char))) 
 
-        if char == '':
-            raise SIReaderTimeout('No data available')
-        elif char == SIReader.NAK:
-            raise SIReaderException('Invalid command or parameter.')
-        elif char != SIReader.STX:
-            self._serial.flushInput()
-            raise SIReaderException('Invalid start byte %s' % hex(ord(char))) 
+            # Read command, length, data, crc, ETX
+            cmd = self._serial.read()
+            length = self._serial.read()
+            station = self._serial.read(2)
+            self.station_code = SIReader._to_int(station)
+            data = self._serial.read(ord(length)-2)
+            crc = self._serial.read(2)
+            etx = self._serial.read()
 
-        # Read command, length, data, crc, ETX
-        cmd = self._serial.read()
-        length = self._serial.read()
-        station = self._serial.read(2)
-        self.station_code = SIReader._to_int(station)
-        data = self._serial.read(ord(length)-2)
-        crc = self._serial.read(2)
-        etx = self._serial.read()
+            if etx != SIReader.ETX:
+                raise SIReaderException('No ETX byte received.')
+            if not SIReader._crc_check(cmd + length + station + data, crc):
+                raise SIReaderException('CRC check failed')
 
-        if etx != SIReader.ETX:
-            raise SIReaderException('No ETX byte received.')
-        if not SIReader._crc_check(cmd + length + station + data, crc):
-            raise SIReaderException('CRC check failed')
-
-        if self._debug:
-            print "command '%s', data %s" % (hexlify(cmd), [hexlify(c) for c in data])
+            if self._debug:
+                print "command '%s', data %s" % (hexlify(cmd), [hexlify(c) for c in data])
+                
+        except (SerialException, OSError), msg:
+            raise SIReaderException('Error reading command: %s' % msg)
 
         return (cmd, data)
 
@@ -501,7 +546,10 @@ class SIReaderReadout(SIReader):
     def ack_sicard(self):
         """Sends an ACK signal to the SI Station. After receiving an ACK signal
         the station blinks and beeps to signal correct card readout."""
-        self._serial.write(SIReader.ACK)
+        try:
+            self._serial.write(SIReader.ACK)
+        except (SerialException, OSError), msg:
+            raise SIReaderException('Could not send ACK: %s' % msg)
 
 
 class SIReaderControl(SIReader):
