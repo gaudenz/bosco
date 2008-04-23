@@ -73,18 +73,18 @@ class Ranking(object):
                 # Only increase the rank if the current item scores higher than the previous item
                 if i > 0 and ranking_list[i][0] > ranking_list[i-1][0]:
                     rank = i + 1
-                yield {'rank': m[1] == ValidationStrategy.OK and rank or None, # only assign rank if run is OK
+                yield {'rank': m[1][0] == ValidationStrategy.OK and rank or None, # only assign rank if run is OK
                        'score': m[0],
-                       'validation': m[1],
+                       'validation': m[1][0],
                        'item': m[2],
-                       'info': None,
+                       'info': m[1][1],
                        }
 
         # Create list of (score, member) tuples and sort by score
         ranking_list = [(self._scoreing.score(m), self._validation.validate(m), m)
                         for m in self._rankable.members]
         ranking_list.sort(key = lambda x: x[0])
-        ranking_list.sort(key = lambda x: x[1])
+        ranking_list.sort(key = lambda x: x[1][0])
 
         # return the generator
         return ranking_generator(ranking_list)
@@ -214,7 +214,7 @@ class AbstractTimeScoreingStrategy(AbstractScoreingStrategy):
             # is this really the best thing to do?
             result = timedelta(0)
 
-        self._to_cache_score(obj, result)
+        self._to_cache_score(obj, (result, {}))
         return result
         
 class MassStartTimeScoreingStrategy(AbstractTimeScoreingStrategy):
@@ -308,7 +308,7 @@ class ValidationStrategy(object):
     def validate(self, obj):
         """Returns OK for every object. Override in subclasses for more meaningfull
         validations."""
-        return ValidationStrategy.OK
+        return (ValidationStrategy.OK, {})
 
     def _from_cache_validate(self, obj):
         """
@@ -360,8 +360,9 @@ class CourseValidationStrategy(ValidationStrategy):
         else:
             result = ValidationStrategy.OK
 
-        self._to_cache_validate(run, result)
-        return result
+        ret = (result, {})
+        self._to_cache_validate(run, ret)
+        return ret
 
 class SequenceCourseValidationStrategy(CourseValidationStrategy):
     """Validation strategy for a normal orienteering course.
@@ -415,7 +416,36 @@ class SequenceCourseValidationStrategy(CourseValidationStrategy):
             else:
                 return SequenceCourseValidationStrategy._backtrack(C, plist, clist, i-1, j)
         
-    
+    @staticmethod
+    def _diff(C, plist, clist, i = None, j = None):
+        """
+        @return: (additional_punches_list, missing_controls_list)
+        """
+
+        if i is None:
+            i = plist.count()
+        if j is None:
+            j = len(clist)
+            
+        additional = []
+        missing = []
+        if i > 0 and j > 0 and plist[i-1].sistation.control is clist[j-1]:
+            (a,m) = SequenceCourseValidationStrategy._diff(C, plist, clist, i-1, j-1)
+            additional += a
+            missing += m
+        else:
+            if j > 0 and (i == 0 or C[i][j-1] >= C[i-1][j]):
+                (a, m) = SequenceCourseValidationStrategy._diff(C, plist, clist, i, j-1)
+                additional += a
+                missing += m
+                missing.append(clist[j-1])
+            elif i > 0 and (j == 0 or C[i][j-1] < C[i-1][j]):
+                (a, m) = SequenceCourseValidationStrategy._diff(C, plist, clist, i-1, j)
+                additional += a
+                missing += m
+                additional.append(plist[i-1])
+        return (additional, missing)
+                
     def validate(self, run):
         """Validate the run if it is valid for this course."""
 
@@ -424,27 +454,30 @@ class SequenceCourseValidationStrategy(CourseValidationStrategy):
         except KeyError:
             pass
         
-        result = super(type(self), self).validate(run)
-        if result == ValidationStrategy.OK and not run.override is True:
-            # check correct sequence of controls
+        result = super(type(self), self).validate(run)[0]
+        # check correct sequence of controls
         
-            punchlist = run.punches.order_by('punchtime')
-            # list of all controls which have sistations
-            controllist = [ i.control for i in
-                            self._course.sequence.order_by('sequence_number')
-                            if (i.control.sistations.count() > 0 and
-                                i.control.override is not True) ]
+        punchlist = run.punches.order_by('punchtime')
+        # list of all controls which have sistations
+        controllist = [ i.control for i in
+                        self._course.sequence.order_by('sequence_number')
+                        if (i.control.sistations.count() > 0 and
+                            i.control.override is not True) ]
 
-            C = SequenceCourseValidationStrategy._build_lcs_matrix(punchlist, controllist)
-            lcs = SequenceCourseValidationStrategy._backtrack(C,
-                                                              punchlist,
-                                                              controllist)
-            
-            if len(lcs) < len(controllist):
+        C = SequenceCourseValidationStrategy._build_lcs_matrix(punchlist, controllist)
+        (additional, missing) = SequenceCourseValidationStrategy._diff(C,
+                                                                       punchlist,
+                                                                       controllist)
+
+        if result == ValidationStrategy.OK and not run.override is True:
+            if len(missing) > 0:
                 result = ValidationStrategy.MISSING_CONTROLS
+
+        ret = (result, {'missing': missing,
+                        'additional': additional})
             
-        self._to_cache_validate(run, result)
-        return result
+        self._to_cache_validate(run, ret)
+        return ret
 
 class Relay24hScoreingStrategy(AbstractScoreingStrategy, ValidationStrategy):
     """This class is both a validation strategy and a scoreing strategy. The strategies
@@ -538,8 +571,9 @@ class Relay24hScoreingStrategy(AbstractScoreingStrategy, ValidationStrategy):
                 # not cheked, this is ensured by proper event organisation :-)
                 pass
 
-        self._to_cache_validate(team, result)
-        return result
+        ret = (result, {})
+        self._to_cache_validate(team, ret)
+        return ret
 
 
     def score(self, team):
@@ -562,7 +596,7 @@ class Relay24hScoreingStrategy(AbstractScoreingStrategy, ValidationStrategy):
         run_scoreing = RelayTimeScoreingStrategy(self._starttime)
         
         failed = [ r for r in runs
-                   if not r.course.validator(SequenceCourseValidationStrategy).validate(r) == ValidationStrategy.OK ]
+                   if not r.course.validator(SequenceCourseValidationStrategy).validate(r)[0] == ValidationStrategy.OK ]
         fail_penalty = timedelta(0)
         for f in failed:
             penalty = f.course.expected_time(self._speed) - run_scoreing.score(f)
@@ -581,7 +615,7 @@ class Relay24hScoreingStrategy(AbstractScoreingStrategy, ValidationStrategy):
 
         valid_runs = [ r for r in runs
                        if r.finish() <= finish_time
-                       and r.course.validator(SequenceCourseValidationStrategy).validate(r) == ValidationStrategy.OK ]
+                       and r.course.validator(SequenceCourseValidationStrategy).validate(r)[0] == ValidationStrategy.OK ]
 
         if len(valid_runs) > 0:
             result = Relay24hScore(len(valid_runs),
@@ -634,9 +668,10 @@ class Relay12hScoreingStrategy(Relay24hScoreingStrategy):
         
         # run order is not checked yet
         result = ValidationStrategy.OK
-        
-        self._to_cache_validate(team, result)
-        return result
+
+        ret = (result, {})
+        self._to_cache_validate(team, ret)
+        return ret
 
 class Relay24hScore(object):
 

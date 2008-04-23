@@ -123,16 +123,24 @@ class SIReadoutFrame(wx.Frame):
                                         wx.VERTICAL)
         punches_box.Add(self._punches_info)
         self._missing_info = wx.StaticText(panel, label='')
-        missing_box = wx.StaticBoxSizer(wx.StaticBox(panel, label='Missing punches'),
+        missing_box = wx.StaticBoxSizer(wx.StaticBox(panel, label='Missing controls'),
                                         wx.VERTICAL)
         missing_box.Add(self._missing_info)
-        for ctrl in [self._punches_info, self._missing_info]:
+        self._additional_info = wx.StaticText(panel, label='')
+        additional_box = wx.StaticBoxSizer(wx.StaticBox(panel, label='Additional punches'),
+                                           wx.VERTICAL)
+        additional_box.Add(self._additional_info)
+        for ctrl in [self._punches_info, self._missing_info, self._additional_info]:
             ctrl.SetFont(wx.Font(8, wx.MODERN, wx.NORMAL, wx.NORMAL))
-            
+
+        add_info_r_sizer = wx.BoxSizer(wx.VERTICAL)
+        add_info_r_sizer.Add(missing_box, 1, flag=wx.EXPAND | wx.BOTTOM, border = 2)
+        add_info_r_sizer.Add(additional_box, 1, flag=wx.EXPAND | wx.TOP, border = 2)
+
         add_info_sizer = wx.BoxSizer(wx.HORIZONTAL)
         add_info_sizer.Add(punches_box, 1, flag=wx.EXPAND | wx.RIGHT, border = 2)
-        add_info_sizer.Add(missing_box, 1, flag=wx.EXPAND | wx.LEFT, border = 2)
-        
+        add_info_sizer.Add(add_info_r_sizer, 1, flag=wx.EXPAND | wx.LEFT, border = 2)
+
         # position all run information elements
         run_info_sizer = wx.BoxSizer(wx.VERTICAL)
         run_info_sizer.Add(runner_box,0, flag=wx.EXPAND | wx.ALL, border=5)
@@ -331,13 +339,19 @@ class SIReadoutFrame(wx.Frame):
         self._sireader.ack_sicard()
         return True
 
+    def _format_si(self, sistation):
+        if sistation.control is not None:
+            return '%3s     ' % sistation.control.code
+        else:
+            return '%3s %4s' % (sistation.id, '(si)')
+        
     def UpdateInfo(self):
 
         if self._run is None:
             # Clear all fields
             for field in [self._runner_nr, self._runner_name, self._runner_cardnr,
                           self._validation_info_run, self._validation_info_team,
-                          self._punches_info, self._missing_info]:
+                          self._punches_info, self._missing_info, self._additional_info]:
                 field.SetLabel('')
             self._course_input.Disable()
             self._course_input.SetValue('')
@@ -353,17 +367,32 @@ class SIReadoutFrame(wx.Frame):
             # set run information
             if self._run.course is not None:
                 self._course_input.SetValue(self._run.course.code)
-                if SequenceCourseValidationStrategy(self._run.course).validate(self._run) == ValidationStrategy.OK:
+                (valid, info) = SequenceCourseValidationStrategy(self._run.course).validate(self._run)
+                if valid == ValidationStrategy.OK:
                     self._validation_info_run.SetLabel('OK')
                     self._validation_info_run.SetForegroundColour('Green')
                 else:
                     self._validation_info_run.SetLabel('FAILED')
                     self._validation_info_run.SetForegroundColour('Red')
 
+                # add missing controls and additional punches info
+                text = ''
+                for c in info['missing']:
+                    text += '%s\n' % c.code
+                self._missing_info.SetLabel(text)
+
+                text = ''
+                for p in info['additional']:
+                    text += '%8s %s\n' % (self._format_si(p.sistation), p.punchtime)
+                self._additional_info.SetLabel(text)
+                
                 # Activate save button
                 self._save_button.Enable()
             else:
-                self._validation_info_run.SetLabel('')
+                # clear course validation info
+                for ctrl in [self._validation_info_run, self._missing_info,
+                             self._additional_info ]:
+                    ctrl.SetLabel('')
                 # Deactivate save button
                 self._save_button.Disable()
 
@@ -374,11 +403,7 @@ class SIReadoutFrame(wx.Frame):
             # set punch information
             text = ''
             for i,p in enumerate(self._run.punches.order_by('punchtime')):
-                if p.sistation.control is not None:
-                    code = '%3s     ' % p.sistation.control.code
-                else:
-                    code = '%3s %4s' % (p.sistation.id, '(si)')
-                text += '%2s %8s %s\n' % (i+1, code, p.punchtime)
+                text += '%2s %8s %s\n' % (i+1, self._format_si(p.sistation), p.punchtime)
             self._punches_info.SetLabel(text)
     
     def ConnectReader(self, event):

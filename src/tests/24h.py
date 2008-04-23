@@ -72,19 +72,19 @@ class Relay24hTest(unittest.TestCase):
         cache = Cache()
         validator = Relay24hScoreingStrategy(datetime(2008,4,14,19,0), 5,
                                              validation_cache = cache)
-        self.assertEquals(validator.validate(self.getTeam(u'019')),
+        self.assertEquals(validator.validate(self.getTeam(u'019'))[0],
                           ValidationStrategy.OK)
-        self.assertEquals(validator.validate(self.getTeam(u'021')),
+        self.assertEquals(validator.validate(self.getTeam(u'021'))[0],
                           ValidationStrategy.OK)
-        self.assertEquals(validator.validate(self.getTeam(u'003')),
+        self.assertEquals(validator.validate(self.getTeam(u'003'))[0],
                           ValidationStrategy.OK)
-        self.assertEquals(validator.validate(self.getTeam(u'004')),
+        self.assertEquals(validator.validate(self.getTeam(u'004'))[0],
                           ValidationStrategy.DISQUALIFIED)
-        self.assertEquals(validator.validate(self.getTeam(u'005')),
+        self.assertEquals(validator.validate(self.getTeam(u'005'))[0],
                           ValidationStrategy.DISQUALIFIED)
-#        self.assertEquals(validator.validate(self.getTeam(u'006')),
+#        self.assertEquals(validator.validate(self.getTeam(u'006'))[0],
 #                          ValidationStrategy.DISQUALIFIED)
-        self.assertEquals(validator.validate(self.getTeam(u'009')),
+        self.assertEquals(validator.validate(self.getTeam(u'009'))[0],
                           ValidationStrategy.OK)
 
     def testRelay24Override(self):
@@ -93,7 +93,7 @@ class Relay24hTest(unittest.TestCase):
         validator = Relay24hScoreingStrategy(datetime(2008,4,14,19,0), 5,
                                              validation_cache = cache)
         self.getTeam(u'005').override = True
-        self.assertEquals(validator.validate(self.getTeam(u'005')),
+        self.assertEquals(validator.validate(self.getTeam(u'005'))[0],
                           ValidationStrategy.OK)
        
     def testRelay24hScoreing(self):

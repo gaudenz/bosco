@@ -69,6 +69,8 @@ class RunTest(unittest.TestCase):
         self._runners.append(Runner(u'Mueller', u'Hans', 768765, u'HAM', self._store))
         self._runners.append(Runner(u'Missing', u'The', 113456, u'HAM', self._store))
         self._runners.append(Runner(u'Gugus', u'Dada', 56789, u'HAM', self._store))
+        self._runners.append(Runner(u'Al', u'Missing', 12345, u'HAM', self._store))
+        
 
         # Create a team
         team = Team(u'1', u'The best team ever', category= cat_team)
@@ -152,6 +154,10 @@ class RunTest(unittest.TestCase):
                               ))
         self._runs[4].complete = True
 
+        # empty run
+        self._runs.append(Run(12345, u'A', [], self._store))
+        self._runs[5].complete = True
+
         self._store.commit()
 
     def tearDown(self):
@@ -211,9 +217,18 @@ class RunTest(unittest.TestCase):
     def test_validation_missing(self):
         """Test validation of a run with missing controls."""
         validator = self._course.validator(SequenceCourseValidationStrategy)
-        self.assertEquals(validator.validate(self._runs[3]),
-                                             ValidationStrategy.MISSING_CONTROLS)
-                          
+        (valid, info) = validator.validate(self._runs[3])
+        self.assertEquals(valid, ValidationStrategy.MISSING_CONTROLS)
+        self.assertEquals(info['missing'], [self._c131])
+
+    def test_validation_all_missing(self):
+        """Test that all controls of a run are missing if the validated run is empty."""
+        validator = self._course.validator(SequenceCourseValidationStrategy)
+        (valid, info) = validator.validate(self._runs[5])
+        self.assertEquals(valid, ValidationStrategy.DID_NOT_FINISH)
+        self.assertEquals([ c.code for c in info['missing']],
+                          [u'S',  u'131', u'132', u'200', u'132', u'F'])
+        
     def test_ranking_course(self):
         """Test the correct ranking of runs in a course."""
         score = SelfStartTimeScoreingStrategy()
@@ -272,12 +287,13 @@ class RunTest(unittest.TestCase):
 
         # Add override for control 131
         self._c131.override = True
-        self.assertEquals(validator.validate(self._runs[3]), ValidationStrategy.OK)
+        self.assertEquals(validator.validate(self._runs[3])[0], ValidationStrategy.OK)
         
     def test_overrride_run(self):
         """Test overrride for a run."""
         validator = self._course.validator(SequenceCourseValidationStrategy)
         self._runs[3].override = True
-        self.assertEquals(validator.validate(self._runs[3]), ValidationStrategy.OK)        
+        self.assertEquals(validator.validate(self._runs[3])[0], ValidationStrategy.OK)
+        
 if __name__ == '__main__':
     unittest.main()
