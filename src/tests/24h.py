@@ -62,6 +62,7 @@ class Relay24hTest(unittest.TestCase):
         self._store.execute('TRUNCATE punch CASCADE')
         self._store.execute('TRUNCATE sicard CASCADE')
         self._store.execute('TRUNCATE runner CASCADE')
+        self._store.execute('TRUNCATE category CASCADE')
         self._store.commit()
 
     def getTeam(self, number):

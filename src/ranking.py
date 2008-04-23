@@ -246,34 +246,28 @@ class RelayTimeScoreingStrategy(MassStartTimeScoreingStrategy):
     def _start(self, obj):
         # Get the team for this run
         team = obj.sicard.runner.team
-        
-        # Search through all runs to find the previous run
-        #prev_run = None
-        #for m in team.members:
-        #    for si in m.sicards:
-        #        for r in si.runs:
-                    # Select this run if it finished later than prev_run and
-                    # if the finish time is earlier than the finish time of
-                    # the run to score
-        #            if (prev_run == None or r.finish() > prev_run.finish()) \
-        #               and  r.finish() < obj.finish():
-        #                prev_run = r
 
-        # This makes the whole thin dependant on Storm, but it is a huge perfomance
-        # win
-        from runner import Team
-        from run import Punch
+        # This makes the whole thing dependant on the exact database layout,
+        # but it is a huge perfomance win
         from course import SIStation
-
         store = Store.of(team)
-        starttime = store.execute(Select(Max(Punch.punchtime),
-                                         where = And(Team.id == team.id,
-                                                     Punch.sistation == SIStation.FINISH,
-                                                     Punch.punchtime < obj.punches.order_by('punchtime').first().punchtime,
-                                                     )
-                                         )
-                                  ).get_one()[0]
-                                                               
+        starttime = store.execute(
+            """SELECT MAX(finishtime) FROM (
+                  SELECT MIN(punch.punchtime) AS finishtime
+                     FROM team JOIN runner ON team.id = runner.team
+                        JOIN sicard ON runner.id = sicard.runner
+                        JOIN run ON sicard.id = run.sicard
+                        JOIN punch ON run.id = punch.run
+                     WHERE team.id = %s
+                        AND punch.sistation = %s
+                        AND punch.punchtime < %s
+                     GROUP BY run.id)
+                  AS finishtimes""",
+            params = (team.id,
+                      SIStation.FINISH,
+                      obj.punches.order_by('punchtime').first().punchtime)
+            ).get_one()[0]
+        
         if starttime == None:
             return self._starttime
         else:
@@ -282,12 +276,11 @@ class RelayTimeScoreingStrategy(MassStartTimeScoreingStrategy):
 class MassStartRelayTimeScoreingStrategy(RelayTimeScoreingStrategy):
 
     def __init__(self, massstart_time, cache = None):
-        AbstratctScoreingStrategy.__init__(self, cache)
+        AbstractScoreingStrategy.__init__(self, cache)
         MassStartTimeScoreingStrategy.__init__(self, massstart_time)
 
     def _start(self, obj):
         prev_finish = super(type(self), self)._start(obj)
-
         return self._starttime < prev_finish and self._starttime or prev_finish
 
 class ValidationStrategy(object):
