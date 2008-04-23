@@ -81,11 +81,12 @@ class Run(MyStorm, RankableItem):
                         A store is needed if card or course are given as int/string
                         or if punches is non empty.
         """
+        
         if type(card) == int:
             cardnr = card
             card = store.get(SICard, card)
             if not card:
-                raise RunException("Could not find SI-Card Nr. '%s'" % cardnr)
+                raise RunException("Could not find SI Card Nr. '%s'" % cardnr)
 
         self.sicard = card
 
@@ -95,6 +96,9 @@ class Run(MyStorm, RankableItem):
             self.course = course
             
         self.add_punchlist(punches)
+
+        if store is not None:
+            self._store = store
 
     def __storm_pre_flush__(self):
         """Do some consistency checks before flushing the object to the database.
@@ -112,23 +116,39 @@ class Run(MyStorm, RankableItem):
         """Adds a (stationnumber, punchtime) tuple to the run."""
 
         (number, punchtime) = punch
-        
-        station = self._store.get(SIStation, number)
-        if station is None:
-            raise RunException('si-station number \'%s\' not found' % number)
 
-        self.punches.add(Punch(station, punchtime))
+        # Only add punch if it does not yet exist on this run
+        if self._store.find(Punch, And(Punch.run == self.id,
+                                       Punch.sistation == number,
+                                       Punch.punchtime == punchtime)).count() == 0:
+            
+            station = self._store.get(SIStation, number)
+            if station is None:
+                raise RunException('si-station number \'%s\' not found' % number)
+        
+            self.punches.add(Punch(station, punchtime))
 
     def add_punchlist(self, punchlist):
         """Adds a list of (stationnumber, punchtime) tupeles to the run."""
+        errors = ''
         for p in punchlist:
-            self.add_punch(p)
-
+            try:
+                self.add_punch(p)
+            except RunException, msg:
+                errors = '%s%s\n' % (errors, msg)
+                
+        if not errors == '':
+            raise RunException(errors)
+        
     def set_coursecode(self, code):
         """Sets the course for this run.
-        @param coursecode: The code of the course.
-        @type coursecode:  unicode
+        @param coursecode: The code of the course or None to clear the code.
+        @type coursecode:  unicode or None
         """
+        if code is None:
+            self.course = None
+            return
+        
         course = self._store.find(Course,
                             Course.code == code).one()
         if course is None:
