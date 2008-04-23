@@ -355,6 +355,8 @@ class CourseValidationStrategy(ValidationStrategy):
             result = ValidationStrategy.NOT_COMPLETED
         elif not run.finish():
             result =  ValidationStrategy.DID_NOT_FINISH
+        elif run.override is True:
+            result = ValidationStrategy.OK
         else:
             result = ValidationStrategy.OK
 
@@ -362,7 +364,57 @@ class CourseValidationStrategy(ValidationStrategy):
         return result
 
 class SequenceCourseValidationStrategy(CourseValidationStrategy):
-    """Validation strategy for a normal orienteering course."""
+    """Validation strategy for a normal orienteering course.
+    This class uses a dynamic programming "longest common subsequence"
+    algorithm to validate the run and find missing and additional punches.
+    @see http://en.wikipedia.org/wiki/Longest_common_subsequence_problem.
+    """
+
+    @staticmethod
+    def _build_lcs_matrix(plist, clist):
+        """Builds the matrix of lcs subsequence lengths.
+        @param plist: list of punches
+        @param clist: list of controls. All controls with no sistations or which are
+                      overriden must be removed!
+        @return:      matrix of lcs subsequence lengths.
+        """
+        
+        m = plist.count()
+        n = len(clist)
+        
+        # build (m+1) * (n+1) matrix
+        C = [[0] * (n+1) for i in range(m+1) ]
+        
+        i = j = 1
+        for i in range(1, m+1):
+            for j in range(1, n+1):
+                if plist[i-1].sistation.control is clist[j-1]:
+                    C[i][j] = C[i-1][j-1] + 1
+                else:
+                    C[i][j] = max(C[i][j-1], C[i-1][j])
+
+        return C
+
+    @staticmethod
+    def _backtrack(C, plist, clist, i = None, j = None):
+        """Backtrack through the LCS Matrix to find one of possibly
+        several longest common subsequences."""
+
+        if i is None:
+            i = plist.count()
+        if j is None:
+            j = len(clist)
+            
+        if i == 0 or j == 0:
+            return []
+        elif plist[i-1].sistation.control is clist[j-1]:
+            return SequenceCourseValidationStrategy._backtrack(C, plist, clist, i-1, j-1) + [ clist[j-1] ]
+        else:
+            if C[i][j-1] > C[i-1][j]:
+                return SequenceCourseValidationStrategy._backtrack(C, plist, clist, i, j-1)
+            else:
+                return SequenceCourseValidationStrategy._backtrack(C, plist, clist, i-1, j)
+        
     
     def validate(self, run):
         """Validate the run if it is valid for this course."""
@@ -373,31 +425,24 @@ class SequenceCourseValidationStrategy(CourseValidationStrategy):
             pass
         
         result = super(type(self), self).validate(run)
-        if result == ValidationStrategy.OK:
+        if result == ValidationStrategy.OK and not run.override is True:
             # check correct sequence of controls
         
             punchlist = run.punches.order_by('punchtime')
-            controllist = [ i.control for i in self._course.sequence.order_by('sequence_number') ]
-            # Iterate over all punches of this run
-            i = 0
-            for punch in punchlist:
-                while i < len(controllist):
-                    if controllist[i].sistations.count() == 0:
-                        # Control has no si-stations, got to next control
-                        i += 1
-                        continue
-                    elif controllist[i] is punch.sistation.control:
-                        # This punch matches the control, got to next control and punch
-                        i += 1
-                        break
-                    else:
-                        # Try next punch
-                        break
+            # list of all controls which have sistations
+            controllist = [ i.control for i in
+                            self._course.sequence.order_by('sequence_number')
+                            if (i.control.sistations.count() > 0 and
+                                i.control.override is not True) ]
 
-            if i < len(controllist):
-                # No more punches, but controls left
+            C = SequenceCourseValidationStrategy._build_lcs_matrix(punchlist, controllist)
+            lcs = SequenceCourseValidationStrategy._backtrack(C,
+                                                              punchlist,
+                                                              controllist)
+            
+            if len(lcs) < len(controllist):
                 result = ValidationStrategy.MISSING_CONTROLS
-
+            
         self._to_cache_validate(run, result)
         return result
 
@@ -481,13 +526,17 @@ class Relay24hScoreingStrategy(AbstractScoreingStrategy, ValidationStrategy):
             return self._from_cache_validate(team)
         except KeyError:
             pass
-        
-        # check runner order
-        result = self._check_order(team)
-        if result == ValidationStrategy.OK:
-            # check run order
-            # not cheked, this is ensured by proper event organisation :-)
-            pass
+
+        # check for override
+        if team.override is True:
+            result = ValidationStrategy.OK
+        else:
+            # check runner order
+            result = self._check_order(team)
+            if result == ValidationStrategy.OK:
+                # check run order
+                # not cheked, this is ensured by proper event organisation :-)
+                pass
 
         self._to_cache_validate(team, result)
         return result

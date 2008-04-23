@@ -46,12 +46,16 @@ class RunTest(unittest.TestCase):
         F = Control(u'F', SIStation(SIStation.FINISH))
 
         # create control with 2 sistations
-        c = Control(u'200', SIStation(200))
-        c.sistations.add(SIStation(201))
+        c200 = Control(u'200', SIStation(200))
+        c200.sistations.add(SIStation(201))
+        self._c131 = self._store.add(Control(u'131', SIStation(131)))
 
+        # create sistation without any control
+        self._store.add(SIStation(133))
+        
         # Create a Course
         self._course = self._store.add(Course(u'A', length = 1679, climb = 587))
-        self._course.extend([S, u'131', u'132', c, u'132', F])
+        self._course.extend([S, u'131', u'132', c200, u'132', F])
 
         # Create categorys
         self._cat_ind = self._store.add(Category(u'HAM'))
@@ -62,7 +66,7 @@ class RunTest(unittest.TestCase):
         
         self._runners.append(Runner(u'Muster', u'Hans', 655465, u'HAM', self._store))
         self._runners.append(Runner(u'Gerster', u'Trudi', 765477, u'HAM', self._store))
-        self._runners.append(Runner(u'Müller', u'Hans', 768765, u'HAM', self._store))
+        self._runners.append(Runner(u'Mueller', u'Hans', 768765, u'HAM', self._store))
         self._runners.append(Runner(u'Missing', u'The', 113456, u'HAM', self._store))
         self._runners.append(Runner(u'Gugus', u'Dada', 56789, u'HAM', self._store))
 
@@ -75,6 +79,8 @@ class RunTest(unittest.TestCase):
         
         # Create a runs
         self._runs = []
+
+        # double start and finish punches, punch on sistation 201 for control 200
         self._runs.append(Run(655465,
                               u'A',
                               [(SIStation.START, datetime(2008,3,19,8,20,32)),
@@ -90,6 +96,7 @@ class RunTest(unittest.TestCase):
                               ))
         self._runs[0].complete = True
 
+        # normal run
         self._runs.append(Run(765477,
                               u'A',
                               [ (SIStation.START, datetime(2008,3,19,8,25,50)),
@@ -103,11 +110,13 @@ class RunTest(unittest.TestCase):
                               ))
         self._runs[1].complete = True
 
+        # normal run, punching additional sistation not connected to any control
         self._runs.append(Run(768765,
                               u'A',
                               [ (SIStation.START, datetime(2008,3,19,8,31,25)),
                                 (131,datetime(2008,3,19,8,33,39)),
                                 (132,datetime(2008,3,19,8,34,35)),
+                                (133,datetime(2008,3,19,8,34,50)),
                                 (200,datetime(2008,3,19,8,35,35)),
                                 (132,datetime(2008,3,19,8,36,0)),
                                 (SIStation.FINISH,datetime(2008,3,19,8,36,25)),
@@ -116,10 +125,11 @@ class RunTest(unittest.TestCase):
                               ))
         self._runs[2].complete = True
 
+        # punch on control 131 missing
         self._runs.append(Run(113456,
                               u'A',
                               [ (SIStation.START, datetime(2008,3,19,8,31,25)),
-                                (131,datetime(2008,3,19,8,33,39)),
+                                (132,datetime(2008,3,19,8,33,39)),
                                 (200,datetime(2008,3,19,8,35,35)),
                                 (132,datetime(2008,3,19,8,36,0)),
                                 (SIStation.FINISH,datetime(2008,3,19,8,36,25)),
@@ -197,13 +207,19 @@ class RunTest(unittest.TestCase):
         self.assertEquals(score, timedelta(minutes=5, seconds=48))
         score = strategy.score(self._runs[2])
         self.assertEquals(score, timedelta(minutes=6, seconds=2))
-        
+
+    def test_validation_missing(self):
+        """Test validation of a run with missing controls."""
+        validator = self._course.validator(SequenceCourseValidationStrategy)
+        self.assertEquals(validator.validate(self._runs[3]),
+                                             ValidationStrategy.MISSING_CONTROLS)
+                          
     def test_ranking_course(self):
         """Test the correct ranking of runs in a course."""
         score = SelfStartTimeScoreingStrategy()
         validator = self._course.validator(SequenceCourseValidationStrategy)
         ranking = [ r for r in Ranking(self._course, score, validator) ]
-        
+            
         self.assertEquals(ranking[0]['rank'], 1)
         self.assertEquals(ranking[0]['validation'], ValidationStrategy.OK)
         self.assertTrue(ranking[0]['item'] == self._runs[0] or ranking[0]['item'] == self._runs[2])
@@ -250,6 +266,18 @@ class RunTest(unittest.TestCase):
         self.assertEquals(ranking[4]['validation'], ValidationStrategy.MISSING_CONTROLS)
         self.assertEquals(ranking[4]['item'], self._runners[3])
         
-    
+    def test_overrride_control(self):
+        """Test override for a control."""
+        validator = self._course.validator(SequenceCourseValidationStrategy)
+
+        # Add override for control 131
+        self._c131.override = True
+        self.assertEquals(validator.validate(self._runs[3]), ValidationStrategy.OK)
+        
+    def test_overrride_run(self):
+        """Test overrride for a run."""
+        validator = self._course.validator(SequenceCourseValidationStrategy)
+        self._runs[3].override = True
+        self.assertEquals(validator.validate(self._runs[3]), ValidationStrategy.OK)        
 if __name__ == '__main__':
     unittest.main()

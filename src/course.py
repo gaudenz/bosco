@@ -45,7 +45,7 @@ class SIStation(Storm):
 
     def __init__(self, id):
         self.id = id
-    
+
 class Control(MyStorm):
     """A control point. Control points are part of one or several courses.
        The possible orders of the control points in a course is defined
@@ -55,6 +55,7 @@ class Control(MyStorm):
 
     id = Int(primary=True)
     code = Unicode()
+    override = Bool()
     sistations = ReferenceSet(id, 'SIStation._control_id')
 
     def __init__(self, code, sistation = None, store = None):
@@ -99,7 +100,6 @@ class Control(MyStorm):
                 sistation = SIStation(station_nr)
                 
         self.sistations.add(sistation)
-        
 
 class ControlSequence(Storm):
     """Connects controls and courses. The sequence_number defines the
@@ -145,7 +145,7 @@ class Course(MyStorm, Rankable):
                             ControlSequence._control_id, Control.id)
     sequence = ReferenceSet(id, 'ControlSequence._course_id')
 
-    def __init__(self, code, length = None, climb = None, expected_speed = None):
+    def __init__(self, code, length = None, climb = None):
         """
         @param code:          Descriptive code for this course. Usually 3 characters long. For
                               'normal' events this corresponds to the category name.

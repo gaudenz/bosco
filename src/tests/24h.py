@@ -87,6 +87,15 @@ class Relay24hTest(unittest.TestCase):
         self.assertEquals(validator.validate(self.getTeam(u'009')),
                           ValidationStrategy.OK)
 
+    def testRelay24Override(self):
+        """Test override for a team."""
+        cache = Cache()
+        validator = Relay24hScoreingStrategy(datetime(2008,4,14,19,0), 5,
+                                             validation_cache = cache)
+        self.getTeam(u'005').override = True
+        self.assertEquals(validator.validate(self.getTeam(u'005')),
+                          ValidationStrategy.OK)
+       
     def testRelay24hScoreing(self):
         cache = Cache()
         scoreing = Relay24hScoreingStrategy(datetime(2008,4,14,19,0), 5,

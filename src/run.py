@@ -46,7 +46,6 @@ class Punch(Storm):
         self.sistation = sistation
         self.punchtime = punchtime
 
-
 class Run(MyStorm, RankableItem):
     """A run is directly connected to a single readout of an SI-Card.
        Competitors can have multiple runs during an event, but one
@@ -63,6 +62,7 @@ class Run(MyStorm, RankableItem):
     _course_id = Int(name='course')
     course = Reference(_course_id, 'Course.id')
     complete = Bool(name='complete')
+    override = Bool(name='override')
     punches = ReferenceSet(id, 'Punch._run_id')
 
     
@@ -184,8 +184,6 @@ class Run(MyStorm, RankableItem):
     def finish(self):
         """Returns the time the finish control was punched or None."""
         return self.punchtime(SIStation.FINISH, first=True, sistation=True)
-    
-        
-        
+
 class RunException(Exception):
     pass

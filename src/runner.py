@@ -127,6 +127,12 @@ class Runner(AbstractRunner, MyStorm):
     def finish(self):
         return self._get_run().finish()
 
+    def _get_override(self):
+        return self._get_run().override
+    def _set_override(self, value):
+        self._get_run().override = value
+    override = property(_get_override, _set_override)
+
     def _get_punches(self):
         return self._get_run().punches
     punches = property(_get_punches)
@@ -142,6 +148,7 @@ class Team(AbstractRunner, Storm):
     number = Unicode()
     name = Unicode()
     official = Bool()
+    override = Bool()
     _responsible_id = Int(name='responsible')
     responsible = Reference(_responsible_id, 'Runner.id')
     _category_id = Int(name='category')
@@ -169,7 +176,6 @@ class Team(AbstractRunner, Storm):
         return runs
 
     runs = property(_get_runs)
-        
 
 class SICard(Storm):
     __storm_table__ = 'sicard'
