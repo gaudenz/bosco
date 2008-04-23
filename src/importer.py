@@ -18,7 +18,7 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from storm.locals import *
-from csv import reader
+from csv import reader, writer
 from optparse import OptionParser
 from datetime import datetime, date
 from sys import exit, hexversion
@@ -27,6 +27,7 @@ if hexversion > 0x20500f0:
 else:
     from elementtree.ElementTree import parse
 import re
+from os import fsync
 
 import conf
 from runner import Runner, Team, SICard, Category
@@ -147,6 +148,8 @@ class SIRunImporter(Importer):
 
     timestamp_re = re.compile('([0-9]{4})-([0-9]{2})-([0-9]{2}) ([0-9]{2}):([0-9]{2}):([0-9]{2})(\.([0-9]{6}))?')
 
+    TIMEFORMAT = '%Y-%m-%d %H:%M:%S'
+
     COURSE = 0
     CARDNR = 1
     START  = 2
@@ -235,7 +238,50 @@ class SIRunImporter(Importer):
             run.complete = True
             store.add(run)
 
+class SIRunExporter(SIRunImporter):
+    """Export Run data to a backup file."""
+    
+    def __init__(self, fname):
+        self.__file = open(fname, 'ab')
+        self.__csv = writer(self.__file, delimiter=';')
 
+    @staticmethod
+    def __punch2string(punch):
+        """Convert a punch to a (sistationnr, timestring) tuple. If punch is
+        None ('', '') is retruned.
+        @param punch: punch to convert
+        @type punch:  object of class Punch
+        """
+        if punch is None:
+            return ('','')
+        
+        return (str(punch.sistation.id),
+                '%s.%06i' % (punch.punchtime.strftime(SIRunImporter.TIMEFORMAT),
+                            punch.punchtime.microsecond)
+                )
+    
+    def export_run(self, run):
+
+        line = [''] * SIRunImporter.BASE
+        line[SIRunImporter.COURSE] = run.course.code
+        line[SIRunImporter.CARDNR] = run.sicard.id
+        line[SIRunImporter.START] = SIRunExporter.__punch2string(run.punches.find(Punch.sistation == SIStation.START).one())[1]
+        line[SIRunImporter.CHECK] = SIRunExporter.__punch2string(run.punches.find(Punch.sistation == SIStation.CHECK).one())[1]
+        line[SIRunImporter.CLEAR] = SIRunExporter.__punch2string(run.punches.find(Punch.sistation == SIStation.CLEAR).one())[1]
+        line[SIRunImporter.FINISH] = SIRunExporter.__punch2string(run.punches.find(Punch.sistation == SIStation.FINISH).one())[1]
+        for punch in run.punches.find(Not(Or(Punch.sistation == SIStation.START,
+                                             Punch.sistation == SIStation.CLEAR,
+                                             Punch.sistation == SIStation.CHECK,
+                                             Punch.sistation == SIStation.FINISH
+                                             ))):
+            punch_string = SIRunExporter.__punch2string(punch)
+            line.append(punch_string[0])
+            line.append(punch_string[1])
+
+        self.__csv.writerow(line)
+        self.__file.flush()
+        fsync(self.__file)
+        
 class OCADXMLCourseImporter(Importer):
     """Import Course Data from an OCAD XML File produced by OCAD 9."""
 
