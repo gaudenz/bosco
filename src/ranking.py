@@ -214,7 +214,7 @@ class AbstractTimeScoreingStrategy(AbstractScoreingStrategy):
             # is this really the best thing to do?
             result = timedelta(0)
 
-        self._to_cache_score(obj, (result, {}))
+        self._to_cache_score(obj, result)
         return result
         
 class MassStartTimeScoreingStrategy(AbstractTimeScoreingStrategy):
@@ -380,7 +380,7 @@ class SequenceCourseValidationStrategy(CourseValidationStrategy):
         @return:      matrix of lcs subsequence lengths.
         """
         
-        m = plist.count()
+        m = len(plist)
         n = len(clist)
         
         # build (m+1) * (n+1) matrix
@@ -389,7 +389,7 @@ class SequenceCourseValidationStrategy(CourseValidationStrategy):
         i = j = 1
         for i in range(1, m+1):
             for j in range(1, n+1):
-                if plist[i-1].sistation.control is clist[j-1]:
+                if plist[i-1][1] is clist[j-1]:
                     C[i][j] = C[i-1][j-1] + 1
                 else:
                     C[i][j] = max(C[i][j-1], C[i-1][j])
@@ -402,13 +402,13 @@ class SequenceCourseValidationStrategy(CourseValidationStrategy):
         several longest common subsequences."""
 
         if i is None:
-            i = plist.count()
+            i = len(plist)
         if j is None:
             j = len(clist)
             
         if i == 0 or j == 0:
             return []
-        elif plist[i-1].sistation.control is clist[j-1]:
+        elif plist[i-1][1] is clist[j-1]:
             return SequenceCourseValidationStrategy._backtrack(C, plist, clist, i-1, j-1) + [ clist[j-1] ]
         else:
             if C[i][j-1] > C[i-1][j]:
@@ -423,13 +423,13 @@ class SequenceCourseValidationStrategy(CourseValidationStrategy):
         """
 
         if i is None:
-            i = plist.count()
+            i = len(plist)
         if j is None:
             j = len(clist)
             
         additional = []
         missing = []
-        if i > 0 and j > 0 and plist[i-1].sistation.control is clist[j-1]:
+        if i > 0 and j > 0 and plist[i-1][1] is clist[j-1]:
             (a,m) = SequenceCourseValidationStrategy._diff(C, plist, clist, i-1, j-1)
             additional += a
             missing += m
@@ -443,7 +443,7 @@ class SequenceCourseValidationStrategy(CourseValidationStrategy):
                 (a, m) = SequenceCourseValidationStrategy._diff(C, plist, clist, i-1, j)
                 additional += a
                 missing += m
-                additional.append(plist[i-1])
+                additional.append(plist[i-1][0])
         return (additional, missing)
                 
     def validate(self, run):
@@ -457,7 +457,7 @@ class SequenceCourseValidationStrategy(CourseValidationStrategy):
         result = super(type(self), self).validate(run)[0]
         # check correct sequence of controls
         
-        punchlist = run.punches.order_by('punchtime')
+        punchlist = [(p, p.sistation.control) for p in run.punches.order_by('punchtime') ]
         # list of all controls which have sistations
         controllist = [ i.control for i in
                         self._course.sequence.order_by('sequence_number')
