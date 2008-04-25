@@ -104,8 +104,7 @@ if __name__ == '__main__':
 
     # add EventObserver to cache for automatic updates
     observer = EventObserver(conf.store)
-    conf.scoreing_cache.set_observer(observer)
-    conf.validation_cache.set_observer(observer)
+    conf.cache.set_observer(observer)
     
     app = wx.App()
     frame = RotatingRankingViewer(None, ranking_list)

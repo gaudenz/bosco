@@ -159,11 +159,7 @@ class Course(MyStorm, Rankable):
         self.code = code
         self.length = length
         self.climb = climb
-        self._validators = {}
 
-    def __storm_loaded__(self):
-        self._validators = {}
-        
     def __max_index(self):
         max = 0
         for control in self.sequence:
@@ -213,12 +209,3 @@ class Course(MyStorm, Rankable):
         except TypeError:
             return None
 
-    def validator(self, validator_class):
-        """Returns a validator object for this run of the specified class. Validator
-        objects are cached."""
-        if validator_class not in self._validators:
-            # create validator instance
-            self._validators[validator_class] = validator_class(self)
-        return self._validators[validator_class]
-    
-    

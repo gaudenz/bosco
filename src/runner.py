@@ -84,6 +84,7 @@ class Runner(AbstractRunner, MyStorm):
             raise UnscoreableException('%s runs for runner %' % (len(runs), self))
         else:
             raise UnscoreableException('No run found for runner %s' % self)
+    run = property(_get_run)
 
 
     def add_sicard(self, cardnr):
@@ -126,20 +127,6 @@ class Runner(AbstractRunner, MyStorm):
 
     def finish(self):
         return self._get_run().finish()
-
-    def _get_override(self):
-        return self._get_run().override
-    def _set_override(self, value):
-        self._get_run().override = value
-    override = property(_get_override, _set_override)
-
-    def _get_punches(self):
-        return self._get_run().punches
-    punches = property(_get_punches)
-
-    def _get_complete(self):
-        return self._get_run().complete
-    complete = property(_get_complete)
         
 class Team(AbstractRunner, Storm):
     __storm_table__ = 'team'
@@ -172,7 +159,6 @@ class Team(AbstractRunner, Storm):
         for m in self.members:
             for si in m.sicards:
                 runs.extend(list(si.runs.find(Run.complete == True)))
-        runs.sort(key = lambda x: x.finish())
         return runs
 
     runs = property(_get_runs)

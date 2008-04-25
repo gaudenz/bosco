@@ -367,7 +367,7 @@ class SIReadoutFrame(wx.Frame):
             # set run information
             if self._run.course is not None:
                 self._course_input.SetValue(self._run.course.code)
-                (valid, info) = SequenceCourseValidationStrategy(self._run.course).validate(self._run)
+                (valid, info) = conf.event_ranking.validate(self._run)
                 if valid == ValidationStrategy.OK:
                     self._validation_info_run.SetLabel('OK')
                     self._validation_info_run.SetForegroundColour('Green')
@@ -459,9 +459,15 @@ class SIReadoutFrame(wx.Frame):
             else:
                 # punchtime on the previous day
                 punchtime = ref_day - timedelta(days=1) + timespan
-                
+
+            # Add punch and try to notify cache
             self._run.add_punch((sistations_list.GetClientData(sistations_list.GetSelection()),
                                  punchtime))
+            try:
+                conf.cache.update(self._run)
+            except KeyError:
+                pass
+            
             self.UpdateInfo()
             
         

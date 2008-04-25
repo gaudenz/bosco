@@ -23,6 +23,8 @@ ranking.py - Classes to produce rankings of objects that implement
 
 from datetime import timedelta, datetime
 from copy import copy
+from traceback import print_exc
+import sys
 
 from storm.locals import *
 
@@ -50,19 +52,23 @@ class Ranking(object):
     rankable object (course or category) and computes a ranking. The Ranking object
     is an interable object, which means you can use it much like a list. It returns
     a new iterator on every call to __iter__.
-    The order of the ranking is defined by the scoreing strategy. Strategy has the be a subclass
-    of ScoreingStrategy compatible with the RankableItem objects of this Rankable.
-    The ranking is generated in lowest first order. The overcome this restriction 
-    seperate RankingStrategies should be implemented.
+    The order of the ranking is defined by the scoreing strategy. Strategy has the be
+    a subclass of AbstractScoreing compatible with the RankableItem objects of this Rankable.
+    The ranking is generated in lowest first order. Reverse rankings are possible.
 
     The iterator returns dictionaries with the keys 'rank', 'score', 'validation',
-    'item', 'info'.
+    'item', 'validation_info' and 'scoreing_info'.
     """
 
-    def __init__(self, rankable, scoreing, validation):
+    def __init__(self, rankable, event, scoreing_class = None, validator_class = None,
+                 scoreing_args = None, validator_args = None, reverse = False):
         self._rankable = rankable
-        self._scoreing = scoreing
-        self._validation = validation
+        self._event = event
+        self._scoreing_class = scoreing_class
+        self._validator_class = validator_class
+        self._scoreing_args = scoreing_args
+        self._validator_args = validator_args
+        self._reverse = reverse
 
     def __iter__(self):
 
@@ -77,13 +83,28 @@ class Ranking(object):
                        'score': m[0],
                        'validation': m[1][0],
                        'item': m[2],
-                       'info': m[1][1],
+                       'validation_info': m[1][1],
+                       'scoreing_info': {}
                        }
 
         # Create list of (score, member) tuples and sort by score
-        ranking_list = [(self._scoreing.score(m), self._validation.validate(m), m)
-                        for m in self._rankable.members]
-        ranking_list.sort(key = lambda x: x[0])
+        ranking_list = []
+        for m in self._rankable.members:
+            try:
+                ranking_list.append((self._event.score(m,
+                                                       self._scoreing_class,
+                                                       self._scoreing_args),
+                                     self._event.validate(m,
+                                                          self._validator_class,
+                                                          self._validator_args),
+                                     m))
+            except UnscoreableException, ValidationError:
+                pass
+            except:
+                print_exc(file=sys.stderr)
+                pass
+
+        ranking_list.sort(key = lambda x: x[0], reverse = self._reverse)
         ranking_list.sort(key = lambda x: x[1][0])
 
         # return the generator
@@ -138,8 +159,7 @@ class Cache(object):
         if self._observer:
             self._observer.register(self, obj)
 
-    def __delitem__(self, key):
-        (obj, func) = key
+    def __delitem__(self, obj):
         if self._observer:
             self._observer.unregister(self, obj)
         del self._cache[obj]
@@ -509,20 +529,21 @@ class Relay24hScoreingStrategy(AbstractScoreingStrategy, ValidationStrategy):
     are combined because they use some common private functions. This class validates
     and scores teams for the 24h relay."""
 
-    def __init__(self, starttime, speed, duration = timedelta(hours=24),
-                 cache = None):
+    def __init__(self, starttime, speed, duration, event_ranking, cache = None):
         """
-        @param starttime: Start time of the event.
-        @type starttime:  datetime.datetime
-        @param speed:     expected speed in minutes per kilometers. Used to compute
-                          penalty time for invalid runs
-        @type speed:      int
-        @param duration:  Duration of the event (default 24h)
+        @param starttime:     Start time of the event.
+        @type starttime:      datetime.datetime
+        @param speed:         expected speed in minutes per kilometers. Used to compute
+                              penalty time for invalid runs
+        @type speed:          int
+        @param event_ranking: object of class EventRanking to score and validate single runs
+        @param duration:      Duration of the event
         """
         AbstractScoreingStrategy.__init__(self, cache)
         self._starttime = starttime
         self._speed = speed
         self._duration = duration
+        self._event_ranking = event_ranking
 
     def _loop_over_runs(self, team):
         """This is an utility function to not duplicate code in _check_order and
@@ -539,7 +560,8 @@ class Relay24hScoreingStrategy(AbstractScoreingStrategy, ValidationStrategy):
         # collect team members and runs
         members = list(team.members.order_by('number'))
         runs = team.runs
-
+        runs.sort(key=lambda x:x.finish())
+        
         # check runner order
         remaining = copy(members)
         next_runner = 0
@@ -633,13 +655,13 @@ class Relay24hScoreingStrategy(AbstractScoreingStrategy, ValidationStrategy):
             pass
         
         runs = [r for r in team.runs if r.complete]
-        run_scoreing = RelayTimeScoreingStrategy(self._starttime)
+        runs.sort(key = lambda x:x.finish())
         
         failed = [ r for r in runs
-                   if not r.course.validator(SequenceCourseValidationStrategy).validate(r)[0] == ValidationStrategy.OK ]
+                   if not self._event_ranking.validate(r)[0] == ValidationStrategy.OK ]
         fail_penalty = timedelta(0)
         for f in failed:
-            penalty = f.course.expected_time(self._speed) - run_scoreing.score(f)
+            penalty = f.course.expected_time(self._speed) - self._event_ranking.score(f)
             if penalty < timedelta(0):
                 # no negative penalty
                 penalty = timedelta(0)
@@ -654,8 +676,8 @@ class Relay24hScoreingStrategy(AbstractScoreingStrategy, ValidationStrategy):
                        - fail_penalty - give_up_penalty)
 
         valid_runs = [ r for r in runs
-                       if r.finish() <= finish_time
-                       and r.course.validator(SequenceCourseValidationStrategy).validate(r)[0] == ValidationStrategy.OK ]
+                       if self._event_ranking.validate(r)[0] == ValidationStrategy.OK
+                          and r.finish() <= finish_time]
 
         if len(valid_runs) > 0:
             result = Relay24hScore(len(valid_runs),
@@ -671,19 +693,6 @@ class Relay12hScoreingStrategy(Relay24hScoreingStrategy):
     """This class is both a valiadtion and a scoreing strategy. It implements the
     different validation algorithm of the 12h relay."""
 
-    def __init__(self, starttime, speed, duration = timedelta(hours=12),
-                 cache = None):
-        """
-        @param starttime: Start time of the event.
-        @type starttime:  datetime.datetime
-        @param speed:     expected speed in minutes per kilometers. Used to compute
-                          penalty time for invalid runs
-        @type speed:      int
-        @param duration:  Duration of the event (default 24h)
-        """
-        super(type(self), self).__init__(starttime, speed, duration,
-                                         cache)
-        
     def _omitted_runners(self, team):
         """The order of the runners for the 12h relay is free. So no runner may
         be omitted. Runner that give up don't cause a time penalty."""
@@ -809,6 +818,191 @@ class ControlPunchtimeScoreingStrategy(AbstractScoreingStrategy, ValidationStrat
         
         self._to_cache_score(run, result)
         return result
+    
+class EventRanking(object):
+    """Model of all event specific ranking information. The default
+    implementation uses SequenceCourseValidator and SelfStartTimeScoreing.
+    Subclass this class to customize your event."""
+
+    def __init__(self, cache = None):
+        """
+        @param cache: Cache to use for this object
+        """
+        
+        self._strategies = {}
+        self._cache = cache
+
+    @staticmethod
+    def _key(cls, args):
+        """make a hashable key out of cls and args"""
+        
+        arg_list = []
+        for k,v in args.items():
+            if type(v) == list:
+                v = tuple(v)
+            arg_list.append((k, v))
+        return (cls, tuple(arg_list))
+    
+    def validate(self, obj, validator_class = None, args = None):
+        # Don't define args={}, default arguments are created at function definition time
+        # and you would end up modifing the default args below! You must create a new
+        # empty dictionary on every invocation!
+        
+        """
+        Get a validator
+        @param obj:             object to validate, 
+        @param validator_class: validation class used
+        @param args:            dict of keyword arguments for the validation strategy object
+        @return:                validation result from validator_class.validate(obj)
+        @see:                   Validator for more information about validation classes
+        """
+        
+        from run import Run
+        from runner import Runner
+
+        if validator_class is None:
+            validator_class = SequenceCourseValidationStrategy
+            
+        if args is None:
+            args = {}
+            
+        if 'cache' not in args:
+            args['cache'] = self._cache
+            
+        if issubclass(validator_class, CourseValidationStrategy):
+            if type(obj) == Runner:
+                # validate run of this runner
+                obj = obj.run
+
+            if type(obj) == Run and 'course' not in args:
+                if obj.course is None:
+                    raise ValidationError("Can't validate run without course")
+                args['course'] = obj.course
+
+        if self._key(validator_class, args) not in self._strategies:
+            # create validator instance
+            self._strategies[self._key(validator_class, args)] = validator_class(**args)
+        return self._strategies[self._key(validator_class, args)].validate(obj)
+    
+    def score(self, obj, scoreing_class = None, args = None):
+        """
+        Get the score of an object
+        @param obj:            object to score
+        @param scoreing_class: scoreing strategy used
+        @param args:           additional arguments for the scoreing class's constructor
+        @type args:            dict of keyword arguments
+        @return:               scoreing result from scoreing_class.score(obj)
+        @see:                  AbstractScoreing for more information about scoreing classes
+        """
+
+        if scoreing_class is None:
+            scoreing_class = SelfStartTimeScoreingStrategy
+            
+        if args is None:
+            args = {}
+
+        if not 'cache' in args:
+            args['cache'] = self._cache
+
+        if self._key(scoreing_class, args) not in self._strategies:
+            # create scoreing instance
+            if not 'cache' in args:
+                args['cache'] = self._cache
+            self._strategies[self._key(scoreing_class, args)] = scoreing_class(**args)
+        return self._strategies[self._key(scoreing_class, args)].score(obj)
+
+    def ranking(self, obj, scoreing_class = None, validation_class = None,
+                scoreing_args = None, validation_args = None, reverse = False):
+        """
+        Get a ranking for a Rankable object
+        @param obj:              ranked object (Category, Course, ...)
+        @param scoreing_class:   scoreing strategy used, None for default strategy
+        @param validation_class: validation strategy used, None for default strategy
+        @param scoreing_args:    scoreing args, None for default args
+        @param validation_args:  validation args, None for default args
+        @param reverse:          produce reversed ranking
+        """
+
+        return Ranking(obj, self, scoreing_class, validation_class,
+                       scoreing_args, validation_args, reverse)
+
+class Relay24hEventRanking(EventRanking):
+    """Event Ranking class for the 24h orientieering relay."""
+
+    def __init__(self, starttime_24h, starttime_12h, speed,
+                 duration_24h = timedelta(hours=24), duration_12h = timedelta(hours=12),
+                 cache = None):
+        
+        EventRanking.__init__(self, cache)
+        
+        # create default team validation strategies
+        self._strategies[self._key(Relay24hScoreingStrategy,
+                                   {'cache':cache})] = Relay24hScoreingStrategy(starttime_24h,
+                                                                                speed,
+                                                                                duration_24h,
+                                                                                self,
+                                                                                cache=cache)
+        self._strategies[self._key(Relay12hScoreingStrategy,
+                                   {'cache':cache})] = Relay12hScoreingStrategy(starttime_12h,
+                                                                                speed,
+                                                                                duration_12h,
+                                                                                self,
+                                                                                cache=cache)
+
+        self._strategies[self._key('run_score_24h',
+                                   {'cache':cache})] = RelayTimeScoreingStrategy(starttime_24h,
+                                                                                 cache)
+        self._strategies[self._key('run_score_12h',
+                                   {'cache':cache})] = RelayTimeScoreingStrategy(starttime_12h,
+                                                                                 cache)
+        
+
+    @staticmethod
+    def _get_team_strategy(team):
+        cat =  team.category.name
+        if cat == u'24h':
+            return Relay24hScoreingStrategy
+        elif cat == u'12h':
+            return Relay12hScoreingStrategy
+
+    @staticmethod
+    def _get_run_strategy(run):
+        cat = run.sicard.runner.team.category.name
+        if cat == u'24h':
+            return 'run_score_24h'
+        elif cat == u'12h':
+            return 'run_score_12h'
+        
+    def validate(self, obj, validator_class = None, args = None):
+
+        from runner import Team
+        from run import Run
+
+        if args is None:
+            args = {}
+        
+        if type(obj) == Team and validator_class is None:
+            validator_class = self._get_team_strategy(obj)
+        elif type(obj) == Run and validator_class is None:
+            validator_class = SequenceCourseValidationStrategy
+
+        return EventRanking.validate(self, obj, validator_class, args)
+            
+
+    def score(self, obj, scoreing_class = None, args = None):
+
+        from runner import Team
+        from run import Run
+        
+        if args is None:
+            args = {}
+            
+        if type(obj) == Team and scoreing_class is None:
+            scoreing_class = self._get_team_strategy(obj)
+        elif type(obj) == Run and scoreing_class is None:
+            scoreing_class = self._get_run_strategy(obj)
+
+        return EventRanking.score(self, obj, scoreing_class, args)
     
 class UnscoreableException(Exception):
     pass

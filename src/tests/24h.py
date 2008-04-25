@@ -26,7 +26,7 @@ from datetime import datetime, timedelta
 
 from runner import Category, Team, Runner
 from importer import Team24hImporter, OCADXMLCourseImporter, SIRunImporter
-from ranking import ValidationStrategy, Relay24hScoreingStrategy, Relay24hScore, Cache
+from ranking import Relay24hEventRanking, ValidationStrategy, Relay24hScore, Cache
 
 class Relay24hTest(unittest.TestCase):
 
@@ -50,9 +50,17 @@ class Relay24hTest(unittest.TestCase):
         importer = SIRunImporter('tests/import_24h_run.csv')
         importer.import_data(self._store)
 
+        self._cache = Cache()
+        self._event_ranking = Relay24hEventRanking(datetime(2008,4,14,19,0),
+                                                   datetime(2008,4,15,17,0),
+                                                   5,
+                                                   timedelta(hours=4, minutes=30),
+                                                   timedelta(hours=4, minutes=30),
+                                                   self._cache)
+
         # commit to database
         self._store.commit()
-        
+
     def tearDown(self):
         # Clean up Database
         self._store.execute('TRUNCATE course CASCADE')
@@ -68,46 +76,33 @@ class Relay24hTest(unittest.TestCase):
     def getTeam(self, number):
         return self._store.find(Team, Team.number == number).one()
     
-    def testRelay24hValidation(self):
-        cache = Cache()
-        validator = Relay24hScoreingStrategy(datetime(2008,4,14,19,0), 5,
-                                             validation_cache = cache)
-        self.assertEquals(validator.validate(self.getTeam(u'019'))[0],
+    def testRelay24h(self):
+        self.assertEquals(self._event_ranking.validate(self.getTeam(u'019'))[0],
                           ValidationStrategy.OK)
-        self.assertEquals(validator.validate(self.getTeam(u'021'))[0],
+        self.assertEquals(self._event_ranking.validate(self.getTeam(u'021'))[0],
                           ValidationStrategy.OK)
-        self.assertEquals(validator.validate(self.getTeam(u'003'))[0],
+        self.assertEquals(self._event_ranking.validate(self.getTeam(u'003'))[0],
                           ValidationStrategy.OK)
-        self.assertEquals(validator.validate(self.getTeam(u'004'))[0],
+        self.assertEquals(self._event_ranking.validate(self.getTeam(u'004'))[0],
                           ValidationStrategy.DISQUALIFIED)
-        self.assertEquals(validator.validate(self.getTeam(u'005'))[0],
+        self.assertEquals(self._event_ranking.validate(self.getTeam(u'005'))[0],
                           ValidationStrategy.DISQUALIFIED)
-#        self.assertEquals(validator.validate(self.getTeam(u'006'))[0],
+#        self.assertEquals(self._event_ranking.validate(self.getTeam(u'006'))[0],
 #                          ValidationStrategy.DISQUALIFIED)
-        self.assertEquals(validator.validate(self.getTeam(u'009'))[0],
+        self.assertEquals(self._event_ranking.validate(self.getTeam(u'009'))[0],
                           ValidationStrategy.OK)
 
-    def testRelay24Override(self):
-        """Test override for a team."""
-        cache = Cache()
-        validator = Relay24hScoreingStrategy(datetime(2008,4,14,19,0), 5,
-                                             validation_cache = cache)
         self.getTeam(u'005').override = True
-        self.assertEquals(validator.validate(self.getTeam(u'005'))[0],
+        # notify cache that this team has changed
+        self._cache.update(self.getTeam(u'005'))
+        self.assertEquals(self._event_ranking.validate(self.getTeam(u'005'))[0],
                           ValidationStrategy.OK)
-       
-    def testRelay24hScoreing(self):
-        cache = Cache()
-        scoreing = Relay24hScoreingStrategy(datetime(2008,4,14,19,0), 5,
-                                            duration = timedelta(hours=4, minutes=30),
-                                            scoreing_cache = cache)
-        score = scoreing.score(self.getTeam(u'019'))
 
-        self.assertEquals(scoreing.score(self.getTeam(u'019')),
+        self.assertEquals(self._event_ranking.score(self.getTeam(u'019')),
                           Relay24hScore(41,timedelta(minutes=41*6)))        
-        self.assertEquals(scoreing.score(self.getTeam(u'021')),
+        self.assertEquals(self._event_ranking.score(self.getTeam(u'021')),
                           Relay24hScore(40,timedelta(minutes=40*6)))
-        self.assertEquals(scoreing.score(self.getTeam(u'003')),
+        self.assertEquals(self._event_ranking.score(self.getTeam(u'003')),
                           Relay24hScore(38,timedelta(minutes=41*6)))
-        self.assertEquals(scoreing.score(self.getTeam(u'009')),
+        self.assertEquals(self._event_ranking.score(self.getTeam(u'009')),
                           Relay24hScore(40,timedelta(minutes=40*6)))

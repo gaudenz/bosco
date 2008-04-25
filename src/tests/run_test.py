@@ -31,7 +31,7 @@ from ranking import (MassStartTimeScoreingStrategy,
                      MassStartRelayTimeScoreingStrategy,
                      ValidationStrategy,
                      SequenceCourseValidationStrategy,
-                     Ranking)
+                     Ranking, EventRanking)
 
 class RunTest(unittest.TestCase):
 
@@ -216,14 +216,14 @@ class RunTest(unittest.TestCase):
 
     def test_validation_missing(self):
         """Test validation of a run with missing controls."""
-        validator = self._course.validator(SequenceCourseValidationStrategy)
+        validator = SequenceCourseValidationStrategy(self._course)
         (valid, info) = validator.validate(self._runs[3])
         self.assertEquals(valid, ValidationStrategy.MISSING_CONTROLS)
         self.assertEquals(info['missing'], [self._c131])
 
     def test_validation_all_missing(self):
         """Test that all controls of a run are missing if the validated run is empty."""
-        validator = self._course.validator(SequenceCourseValidationStrategy)
+        validator = SequenceCourseValidationStrategy(self._course)
         (valid, info) = validator.validate(self._runs[5])
         self.assertEquals(valid, ValidationStrategy.DID_NOT_FINISH)
         self.assertEquals([ c.code for c in info['missing']],
@@ -231,10 +231,8 @@ class RunTest(unittest.TestCase):
         
     def test_ranking_course(self):
         """Test the correct ranking of runs in a course."""
-        score = SelfStartTimeScoreingStrategy()
-        validator = self._course.validator(SequenceCourseValidationStrategy)
-        ranking = [ r for r in Ranking(self._course, score, validator) ]
-            
+
+        ranking = list(EventRanking().ranking(self._course))
         self.assertEquals(ranking[0]['rank'], 1)
         self.assertEquals(ranking[0]['validation'], ValidationStrategy.OK)
         self.assertTrue(ranking[0]['item'] == self._runs[0] or ranking[0]['item'] == self._runs[2])
@@ -257,10 +255,8 @@ class RunTest(unittest.TestCase):
 
     def test_ranking_category(self):
         """Test the correct ranking of runs in a category."""
-        score = SelfStartTimeScoreingStrategy()
-        validator = self._course.validator(SequenceCourseValidationStrategy)
-        ranking = [ r for r in Ranking(self._cat_ind, score, validator) ]
 
+        ranking = list(EventRanking().ranking(self._cat_ind))
         self.assertEquals(ranking[0]['rank'], 1)
         self.assertEquals(ranking[0]['validation'], ValidationStrategy.OK)
         self.assertTrue(ranking[0]['item'] == self._runners[0] or ranking[0]['item'] == self._runners[2])
@@ -283,7 +279,7 @@ class RunTest(unittest.TestCase):
         
     def test_overrride_control(self):
         """Test override for a control."""
-        validator = self._course.validator(SequenceCourseValidationStrategy)
+        validator = SequenceCourseValidationStrategy(self._course)
 
         # Add override for control 131
         self._c131.override = True
@@ -291,7 +287,7 @@ class RunTest(unittest.TestCase):
         
     def test_overrride_run(self):
         """Test overrride for a run."""
-        validator = self._course.validator(SequenceCourseValidationStrategy)
+        validator = SequenceCourseValidationStrategy(self._course)
         self._runs[3].override = True
         self.assertEquals(validator.validate(self._runs[3])[0], ValidationStrategy.OK)
         
