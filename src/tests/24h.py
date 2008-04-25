@@ -26,7 +26,7 @@ from datetime import datetime, timedelta
 
 from runner import Category, Team, Runner
 from importer import Team24hImporter, OCADXMLCourseImporter, SIRunImporter
-from ranking import Relay24hEventRanking, ValidationStrategy, Relay24hScore, Cache
+from ranking import Relay24hEventRanking, Validator, Relay24hScore, Cache
 
 class Relay24hTest(unittest.TestCase):
 
@@ -78,25 +78,25 @@ class Relay24hTest(unittest.TestCase):
     
     def testRelay24h(self):
         self.assertEquals(self._event_ranking.validate(self.getTeam(u'019'))[0],
-                          ValidationStrategy.OK)
+                          Validator.OK)
         self.assertEquals(self._event_ranking.validate(self.getTeam(u'021'))[0],
-                          ValidationStrategy.OK)
+                          Validator.OK)
         self.assertEquals(self._event_ranking.validate(self.getTeam(u'003'))[0],
-                          ValidationStrategy.OK)
+                          Validator.OK)
         self.assertEquals(self._event_ranking.validate(self.getTeam(u'004'))[0],
-                          ValidationStrategy.DISQUALIFIED)
+                          Validator.DISQUALIFIED)
         self.assertEquals(self._event_ranking.validate(self.getTeam(u'005'))[0],
-                          ValidationStrategy.DISQUALIFIED)
+                          Validator.DISQUALIFIED)
 #        self.assertEquals(self._event_ranking.validate(self.getTeam(u'006'))[0],
-#                          ValidationStrategy.DISQUALIFIED)
+#                          Validator.DISQUALIFIED)
         self.assertEquals(self._event_ranking.validate(self.getTeam(u'009'))[0],
-                          ValidationStrategy.OK)
+                          Validator.OK)
 
         self.getTeam(u'005').override = True
         # notify cache that this team has changed
         self._cache.update(self.getTeam(u'005'))
         self.assertEquals(self._event_ranking.validate(self.getTeam(u'005'))[0],
-                          ValidationStrategy.OK)
+                          Validator.OK)
 
         self.assertEquals(self._event_ranking.score(self.getTeam(u'019')),
                           Relay24hScore(41,timedelta(minutes=41*6)))        

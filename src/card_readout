@@ -30,7 +30,7 @@ from run import Run, RunException
 from runner import Runner, SICard
 from course import SIStation, Course
 from sireader import SIReaderReadout, SIReaderException
-from ranking import SequenceCourseValidationStrategy, ValidationStrategy, Relay24hScoreingStrategy, Relay12hScoreingStrategy
+from ranking import Validator
 from importer import SIRunExporter
 import conf
 
@@ -368,7 +368,7 @@ class SIReadoutFrame(wx.Frame):
             if self._run.course is not None:
                 self._course_input.SetValue(self._run.course.code)
                 (valid, info) = conf.event_ranking.validate(self._run)
-                if valid == ValidationStrategy.OK:
+                if valid == Validator.OK:
                     self._validation_info_run.SetLabel('OK')
                     self._validation_info_run.SetForegroundColour('Green')
                 else:

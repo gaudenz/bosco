@@ -79,7 +79,7 @@ class Ranking(object):
                 # Only increase the rank if the current item scores higher than the previous item
                 if i > 0 and ranking_list[i][0] > ranking_list[i-1][0]:
                     rank = i + 1
-                yield {'rank': m[1][0] == ValidationStrategy.OK and rank or None, # only assign rank if run is OK
+                yield {'rank': m[1][0] == Validator.OK and rank or None, # only assign rank if run is OK
                        'score': m[0],
                        'validation': m[1][0],
                        'item': m[2],
@@ -190,7 +190,7 @@ class Cache(object):
                 self._observer.unregister(self, obj)
             self._observer = None
         
-class AbstractScoreingStrategy(object):
+class AbstractScoreing(object):
     """Defines a strategy for scoring objects (runs, runners, teams). The scoreing 
     strategy is tightly coupled to the objects it scores.
 
@@ -207,7 +207,7 @@ class AbstractScoreingStrategy(object):
         """Returns the score of the given objects. Throws UnscoreableException if the 
         object can't be scored with this strategy. The returned score must implement 
         __cmp__."""
-        raise UnscoreableException('Can\'t score with AbstractScoreingStrategy')
+        raise UnscoreableException('Can\'t score with AbstractScoreing')
         
     def _from_cache_score(self, obj):
         """
@@ -230,7 +230,7 @@ class AbstractScoreingStrategy(object):
         if self._cache:
             self._cache[(obj, self.score)] = result
         
-class AbstractTimeScoreingStrategy(AbstractScoreingStrategy):
+class AbstractTimeScoreing(AbstractScoreing):
     """Builds the score from difference of start and finish times. Subclasses must
     override _start and _finish the extract the start and finsh times from objects."""
     
@@ -259,11 +259,11 @@ class AbstractTimeScoreingStrategy(AbstractScoreingStrategy):
         self._to_cache_score(obj, result)
         return result
         
-class MassStartTimeScoreingStrategy(AbstractTimeScoreingStrategy):
+class MassStartTimeScoreing(AbstractTimeScoreing):
     """Returns time scores relative to a fixed mass start time."""
     
     def __init__(self, starttime, cache = None):
-        AbstractScoreingStrategy.__init__(self, cache)
+        AbstractScoreing.__init__(self, cache)
         self._starttime = starttime
         
     def _start(self, obj):
@@ -272,16 +272,16 @@ class MassStartTimeScoreingStrategy(AbstractTimeScoreingStrategy):
     def _finish(self, obj):
         return obj.finish()
     
-class SelfStartTimeScoreingStrategy(MassStartTimeScoreingStrategy):
+class SelfStartTimeScoreing(MassStartTimeScoreing):
     """Returns time scores from start and finish punches on a Run object."""
     
     def __init__(self, cache = None):
-        AbstractScoreingStrategy.__init__(self, cache)
+        AbstractScoreing.__init__(self, cache)
         
     def _start(self, obj):
         return obj.start()
     
-class RelayTimeScoreingStrategy(MassStartTimeScoreingStrategy):
+class RelayTimeScoreing(MassStartTimeScoreing):
     """Returns time scores computed from starttime == finish time of the previous runner
     in a relay team. For the first runner the start time is used."""
 
@@ -319,18 +319,18 @@ class RelayTimeScoreingStrategy(MassStartTimeScoreingStrategy):
         else:
             return starttime
 
-class MassStartRelayTimeScoreingStrategy(RelayTimeScoreingStrategy):
+class MassStartRelayTimeScoreing(RelayTimeScoreing):
     """Relay event with mass start for all runners not yet replaced."""
     
     def __init__(self, massstart_time, cache = None):
-        AbstractScoreingStrategy.__init__(self, cache)
-        MassStartTimeScoreingStrategy.__init__(self, massstart_time)
+        AbstractScoreing.__init__(self, cache)
+        MassStartTimeScoreing.__init__(self, massstart_time)
 
     def _start(self, obj):
         prev_finish = super(type(self), self)._start(obj)
         return self._starttime < prev_finish and self._starttime or prev_finish
 
-class ValidationStrategy(object):
+class Validator(object):
     """Defines a strategy for validating objects (runs, runners, teams). The validation
     strategy is tightly coupled to the objects it validates."""
 
@@ -355,7 +355,7 @@ class ValidationStrategy(object):
     def validate(self, obj):
         """Returns OK for every object. Override in subclasses for more meaningfull
         validations."""
-        return (ValidationStrategy.OK, {})
+        return (Validator.OK, {})
 
     def _from_cache_validate(self, obj):
         """
@@ -379,11 +379,11 @@ class ValidationStrategy(object):
             self._cache[(obj, self.validate)] = result
         
 
-class CourseValidationStrategy(ValidationStrategy):
+class CourseValidator(Validator):
     """Validation strategy for courses."""
 
     def __init__(self, course, cache = None):
-        ValidationStrategy.__init__(self, cache)
+        Validator.__init__(self, cache)
         self._course = course
         
     def validate(self, run):
@@ -397,19 +397,19 @@ class CourseValidationStrategy(ValidationStrategy):
             pass
         
         if not run.complete:
-            result = ValidationStrategy.NOT_COMPLETED
+            result = Validator.NOT_COMPLETED
         elif not run.finish():
-            result =  ValidationStrategy.DID_NOT_FINISH
+            result =  Validator.DID_NOT_FINISH
         elif run.override is True:
-            result = ValidationStrategy.OK
+            result = Validator.OK
         else:
-            result = ValidationStrategy.OK
+            result = Validator.OK
 
         ret = (result, {})
         self._to_cache_validate(run, ret)
         return ret
 
-class SequenceCourseValidationStrategy(CourseValidationStrategy):
+class SequenceCourseValidator(CourseValidator):
     """Validation strategy for a normal orienteering course.
     This class uses a dynamic programming "longest common subsequence"
     algorithm to validate the run and find missing and additional punches.
@@ -454,12 +454,12 @@ class SequenceCourseValidationStrategy(CourseValidationStrategy):
         if i == 0 or j == 0:
             return []
         elif plist[i-1][1] is clist[j-1]:
-            return SequenceCourseValidationStrategy._backtrack(C, plist, clist, i-1, j-1) + [ clist[j-1] ]
+            return SequenceCourseValidator._backtrack(C, plist, clist, i-1, j-1) + [ clist[j-1] ]
         else:
             if C[i][j-1] > C[i-1][j]:
-                return SequenceCourseValidationStrategy._backtrack(C, plist, clist, i, j-1)
+                return SequenceCourseValidator._backtrack(C, plist, clist, i, j-1)
             else:
-                return SequenceCourseValidationStrategy._backtrack(C, plist, clist, i-1, j)
+                return SequenceCourseValidator._backtrack(C, plist, clist, i-1, j)
         
     @staticmethod
     def _diff(C, plist, clist, i = None, j = None):
@@ -475,17 +475,17 @@ class SequenceCourseValidationStrategy(CourseValidationStrategy):
         additional = []
         missing = []
         if i > 0 and j > 0 and plist[i-1][1] is clist[j-1]:
-            (a,m) = SequenceCourseValidationStrategy._diff(C, plist, clist, i-1, j-1)
+            (a,m) = SequenceCourseValidator._diff(C, plist, clist, i-1, j-1)
             additional += a
             missing += m
         else:
             if j > 0 and (i == 0 or C[i][j-1] >= C[i-1][j]):
-                (a, m) = SequenceCourseValidationStrategy._diff(C, plist, clist, i, j-1)
+                (a, m) = SequenceCourseValidator._diff(C, plist, clist, i, j-1)
                 additional += a
                 missing += m
                 missing.append(clist[j-1])
             elif i > 0 and (j == 0 or C[i][j-1] < C[i-1][j]):
-                (a, m) = SequenceCourseValidationStrategy._diff(C, plist, clist, i-1, j)
+                (a, m) = SequenceCourseValidator._diff(C, plist, clist, i-1, j)
                 additional += a
                 missing += m
                 additional.append(plist[i-1][0])
@@ -509,14 +509,14 @@ class SequenceCourseValidationStrategy(CourseValidationStrategy):
                         if (i.control.sistations.count() > 0 and
                             i.control.override is not True) ]
 
-        C = SequenceCourseValidationStrategy._build_lcs_matrix(punchlist, controllist)
-        (additional, missing) = SequenceCourseValidationStrategy._diff(C,
-                                                                       punchlist,
-                                                                       controllist)
+        C = SequenceCourseValidator._build_lcs_matrix(punchlist, controllist)
+        (additional, missing) = SequenceCourseValidator._diff(C,
+                                                              punchlist,
+                                                              controllist)
 
-        if result == ValidationStrategy.OK and not run.override is True:
+        if result == Validator.OK and not run.override is True:
             if len(missing) > 0:
-                result = ValidationStrategy.MISSING_CONTROLS
+                result = Validator.MISSING_CONTROLS
 
         ret = (result, {'missing': missing,
                         'additional': additional})
@@ -524,7 +524,7 @@ class SequenceCourseValidationStrategy(CourseValidationStrategy):
         self._to_cache_validate(run, ret)
         return ret
 
-class Relay24hScoreingStrategy(AbstractScoreingStrategy, ValidationStrategy):
+class Relay24hScoreing(AbstractScoreing, Validator):
     """This class is both a validation strategy and a scoreing strategy. The strategies
     are combined because they use some common private functions. This class validates
     and scores teams for the 24h relay."""
@@ -539,7 +539,7 @@ class Relay24hScoreingStrategy(AbstractScoreingStrategy, ValidationStrategy):
         @param event_ranking: object of class EventRanking to score and validate single runs
         @param duration:      Duration of the event
         """
-        AbstractScoreingStrategy.__init__(self, cache)
+        AbstractScoreing.__init__(self, cache)
         self._starttime = starttime
         self._speed = speed
         self._duration = duration
@@ -565,17 +565,17 @@ class Relay24hScoreingStrategy(AbstractScoreingStrategy, ValidationStrategy):
         # check runner order
         remaining = copy(members)
         next_runner = 0
-        status = ValidationStrategy.OK
+        status = Validator.OK
         for i,r in enumerate(runs):
             while not r.sicard.runner == remaining[next_runner]:
                 if i < len(members):
                     # not every runner has run at least once
-                    status = ValidationStrategy.DISQUALIFIED
+                    status = Validator.DISQUALIFIED
                 # next_runner gave up -> delete
                 del(remaining[next_runner])
                 # any runners left?
                 if len(remaining) == 0:
-                    status = ValidationStrategy.DISQUALIFIED
+                    status = Validator.DISQUALIFIED
                     break
                 if next_runner >= len(remaining):
                     # wrap around
@@ -624,11 +624,11 @@ class Relay24hScoreingStrategy(AbstractScoreingStrategy, ValidationStrategy):
 
         # check for override
         if team.override is True:
-            result = ValidationStrategy.OK
+            result = Validator.OK
         else:
             # check runner order
             result = self._check_order(team)
-            if result == ValidationStrategy.OK:
+            if result == Validator.OK:
                 # check run order
                 # not cheked, this is ensured by proper event organisation :-)
                 pass
@@ -658,7 +658,7 @@ class Relay24hScoreingStrategy(AbstractScoreingStrategy, ValidationStrategy):
         runs.sort(key = lambda x:x.finish())
         
         failed = [ r for r in runs
-                   if not self._event_ranking.validate(r)[0] == ValidationStrategy.OK ]
+                   if not self._event_ranking.validate(r)[0] == Validator.OK ]
         fail_penalty = timedelta(0)
         for f in failed:
             penalty = f.course.expected_time(self._speed) - self._event_ranking.score(f)
@@ -676,7 +676,7 @@ class Relay24hScoreingStrategy(AbstractScoreingStrategy, ValidationStrategy):
                        - fail_penalty - give_up_penalty)
 
         valid_runs = [ r for r in runs
-                       if self._event_ranking.validate(r)[0] == ValidationStrategy.OK
+                       if self._event_ranking.validate(r)[0] == Validator.OK
                           and r.finish() <= finish_time]
 
         if len(valid_runs) > 0:
@@ -689,7 +689,7 @@ class Relay24hScoreingStrategy(AbstractScoreingStrategy, ValidationStrategy):
         self._to_cache_score(team, result)
         return result
 
-class Relay12hScoreingStrategy(Relay24hScoreingStrategy):
+class Relay12hScoreing(Relay24hScoreing):
     """This class is both a valiadtion and a scoreing strategy. It implements the
     different validation algorithm of the 12h relay."""
 
@@ -716,7 +716,7 @@ class Relay12hScoreingStrategy(Relay24hScoreingStrategy):
             pass
         
         # run order is not checked yet
-        result = ValidationStrategy.OK
+        result = Validator.OK
 
         ret = (result, {})
         self._to_cache_validate(team, ret)
@@ -746,7 +746,7 @@ class Relay24hScore(object):
     def __str__(self):
         return "Runs: %s, Time: %s" % (self._runs, self._time) 
 
-class ControlPunchtimeScoreingStrategy(AbstractScoreingStrategy, ValidationStrategy):
+class ControlPunchtimeScoreing(AbstractScoreing, Validator):
     """Scores according to the (expected) absolute punchtime at a given control.
     This is not intended for preliminary results but to watch a control near the
     finish and to show incomming runners.
@@ -763,14 +763,14 @@ class ControlPunchtimeScoreingStrategy(AbstractScoreingStrategy, ValidationStrat
                                    This is used to compute the expected
                                    time at this control (not yet implemented)
         """
-        AbstractScoreingStrategy.__init__(self, cache)
+        AbstractScoreing.__init__(self, cache)
         self._controls = control_list
         self._distance_to_finish = distance_to_finish
 
     def validate(self, run):
         """
-        @return: ValidationStrategy.OK if the control was punched,
-                 ValidationStrategy.NOT_COMPLETED if the control was not yet punched
+        @return: Validator.OK if the control was punched,
+                 Validator.NOT_COMPLETED if the control was not yet punched
         """
         try:
             return self._from_cache_validate(run)
@@ -778,10 +778,10 @@ class ControlPunchtimeScoreingStrategy(AbstractScoreingStrategy, ValidationStrat
             pass
 
         punchlist = [p.sistation.control for p in run.punches]
-        result = ValidationStrategy.NOT_COMPLETED
+        result = Validator.NOT_COMPLETED
         for c in self._controls:
             if c in punchlist:
-                result = ValidationStrategy.OK
+                result = Validator.OK
                 break
         
         ret = (result, {})
@@ -861,7 +861,7 @@ class EventRanking(object):
         from runner import Runner
 
         if validator_class is None:
-            validator_class = SequenceCourseValidationStrategy
+            validator_class = SequenceCourseValidator
             
         if args is None:
             args = {}
@@ -869,7 +869,7 @@ class EventRanking(object):
         if 'cache' not in args:
             args['cache'] = self._cache
             
-        if issubclass(validator_class, CourseValidationStrategy):
+        if issubclass(validator_class, CourseValidator):
             if type(obj) == Runner:
                 # validate run of this runner
                 obj = obj.run
@@ -896,7 +896,7 @@ class EventRanking(object):
         """
 
         if scoreing_class is None:
-            scoreing_class = SelfStartTimeScoreingStrategy
+            scoreing_class = SelfStartTimeScoreing
             
         if args is None:
             args = {}
@@ -936,34 +936,34 @@ class Relay24hEventRanking(EventRanking):
         EventRanking.__init__(self, cache)
         
         # create default team validation strategies
-        self._strategies[self._key(Relay24hScoreingStrategy,
-                                   {'cache':cache})] = Relay24hScoreingStrategy(starttime_24h,
-                                                                                speed,
-                                                                                duration_24h,
-                                                                                self,
-                                                                                cache=cache)
-        self._strategies[self._key(Relay12hScoreingStrategy,
-                                   {'cache':cache})] = Relay12hScoreingStrategy(starttime_12h,
-                                                                                speed,
-                                                                                duration_12h,
-                                                                                self,
-                                                                                cache=cache)
+        self._strategies[self._key(Relay24hScoreing,
+                                   {'cache':cache})] = Relay24hScoreing(starttime_24h,
+                                                                        speed,
+                                                                        duration_24h,
+                                                                        self,
+                                                                        cache=cache)
+        self._strategies[self._key(Relay12hScoreing,
+                                   {'cache':cache})] = Relay12hScoreing(starttime_12h,
+                                                                        speed,
+                                                                        duration_12h,
+                                                                        self,
+                                                                        cache=cache)
 
         self._strategies[self._key('run_score_24h',
-                                   {'cache':cache})] = RelayTimeScoreingStrategy(starttime_24h,
-                                                                                 cache)
+                                   {'cache':cache})] = RelayTimeScoreing(starttime_24h,
+                                                                         cache)
         self._strategies[self._key('run_score_12h',
-                                   {'cache':cache})] = RelayTimeScoreingStrategy(starttime_12h,
-                                                                                 cache)
+                                   {'cache':cache})] = RelayTimeScoreing(starttime_12h,
+                                                                         cache)
         
 
     @staticmethod
     def _get_team_strategy(team):
         cat =  team.category.name
         if cat == u'24h':
-            return Relay24hScoreingStrategy
+            return Relay24hScoreing
         elif cat == u'12h':
-            return Relay12hScoreingStrategy
+            return Relay12hScoreing
 
     @staticmethod
     def _get_run_strategy(run):
@@ -984,7 +984,7 @@ class Relay24hEventRanking(EventRanking):
         if type(obj) == Team and validator_class is None:
             validator_class = self._get_team_strategy(obj)
         elif type(obj) == Run and validator_class is None:
-            validator_class = SequenceCourseValidationStrategy
+            validator_class = SequenceCourseValidator
 
         return EventRanking.validate(self, obj, validator_class, args)
             

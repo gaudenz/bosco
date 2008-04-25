@@ -21,7 +21,7 @@ from mako.template import Template
 from mako.lookup import TemplateLookup
 from datetime import datetime
 
-from ranking import ValidationStrategy
+from ranking import Validator
 
 class AbstractRankingFormatter(object):
     """Formats a ranking. str(rankingRormatter) returns the formatted ranking."""
@@ -45,11 +45,11 @@ class AbstractRankingFormatter(object):
 class MakoRankingFormatter(AbstractRankingFormatter):
     """Uses the Mako Templating Engine to format a ranking as HTML."""
 
-    _validation_codes = {ValidationStrategy.NOT_COMPLETED    : 'not yet finished',
-                         ValidationStrategy.MISSING_CONTROLS : 'missing controls',
-                         ValidationStrategy.DID_NOT_FINISH   : 'did not finish',
-                         ValidationStrategy.DISQUALIFIED     : 'disqualified',
-                         ValidationStrategy.DID_NOT_START    : 'did not (yet) start'}
+    _validation_codes = {Validator.NOT_COMPLETED    : 'not yet finished',
+                         Validator.MISSING_CONTROLS : 'missing controls',
+                         Validator.DID_NOT_FINISH   : 'did not finish',
+                         Validator.DISQUALIFIED     : 'disqualified',
+                         Validator.DID_NOT_START    : 'did not (yet) start'}
     
     def __init__(self, ranking, header, info, template_file, template_dir):
         """
