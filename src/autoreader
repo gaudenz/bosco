@@ -41,7 +41,7 @@ def register_punch(station, cardnr, punchtime):
 
 
 store = Store(create_database(conf.db_uri))
-sireader = SIReaderControl(sys.argv[1])
+sireader = SIReaderControl(len(sys.argv) > 1 and sys.argv[1] or None)
 
 while True:
     try:

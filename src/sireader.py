@@ -129,7 +129,7 @@ class SIReader(object):
                 try:
                     self._connect_reader(port)
                     return
-                except SIReaderException, msg:
+                except (SIReaderException, SIReaderTimeout), msg:
                     errors = '%sport: %s: %s\n' % (errors, port, msg)
                     pass
 
