@@ -21,7 +21,7 @@ ranking.py - Classes to produce rankings of objects that implement
              Rankable specifies the interface of rankable classes.
 """
 
-from datetime import timedelta
+from datetime import timedelta, datetime
 from copy import copy
 
 from storm.locals import *
@@ -96,6 +96,24 @@ class Rankable:
     """
     pass
 
+class OpenRuns(Rankable):
+
+    def __init__(self, store, control = None):
+        """
+        @param store:   Store for the open runs. This class uses a Storm store to
+                        search for open runs, but it is not a Storm object itself!
+        @param control: Only list open runs which should pass at this control or
+                        punched this control. (not yet implemented)
+        """
+        self._store = store
+        self._control = control
+        
+    def _get_runs(self):
+        from run import Run
+        return self._store.find(Run, Run.complete == False)
+    
+    members = property(_get_runs)
+    
 class Cache(object):
     """Cache for scoreing and validation results."""
 
@@ -244,6 +262,10 @@ class RelayTimeScoreingStrategy(MassStartTimeScoreingStrategy):
     in a relay team. For the first runner the start time is used."""
 
     def _start(self, obj):
+        if obj.punches.count() == 0:
+            # Can't compute start time if there are no punches
+            return None
+        
         # Get the team for this run
         team = obj.sicard.runner.team
 
@@ -274,7 +296,8 @@ class RelayTimeScoreingStrategy(MassStartTimeScoreingStrategy):
             return starttime
 
 class MassStartRelayTimeScoreingStrategy(RelayTimeScoreingStrategy):
-
+    """Relay event with mass start for all runners not yet replaced."""
+    
     def __init__(self, massstart_time, cache = None):
         AbstractScoreingStrategy.__init__(self, cache)
         MassStartTimeScoreingStrategy.__init__(self, massstart_time)
@@ -592,7 +615,7 @@ class Relay24hScoreingStrategy(AbstractScoreingStrategy, ValidationStrategy):
         except KeyError:
             pass
         
-        runs = team.runs
+        runs = [r for r in team.runs if r.complete]
         run_scoreing = RelayTimeScoreingStrategy(self._starttime)
         
         failed = [ r for r in runs
@@ -697,6 +720,80 @@ class Relay24hScore(object):
     def __str__(self):
         return "Runs: %s, Time: %s" % (self._runs, self._time) 
 
+class ControlPunchtimeScoreingStrategy(AbstractScoreingStrategy, ValidationStrategy):
+    """Scores according to the (expected) absolute punchtime at a given control.
+    This is not intended for preliminary results but to watch a control near the
+    finish and to show incomming runners.
+    To make effective use of this you need a rankable with all open runs as members.
+    RankableItems scored with this strategy should be open runs.
+    This is a combined scoreing and validation strategy. 
+    """
+
+    def __init__(self, control_list, distance_to_finish = 0,
+                 scoreing_cache = None, validation_cache = None):
+        """
+        @param control_list:       score at these controls
+        @param distance_to_finish: distance form control to the finish.
+                                   This is used to compute the expected
+                                   time at this control (not yet implemented)
+        """
+        AbstractScoreingStrategy.__init__(self, scoreing_cache)
+        ValidationStrategy.__init__(self, validation_cache)
+        self._controls = control_list
+        self._distance_to_finish = distance_to_finish
+
+    def validate(self, run):
+        """
+        @return: ValidationStrategy.OK if the control was punched,
+                 ValidationStrategy.NOT_COMPLETED if the control was not yet punched
+        """
+        try:
+            return self._from_cache_validate(run)
+        except KeyError:
+            pass
+
+        punchlist = [p.sistation.control for p in run.punches]
+        result = ValidationStrategy.NOT_COMPLETED
+        for c in self._controls:
+            if c in punchlist:
+                result = ValidationStrategy.OK
+                break
+        
+        ret = (result, {})
+        self._to_cache_validate(run, ret)
+        return ret
+
+    def score(self, run):
+        """
+        @return: time of the punch or datetime.min if punchtime is unknown.
+                 If more than one of the control was punched, the punchtime
+                 of the first in the list is returned.
+        """
+        try:
+            return self._from_cache_score(run)
+        except KeyError:
+            pass
+        
+        try:
+            (controls, punchtimes) = zip(*[(p.sistation.control, p.punchtime)
+                                           for p in run.punches])
+            
+            result = datetime.min
+            for c in self._controls:
+                try:
+                    index = list(controls).index(c)
+                    result = punchtimes[index]
+                    break
+                except ValueError:
+                    pass
+            
+        except ValueError:
+            # no punches in this run
+            result = datetime.min
+        
+        self._to_cache_score(run, result)
+        return result
+    
 class UnscoreableException(Exception):
     pass
 
