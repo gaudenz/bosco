@@ -52,7 +52,7 @@ while True:
                 register_punch(sireader.station_code, p[0], p[1])
                 store.commit()
             except RunException, msg:
-                print_exc(file=sys.stdout)
+                print_exc(file=sys.stderr)
                 store.rollback()
     except Exception, msg:
         store.rollback()
