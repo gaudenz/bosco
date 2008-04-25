@@ -127,20 +127,26 @@ class Cache(object):
         self._observer = observer
         
     def __getitem__(self, key):
-        return self._cache[key]
+        (obj, func) = key
+        return self._cache[obj][func]
 
     def __setitem__(self, key, value):
-        self._cache[key] = value
+        (obj, func) = key
+        if not obj in self._cache:
+            self._cache[obj] = {}
+        self._cache[obj][func] = value
         if self._observer:
-            self._observer.register(self, key)
+            self._observer.register(self, obj)
 
     def __delitem__(self, key):
+        (obj, func) = key
         if self._observer:
-            self._observer.unregister(self, key)
-        del self._cache[key]
+            self._observer.unregister(self, obj)
+        del self._cache[obj]
 
     def __contains__(self, key):
-        return key in self._cache
+        (obj, func) = key
+        return obj in self._cache and func in self._cache[obj]
     
     def update(self, obj):
         del self[obj]
@@ -175,7 +181,7 @@ class AbstractScoreingStrategy(object):
         """
         @param cache: scoreing cache
         """
-        self._scoreing_cache = cache
+        self._cache = cache
 
     def score(self, object):
         """Returns the score of the given objects. Throws UnscoreableException if the 
@@ -190,8 +196,8 @@ class AbstractScoreingStrategy(object):
         @type obj:   object of class RankableItem
         @raises:     KeyError if object is not in the cache
         """
-        if self._scoreing_cache:
-            return self._scoreing_cache[obj][self]
+        if self._cache:
+            return self._cache[(obj, self.score)]
         else:
             raise KeyError
 
@@ -201,10 +207,8 @@ class AbstractScoreingStrategy(object):
         @param obj:  Object of the startegy.
         @type obj:   object of class RankableItem
         """
-        if self._scoreing_cache:
-            if not obj in self._scoreing_cache:
-                self._scoreing_cache[obj] = {}
-            self._scoreing_cache[obj][self] = result
+        if self._cache:
+            self._cache[(obj, self.score)] = result
         
 class AbstractTimeScoreingStrategy(AbstractScoreingStrategy):
     """Builds the score from difference of start and finish times. Subclasses must
@@ -326,7 +330,7 @@ class ValidationStrategy(object):
         """
         @param cache: validation cache
         """
-        self._validation_cache = cache
+        self._cache = cache
         
     def validate(self, obj):
         """Returns OK for every object. Override in subclasses for more meaningfull
@@ -340,8 +344,8 @@ class ValidationStrategy(object):
         @type obj:   object of class RankableItem
         @raises:     KeyError if object is not in the cache
         """
-        if self._validation_cache:
-            return self._validation_cache[obj][self]
+        if self._cache:
+            return self._cache[(obj, self.validate)]
         else:
             raise KeyError
         
@@ -351,10 +355,8 @@ class ValidationStrategy(object):
         @param obj:  Object of the startegy.
         @type obj:   object of class RankableItem
         """
-        if self._validation_cache:
-            if not obj in self._validation_cache:
-                self._validation_cache[obj] = {}
-            self._validation_cache[obj][self] = result
+        if self._cache:
+            self._cache[(obj, self.validate)] = result
         
 
 class CourseValidationStrategy(ValidationStrategy):
@@ -508,7 +510,7 @@ class Relay24hScoreingStrategy(AbstractScoreingStrategy, ValidationStrategy):
     and scores teams for the 24h relay."""
 
     def __init__(self, starttime, speed, duration = timedelta(hours=24),
-                 scoreing_cache = None, validation_cache = None):
+                 cache = None):
         """
         @param starttime: Start time of the event.
         @type starttime:  datetime.datetime
@@ -517,8 +519,7 @@ class Relay24hScoreingStrategy(AbstractScoreingStrategy, ValidationStrategy):
         @type speed:      int
         @param duration:  Duration of the event (default 24h)
         """
-        AbstractScoreingStrategy.__init__(self, scoreing_cache)
-        ValidationStrategy.__init__(self, validation_cache)
+        AbstractScoreingStrategy.__init__(self, cache)
         self._starttime = starttime
         self._speed = speed
         self._duration = duration
@@ -528,6 +529,12 @@ class Relay24hScoreingStrategy(AbstractScoreingStrategy, ValidationStrategy):
         _omitted_runners. It loops over all runs, counts the omitted runners and
         checks the order. Returns a tuple
         (validation_code, number_of_omitted_runners)."""
+
+        # try fetching from cache
+        try:
+            return self._cache[(team, self._loop_over_runs)]
+        except (KeyError, TypeError):
+            pass
         
         # collect team members and runs
         members = list(team.members.order_by('number'))
@@ -546,13 +553,23 @@ class Relay24hScoreingStrategy(AbstractScoreingStrategy, ValidationStrategy):
                 del(remaining[next_runner])
                 # any runners left?
                 if len(remaining) == 0:
-                    return (ValidationStrategy.DISQUALIFIED, len(members)) 
+                    status = ValidationStrategy.DISQUALIFIED
+                    break
                 if next_runner >= len(remaining):
                     # wrap around
                     next_runner = 0
+                    
+            if len(remaining) == 0:
+                break
+            
             next_runner  = (next_runner+1)%len(remaining)
 
-        return (status, len(members) - len(remaining))
+        result = (status, len(members) - len(remaining))
+
+        # save to cache and return result
+        if self._cache:
+            self._cache[(team, self._loop_over_runs)] = result
+        return result
 
     def _check_order(self, team):
         """Checks if the order of the runners is correct."""
@@ -655,7 +672,7 @@ class Relay12hScoreingStrategy(Relay24hScoreingStrategy):
     different validation algorithm of the 12h relay."""
 
     def __init__(self, starttime, speed, duration = timedelta(hours=12),
-                 scoreing_cache = None, validation_cache = None):
+                 cache = None):
         """
         @param starttime: Start time of the event.
         @type starttime:  datetime.datetime
@@ -665,7 +682,7 @@ class Relay12hScoreingStrategy(Relay24hScoreingStrategy):
         @param duration:  Duration of the event (default 24h)
         """
         super(type(self), self).__init__(starttime, speed, duration,
-                                         scoreing_cache, validation_cache)
+                                         cache)
         
     def _omitted_runners(self, team):
         """The order of the runners for the 12h relay is free. So no runner may
@@ -730,15 +747,14 @@ class ControlPunchtimeScoreingStrategy(AbstractScoreingStrategy, ValidationStrat
     """
 
     def __init__(self, control_list, distance_to_finish = 0,
-                 scoreing_cache = None, validation_cache = None):
+                 cache = None):
         """
         @param control_list:       score at these controls
         @param distance_to_finish: distance form control to the finish.
                                    This is used to compute the expected
                                    time at this control (not yet implemented)
         """
-        AbstractScoreingStrategy.__init__(self, scoreing_cache)
-        ValidationStrategy.__init__(self, validation_cache)
+        AbstractScoreingStrategy.__init__(self, cache)
         self._controls = control_list
         self._distance_to_finish = distance_to_finish
 
