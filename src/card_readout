@@ -367,8 +367,8 @@ class SIReadoutFrame(wx.Frame):
             # set run information
             if self._run.course is not None:
                 self._course_input.SetValue(self._run.course.code)
-                (valid, info) = conf.event_ranking.validate(self._run)
-                if valid == Validator.OK:
+                valid  = conf.event_ranking.validate(self._run)
+                if valid['status'] == Validator.OK:
                     self._validation_info_run.SetLabel('OK')
                     self._validation_info_run.SetForegroundColour('Green')
                 else:
@@ -377,12 +377,12 @@ class SIReadoutFrame(wx.Frame):
 
                 # add missing controls and additional punches info
                 text = ''
-                for c in info['missing']:
+                for c in valid['missing']:
                     text += '%s\n' % c.code
                 self._missing_info.SetLabel(text)
 
                 text = ''
-                for p in info['additional']:
+                for p in valid['additional']:
                     text += '%8s %s\n' % (self._format_si(p.sistation), p.punchtime)
                 self._additional_info.SetLabel(text)
                 

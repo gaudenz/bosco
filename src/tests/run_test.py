@@ -183,50 +183,50 @@ class RunTest(unittest.TestCase):
     def test_runtime_start_finish(self):
         """Test the run time for a run with start and finish controls."""
         strategy = SelfStartTimeScoreing()
-        score = strategy.score(self._runs[0])
+        score = strategy.score(self._runs[0])['score']
         self.assertEquals(score, timedelta(minutes=5))
         
     def test_runtime_massstart(self):
         """Test the run time for a run with mass start."""
         strategy = MassStartTimeScoreing(datetime(2008,3,19,8,15,15))
-        score = strategy.score(self._runs[0])
+        score = strategy.score(self._runs[0])['score']
         self.assertEquals(score, timedelta(minutes=10, seconds=20))
 
     def test_runtime_relay(self):
         """Test the run time for a relay leg wich starts with the finish time of the
            previous run."""
         strategy = RelayTimeScoreing(datetime(2008,3,19,8,20,0))
-        score = strategy.score(self._runs[1])
+        score = strategy.score(self._runs[1])['score']
         self.assertEquals(score, timedelta(minutes=5, seconds=48))
 
     def test_runtime_relay_first(self):
         """Test RelayTimeScoreing for the first runner (mass start)"""
         strategy = RelayTimeScoreing(datetime(2008,3,19,8,20,0))
-        score = strategy.score(self._runs[0])
+        score = strategy.score(self._runs[0])['score']
         self.assertEquals(score, timedelta(minutes=5, seconds=35))
 
     def test_runtime_relay_massstart(self):
         """Test the run time for a relay leg which was started with a mass start if
         the finish time of the previous runner is after the mass start time."""
         strategy = MassStartRelayTimeScoreing(datetime(2008,3,19,8,30,23))
-        score = strategy.score(self._runs[1])
+        score = strategy.score(self._runs[1])['score']
         self.assertEquals(score, timedelta(minutes=5, seconds=48))
-        score = strategy.score(self._runs[2])
+        score = strategy.score(self._runs[2])['score']
         self.assertEquals(score, timedelta(minutes=6, seconds=2))
 
     def test_validation_missing(self):
         """Test validation of a run with missing controls."""
         validator = SequenceCourseValidator(self._course)
-        (valid, info) = validator.validate(self._runs[3])
-        self.assertEquals(valid, Validator.MISSING_CONTROLS)
-        self.assertEquals(info['missing'], [self._c131])
+        valid = validator.validate(self._runs[3])
+        self.assertEquals(valid['status'], Validator.MISSING_CONTROLS)
+        self.assertEquals(valid['missing'], [self._c131])
 
     def test_validation_all_missing(self):
         """Test that all controls of a run are missing if the validated run is empty."""
         validator = SequenceCourseValidator(self._course)
-        (valid, info) = validator.validate(self._runs[5])
-        self.assertEquals(valid, Validator.DID_NOT_FINISH)
-        self.assertEquals([ c.code for c in info['missing']],
+        valid  = validator.validate(self._runs[5])
+        self.assertEquals(valid['status'], Validator.DID_NOT_FINISH)
+        self.assertEquals([ c.code for c in valid['missing']],
                           [u'S',  u'131', u'132', u'200', u'132', u'F'])
         
     def test_ranking_course(self):
@@ -234,23 +234,23 @@ class RunTest(unittest.TestCase):
 
         ranking = list(EventRanking().ranking(self._course))
         self.assertEquals(ranking[0]['rank'], 1)
-        self.assertEquals(ranking[0]['validation'], Validator.OK)
+        self.assertEquals(ranking[0]['validation']['status'], Validator.OK)
         self.assertTrue(ranking[0]['item'] == self._runs[0] or ranking[0]['item'] == self._runs[2])
         
         self.assertEquals(ranking[1]['rank'], 1)
-        self.assertEquals(ranking[1]['validation'], Validator.OK)
+        self.assertEquals(ranking[1]['validation']['status'], Validator.OK)
         self.assertTrue(ranking[1]['item'] == self._runs[0] or ranking[1]['item'] == self._runs[2])
 
         self.assertEquals(ranking[2]['rank'], 3)
-        self.assertEquals(ranking[2]['validation'], Validator.OK)
+        self.assertEquals(ranking[2]['validation']['status'], Validator.OK)
         self.assertEquals(ranking[2]['item'], self._runs[4])
 
         self.assertEquals(ranking[3]['rank'], 4)
-        self.assertEquals(ranking[3]['validation'], Validator.OK)
+        self.assertEquals(ranking[3]['validation']['status'], Validator.OK)
         self.assertEquals(ranking[3]['item'], self._runs[1])
 
         self.assertEquals(ranking[4]['rank'], None)
-        self.assertEquals(ranking[4]['validation'], Validator.MISSING_CONTROLS)
+        self.assertEquals(ranking[4]['validation']['status'], Validator.MISSING_CONTROLS)
         self.assertEquals(ranking[4]['item'], self._runs[3])
 
     def test_ranking_category(self):
@@ -258,23 +258,23 @@ class RunTest(unittest.TestCase):
 
         ranking = list(EventRanking().ranking(self._cat_ind))
         self.assertEquals(ranking[0]['rank'], 1)
-        self.assertEquals(ranking[0]['validation'], Validator.OK)
+        self.assertEquals(ranking[0]['validation']['status'], Validator.OK)
         self.assertTrue(ranking[0]['item'] == self._runners[0] or ranking[0]['item'] == self._runners[2])
 
         self.assertEquals(ranking[1]['rank'], 1)
-        self.assertEquals(ranking[1]['validation'], Validator.OK)
+        self.assertEquals(ranking[1]['validation']['status'], Validator.OK)
         self.assertTrue(ranking[1]['item'] == self._runners[0] or ranking[1]['item'] == self._runners[2])
 
         self.assertEquals(ranking[2]['rank'], 3)
-        self.assertEquals(ranking[2]['validation'], Validator.OK)
+        self.assertEquals(ranking[2]['validation']['status'], Validator.OK)
         self.assertEquals(ranking[2]['item'], self._runners[4])
 
         self.assertEquals(ranking[3]['rank'], 4)
-        self.assertEquals(ranking[3]['validation'], Validator.OK)
+        self.assertEquals(ranking[3]['validation']['status'], Validator.OK)
         self.assertEquals(ranking[3]['item'], self._runners[1])
 
         self.assertEquals(ranking[4]['rank'], None)
-        self.assertEquals(ranking[4]['validation'], Validator.MISSING_CONTROLS)
+        self.assertEquals(ranking[4]['validation']['status'], Validator.MISSING_CONTROLS)
         self.assertEquals(ranking[4]['item'], self._runners[3])
         
     def test_overrride_control(self):
@@ -283,13 +283,15 @@ class RunTest(unittest.TestCase):
 
         # Add override for control 131
         self._c131.override = True
-        self.assertEquals(validator.validate(self._runs[3])[0], Validator.OK)
+        self.assertEquals(validator.validate(self._runs[3])['validation']['status'],
+                          Validator.OK)
         
     def test_overrride_run(self):
         """Test overrride for a run."""
         validator = SequenceCourseValidator(self._course)
         self._runs[3].override = True
-        self.assertEquals(validator.validate(self._runs[3])[0], Validator.OK)
+        self.assertEquals(validator.validate(self._runs[3])['validation']['status'],
+                          Validator.OK)
         
 if __name__ == '__main__':
     unittest.main()

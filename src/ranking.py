@@ -77,35 +77,33 @@ class Ranking(object):
             rank = 1
             for i, m in enumerate(ranking_list):
                 # Only increase the rank if the current item scores higher than the previous item
-                if i > 0 and ranking_list[i][0] > ranking_list[i-1][0]:
+                if i > 0 and (ranking_list[i]['scoreing']['score']
+                              > ranking_list[i-1]['scoreing']['score']):
                     rank = i + 1
-                yield {'rank': m[1][0] == Validator.OK and rank or None, # only assign rank if run is OK
-                       'score': m[0],
-                       'validation': m[1][0],
-                       'item': m[2],
-                       'validation_info': m[1][1],
-                       'scoreing_info': {}
-                       }
+                result = copy(m)
+                result['rank'] =  (m['validation']['status'] == Validator.OK and rank
+                                   or None) # only assign rank if run is OK
+                yield result
 
         # Create list of (score, member) tuples and sort by score
         ranking_list = []
         for m in self._rankable.members:
             try:
-                ranking_list.append((self._event.score(m,
-                                                       self._scoreing_class,
-                                                       self._scoreing_args),
-                                     self._event.validate(m,
-                                                          self._validator_class,
-                                                          self._validator_args),
-                                     m))
+                ranking_list.append({'scoreing':self._event.score(m,
+                                                                  self._scoreing_class,
+                                                                  self._scoreing_args),
+                                     'validation':self._event.validate(m,
+                                                                       self._validator_class,
+                                                                       self._validator_args),
+                                     'item':m})
             except UnscoreableException, ValidationError:
                 pass
             except:
                 print_exc(file=sys.stderr)
                 pass
 
-        ranking_list.sort(key = lambda x: x[0], reverse = self._reverse)
-        ranking_list.sort(key = lambda x: x[1][0])
+        ranking_list.sort(key = lambda x: x['scoreing']['score'], reverse = self._reverse)
+        ranking_list.sort(key = lambda x: x['validation']['status'])
 
         # return the generator
         return ranking_generator(ranking_list)
@@ -249,12 +247,15 @@ class AbstractTimeScoreing(AbstractScoreing):
             return self._from_cache_score(obj)
         except KeyError:
             pass
-        
+
+        result = {}
         try:
-            result = self._finish(obj) - self._start(obj)
+            result['start'] = self._start(obj)
+            result['finish'] = self._finish(obj)
+            result['score'] = result['finish'] - result['start']
         except TypeError:
             # is this really the best thing to do?
-            result = timedelta(0)
+            result['score'] = timedelta(0)
 
         self._to_cache_score(obj, result)
         return result
@@ -355,7 +356,7 @@ class Validator(object):
     def validate(self, obj):
         """Returns OK for every object. Override in subclasses for more meaningfull
         validations."""
-        return (Validator.OK, {})
+        return {'status':Validator.OK}
 
     def _from_cache_validate(self, obj):
         """
@@ -405,7 +406,7 @@ class CourseValidator(Validator):
         else:
             result = Validator.OK
 
-        ret = (result, {})
+        ret = {'status':result}
         self._to_cache_validate(run, ret)
         return ret
 
@@ -499,7 +500,7 @@ class SequenceCourseValidator(CourseValidator):
         except KeyError:
             pass
         
-        result = super(type(self), self).validate(run)[0]
+        result = super(type(self), self).validate(run)['status']
         # check correct sequence of controls
         
         punchlist = [(p, p.sistation.control) for p in run.punches.order_by('punchtime') ]
@@ -518,8 +519,9 @@ class SequenceCourseValidator(CourseValidator):
             if len(missing) > 0:
                 result = Validator.MISSING_CONTROLS
 
-        ret = (result, {'missing': missing,
-                        'additional': additional})
+        ret = {'status': result,
+               'missing':    missing,
+               'additional': additional}
             
         self._to_cache_validate(run, ret)
         return ret
@@ -633,7 +635,7 @@ class Relay24hScoreing(AbstractScoreing, Validator):
                 # not cheked, this is ensured by proper event organisation :-)
                 pass
 
-        ret = (result, {})
+        ret = {'status':result}
         self._to_cache_validate(team, ret)
         return ret
 
@@ -658,10 +660,11 @@ class Relay24hScoreing(AbstractScoreing, Validator):
         runs.sort(key = lambda x:x.finish())
         
         failed = [ r for r in runs
-                   if not self._event_ranking.validate(r)[0] == Validator.OK ]
+                   if not self._event_ranking.validate(r)['status'] == Validator.OK ]
         fail_penalty = timedelta(0)
         for f in failed:
-            penalty = f.course.expected_time(self._speed) - self._event_ranking.score(f)
+            penalty = (f.course.expected_time(self._speed)
+                       - self._event_ranking.score(f)['score'])
             if penalty < timedelta(0):
                 # no negative penalty
                 penalty = timedelta(0)
@@ -676,7 +679,7 @@ class Relay24hScoreing(AbstractScoreing, Validator):
                        - fail_penalty - give_up_penalty)
 
         valid_runs = [ r for r in runs
-                       if self._event_ranking.validate(r)[0] == Validator.OK
+                       if self._event_ranking.validate(r)['status'] == Validator.OK
                           and r.finish() <= finish_time]
 
         if len(valid_runs) > 0:
@@ -686,8 +689,9 @@ class Relay24hScoreing(AbstractScoreing, Validator):
         else:
             result = Relay24hScore(0, timedelta(0))
 
-        self._to_cache_score(team, result)
-        return result
+        ret = {'score':result}
+        self._to_cache_score(team, ret)
+        return ret
 
 class Relay12hScoreing(Relay24hScoreing):
     """This class is both a valiadtion and a scoreing strategy. It implements the
@@ -718,7 +722,7 @@ class Relay12hScoreing(Relay24hScoreing):
         # run order is not checked yet
         result = Validator.OK
 
-        ret = (result, {})
+        ret = {'status':result}
         self._to_cache_validate(team, ret)
         return ret
 
@@ -784,7 +788,7 @@ class ControlPunchtimeScoreing(AbstractScoreing, Validator):
                 result = Validator.OK
                 break
         
-        ret = (result, {})
+        ret = {'status': result}
         self._to_cache_validate(run, ret)
         return ret
 
@@ -815,9 +819,10 @@ class ControlPunchtimeScoreing(AbstractScoreing, Validator):
         except ValueError:
             # no punches in this run
             result = datetime.min
-        
-        self._to_cache_score(run, result)
-        return result
+
+        ret = {'score':result}
+        self._to_cache_score(run, ret)
+        return ret
     
 class EventRanking(object):
     """Model of all event specific ranking information. The default

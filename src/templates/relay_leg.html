@@ -20,7 +20,7 @@
     <td valign="top">${r['item']}</td>
     <td valign="top">${r['item'].sicard.runner.dateofbirth.strftime('%y')}</td>
     <td valign="top">${r['item'].sicard.runner.team.name}</td>
-    <td valign="top">${r['rank'] and r['score'] or validation_codes[r['validation']]}</td>
+    <td valign="top">${r['rank'] and r['scoreing']['score'] or validation_codes[r['validation']['status']]}</td>
   </tr>
   % endfor
 </table>

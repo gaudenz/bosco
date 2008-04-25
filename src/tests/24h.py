@@ -77,32 +77,32 @@ class Relay24hTest(unittest.TestCase):
         return self._store.find(Team, Team.number == number).one()
     
     def testRelay24h(self):
-        self.assertEquals(self._event_ranking.validate(self.getTeam(u'019'))[0],
+        self.assertEquals(self._event_ranking.validate(self.getTeam(u'019'))['status'],
                           Validator.OK)
-        self.assertEquals(self._event_ranking.validate(self.getTeam(u'021'))[0],
+        self.assertEquals(self._event_ranking.validate(self.getTeam(u'021'))['status'],
                           Validator.OK)
-        self.assertEquals(self._event_ranking.validate(self.getTeam(u'003'))[0],
+        self.assertEquals(self._event_ranking.validate(self.getTeam(u'003'))['status'],
                           Validator.OK)
-        self.assertEquals(self._event_ranking.validate(self.getTeam(u'004'))[0],
+        self.assertEquals(self._event_ranking.validate(self.getTeam(u'004'))['status'],
                           Validator.DISQUALIFIED)
-        self.assertEquals(self._event_ranking.validate(self.getTeam(u'005'))[0],
+        self.assertEquals(self._event_ranking.validate(self.getTeam(u'005'))['status'],
                           Validator.DISQUALIFIED)
-#        self.assertEquals(self._event_ranking.validate(self.getTeam(u'006'))[0],
+#        self.assertEquals(self._event_ranking.validate(self.getTeam(u'006'))['status'],
 #                          Validator.DISQUALIFIED)
-        self.assertEquals(self._event_ranking.validate(self.getTeam(u'009'))[0],
+        self.assertEquals(self._event_ranking.validate(self.getTeam(u'009'))['status'],
                           Validator.OK)
 
         self.getTeam(u'005').override = True
         # notify cache that this team has changed
         self._cache.update(self.getTeam(u'005'))
-        self.assertEquals(self._event_ranking.validate(self.getTeam(u'005'))[0],
+        self.assertEquals(self._event_ranking.validate(self.getTeam(u'005'))['status'],
                           Validator.OK)
 
-        self.assertEquals(self._event_ranking.score(self.getTeam(u'019')),
+        self.assertEquals(self._event_ranking.score(self.getTeam(u'019'))['score'],
                           Relay24hScore(41,timedelta(minutes=41*6)))        
-        self.assertEquals(self._event_ranking.score(self.getTeam(u'021')),
+        self.assertEquals(self._event_ranking.score(self.getTeam(u'021'))['score'],
                           Relay24hScore(40,timedelta(minutes=40*6)))
-        self.assertEquals(self._event_ranking.score(self.getTeam(u'003')),
+        self.assertEquals(self._event_ranking.score(self.getTeam(u'003'))['score'],
                           Relay24hScore(38,timedelta(minutes=41*6)))
-        self.assertEquals(self._event_ranking.score(self.getTeam(u'009')),
+        self.assertEquals(self._event_ranking.score(self.getTeam(u'009'))['score'],
                           Relay24hScore(40,timedelta(minutes=40*6)))
