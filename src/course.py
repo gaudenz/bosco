@@ -32,10 +32,11 @@ class SIStation(Storm):
        control can have more than one si station (eg. if a station fails
        during the event)."""
 
-    START  = 1
-    FINISH = 2
-    CLEAR  = 3
-    CHECK  = 4
+    START       = 1
+    FINISH      = 2
+    CLEAR       = 3
+    CHECK       = 4
+    SPECIAL_MAX = 4
     
     __storm_table__ = 'sistation'
 
