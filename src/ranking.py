@@ -24,7 +24,7 @@ ranking.py - Classes to produce rankings of objects that implement
 from datetime import timedelta, datetime
 from copy import copy
 from traceback import print_exc
-import sys
+import sys, re
 
 from storm.locals import *
 
@@ -97,6 +97,7 @@ class Ranking(object):
                                                                        self._validator_args),
                                      'item':m})
             except UnscoreableException, ValidationError:
+                print_exc(file=sys.stderr)
                 pass
             except:
                 print_exc(file=sys.stderr)
@@ -531,7 +532,8 @@ class Relay24hScoreing(AbstractScoreing, Validator):
     are combined because they use some common private functions. This class validates
     and scores teams for the 24h relay."""
 
-    def __init__(self, starttime, speed, duration, event_ranking, cache = None):
+    def __init__(self, starttime, speed, duration, event_ranking, method = 'runcount',
+                 blocks = 'finish', cache = None):
         """
         @param starttime:     Start time of the event.
         @type starttime:      datetime.datetime
@@ -540,12 +542,47 @@ class Relay24hScoreing(AbstractScoreing, Validator):
         @type speed:          int
         @param event_ranking: object of class EventRanking to score and validate single runs
         @param duration:      Duration of the event
+        @param method:        score calculation method, currently implemented:
+                              runcount: count valid runs
+                              lkm: sum of lkms of all valid runs
+        @type method:         str
+        @param blocks:        score until the end of this block. Possible blocks:
+                              'start', 'night', 'day', 'finish' (default)
         """
         AbstractScoreing.__init__(self, cache)
         self._starttime = starttime
         self._speed = speed
         self._duration = duration
         self._event_ranking = event_ranking
+        self._method = method
+
+        #START_COURSES_RE  = 'SF[1-4]'
+        START_COURSES_RE  = 'S[1-4]'
+        NIGHT_COURSES_RE  = '[LS][DE]N[1-5]'
+        DAY_COURSES_RE    = '[LS][DE][1-4]'
+        #FINISH_COURSES_RE = 'FF[1-6]'
+        FINISH_COURSES_RE = 'F[1-6]'
+    
+        if blocks == 'start':
+            self._courses_re = re.compile(START_COURSES_RE)
+        elif blocks == 'night':
+            self._courses_re = re.compile(START_COURSES_RE + '|' +
+                                          NIGHT_COURSES_RE)
+        elif blocks == 'day':
+            self._courses_re = re.compile(START_COURSES_RE + '|' +
+                                          NIGHT_COURSES_RE + '|' +
+                                          DAY_COURSES_RE)
+        elif blocks == 'finish':
+            self._courses_re = re.compile(START_COURSES_RE + '|' +
+                                          NIGHT_COURSES_RE + '|' +
+                                          DAY_COURSES_RE + '|' +
+                                          FINISH_COURSES_RE)
+        else:
+            raise UnscoreableException("Unknown blocks '%s'" % blocks)
+
+    def _runs(self, team):
+        return [ r for r in team.runs if r.complete and
+                 self._courses_re.match(r.course.code) ]
 
     def _loop_over_runs(self, team):
         """This is an utility function to not duplicate code in _check_order and
@@ -561,7 +598,7 @@ class Relay24hScoreing(AbstractScoreing, Validator):
         
         # collect team members and runs
         members = list(team.members.order_by('number'))
-        runs = team.runs
+        runs = self._runs(team)
         runs.sort(key=lambda x:x.finish())
         
         # check runner order
@@ -602,7 +639,7 @@ class Relay24hScoreing(AbstractScoreing, Validator):
     def _omitted_runners(self, team):
         """Count the runners that were omitted during the event and gave up."""
         return self._loop_over_runs(team)[1]
-        
+
     def validate(self, team):
         """Validate the runs of this team according to the rules
         of the 24h orienteering event.
@@ -656,11 +693,17 @@ class Relay24hScoreing(AbstractScoreing, Validator):
         except KeyError:
             pass
         
-        runs = [r for r in team.runs if r.complete]
+        runs = self._runs(team)
         runs.sort(key = lambda x:x.finish())
         
-        failed = [ r for r in runs
-                   if not self._event_ranking.validate(r)['status'] == Validator.OK ]
+        failed = []
+        for r in runs:
+            status = self._event_ranking.validate(r)['status']
+            if status in [Validator.MISSING_CONTROLS,
+                          Validator.DID_NOT_FINISH,
+                          Validator.DISQUALIFIED]:
+                failed.append(r)
+                
         fail_penalty = timedelta(0)
         for f in failed:
             penalty = (f.course.expected_time(self._speed)
@@ -678,18 +721,27 @@ class Relay24hScoreing(AbstractScoreing, Validator):
         finish_time = (self._starttime + self._duration
                        - fail_penalty - give_up_penalty)
 
-        valid_runs = [ r for r in runs
-                       if self._event_ranking.validate(r)['status'] == Validator.OK
-                          and r.finish() <= finish_time]
+        valid_runs  = [ r for r in runs
+                        if self._event_ranking.validate(r)['status'] == Validator.OK
+                        and r.finish() <= finish_time]
 
         if len(valid_runs) > 0:
-            result = Relay24hScore(len(valid_runs),
-                                 max(valid_runs, key=lambda x: x.finish()).finish()
-                                 - self._starttime)
+            runtime = max(valid_runs, key=lambda x: x.finish()).finish() - self._starttime
         else:
-            result = Relay24hScore(0, timedelta(0))
-
-        ret = {'score':result}
+            runtime = timedelta(0)
+            
+        if self._method == 'runcount':
+            result = Relay24hScore(len(valid_runs),runtime)
+        elif self._method == 'lkm':
+            lkm = 0
+            for r in valid_runs:
+                lkm += r.course.lkm()
+            result = Relay24hScore(lkm, runtime)
+        else:
+            raise UnscoreableException("Unknown scoreing method '%s'." % self._method)
+        
+        ret = {'score':result,
+               'finishtime': finish_time}
         self._to_cache_score(team, ret)
         return ret
 
@@ -939,21 +991,16 @@ class Relay24hEventRanking(EventRanking):
                  cache = None):
         
         EventRanking.__init__(self, cache)
-        
-        # create default team validation strategies
-        self._strategies[self._key(Relay24hScoreing,
-                                   {'cache':cache})] = Relay24hScoreing(starttime_24h,
-                                                                        speed,
-                                                                        duration_24h,
-                                                                        self,
-                                                                        cache=cache)
-        self._strategies[self._key(Relay12hScoreing,
-                                   {'cache':cache})] = Relay12hScoreing(starttime_12h,
-                                                                        speed,
-                                                                        duration_12h,
-                                                                        self,
-                                                                        cache=cache)
 
+        self._starttime = {u'24h':starttime_24h,
+                           u'12h':starttime_12h}
+        self._speed     = speed
+        self._duration  = {u'24h':duration_24h,
+                           u'12h':duration_12h}
+        self._strategy  = {u'24h':Relay24hScoreing,
+                           u'12h':Relay12hScoreing}
+        
+        # create default run scoreing strategies
         self._strategies[self._key('run_score_24h',
                                    {'cache':cache})] = RelayTimeScoreing(starttime_24h,
                                                                          cache)
@@ -961,14 +1008,16 @@ class Relay24hEventRanking(EventRanking):
                                    {'cache':cache})] = RelayTimeScoreing(starttime_12h,
                                                                          cache)
         
-
-    @staticmethod
-    def _get_team_strategy(team):
+    def _get_team_strategy(self, team, args):
         cat =  team.category.name
-        if cat == u'24h':
-            return Relay24hScoreing
-        elif cat == u'12h':
-            return Relay12hScoreing
+        args['event_ranking'] = self
+        if 'starttime' not in args:
+            args['starttime'] = self._starttime[cat]
+        if 'speed' not in args:
+            args['speed'] = self._speed
+        if 'duration' not in args:
+            args['duration'] = self._duration[cat]
+        return (self._strategy[cat], args)
 
     @staticmethod
     def _get_run_strategy(run):
@@ -987,7 +1036,7 @@ class Relay24hEventRanking(EventRanking):
             args = {}
         
         if type(obj) == Team and validator_class is None:
-            validator_class = self._get_team_strategy(obj)
+            (validator_class, args) = self._get_team_strategy(obj, args)
         elif type(obj) == Run and validator_class is None:
             validator_class = SequenceCourseValidator
 
@@ -1003,7 +1052,7 @@ class Relay24hEventRanking(EventRanking):
             args = {}
             
         if type(obj) == Team and scoreing_class is None:
-            scoreing_class = self._get_team_strategy(obj)
+            (scoreing_class, args) = self._get_team_strategy(obj, args)
         elif type(obj) == Run and scoreing_class is None:
             scoreing_class = self._get_run_strategy(obj)
 

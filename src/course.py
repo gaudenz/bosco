@@ -201,12 +201,18 @@ class Course(MyStorm, Rankable):
         for c in control_list:
             self.append(c)
 
+    def lkm(self):
+        """
+        @return: 'Leistungskilometer': length/1000.0+climb/100.0
+        """
+        return self.length/1000.0 + self.climb/100.0
+    
     def expected_time(self, speed):
         """Returns the expected time for this course.
         @param speed: expected speed in minutes per kilometer
         """
         try:
-            return timedelta(minutes=(self.length + self.climb/100.0)/1000.0*speed)
+            return timedelta(minutes=self.lkm()*speed)
         except TypeError:
             return None
 

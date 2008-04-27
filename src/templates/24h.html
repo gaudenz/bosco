@@ -18,6 +18,7 @@
     <td valign="top">${r['rank'] and ('%3i.' % r['rank']) or ''}</td>
     <td valign="top">${r['item']}</td>
     <td valign="top">${r['rank'] and r['scoreing']['score'] or validation_codes[r['validation']['status']]}</td>
+    <td>${r['scoreing']['finishtime'].strftime('%H:%M:%S')}
   </tr>
   % endfor
 </table>
