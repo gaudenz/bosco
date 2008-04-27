@@ -1,0 +1,80 @@
+#!/usr/bin/env python
+#
+#    Copyright (C) 2008  Gaudenz Steinlin <gaudenz@soziologie.ch>
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+"""
+ranking_viewer - application to view a ranking in full screen (for projector display)
+"""
+
+import wx
+import wx.html
+import wx.lib.anchors
+
+from observer import EventObserver
+from gui import UpdateableHtmlPanel
+import conf
+
+class SpeakerFrame(wx.Frame):
+    """Rotates through a list of rankings in full screen."""
+    
+    def __init__(self, parent, rankings):
+        """
+        @param rankings: list of available rankings.
+        """
+
+        super(type(self), self).__init__(parent)
+        
+        self._rankings = rankings
+        
+        panel = wx.Panel(self)
+        panel.SetAutoLayout(True)
+
+        list_box = wx.ListBox(panel,
+                              style = wx.LB_SINGLE | wx.LB_SORT)
+        for key, data in rankings.iteritems():
+            list_box.Append(key, data)
+        self.Bind(wx.EVT_LISTBOX, self.ChangeRanking, list_box)
+
+        self._ranking_panel = UpdateableHtmlPanel(panel)
+        sizer = wx.BoxSizer(wx.HORIZONTAL)
+        sizer.Add(list_box, False, wx.EXPAND)
+        sizer.Add(self._ranking_panel, True, wx.EXPAND)
+        sizer.Fit(panel)
+        panel.SetSizer(sizer)
+        
+        self.Show(True)
+
+    def ChangeRanking(self, event):
+
+        cursor = wx.BusyCursor()
+        list_box = event.GetEventObject()
+        data = list_box.GetClientData(list_box.GetSelection())
+        self._ranking_panel.SetContent(data)
+        del cursor
+        
+if __name__ == '__main__':
+
+#    ranking_list = []
+#    for i,k in enumerate(ranking_codes):
+#        ranking_list.append((conf.rankings[k], int(ranking_times[i])))
+
+    # add EventObserver to cache for automatic updates
+#    observer = EventObserver(conf.store)
+#    conf.scoreing_cache.set_observer(observer)
+#    conf.validation_cache.set_observer(observer)
+    
+    app = wx.App()
+    frame = SpeakerFrame(None, conf.rankings)
+    app.MainLoop()
