@@ -29,22 +29,22 @@ import conf
 class SpeakerFrame(wx.Frame):
     """Rotates through a list of rankings in full screen."""
     
-    def __init__(self, parent, rankings):
+    def __init__(self, parent, event):
         """
-        @param rankings: list of available rankings.
+        @param event: object of class Event
         """
 
         super(type(self), self).__init__(parent)
         
-        self._rankings = rankings
+        self._event = event
         
         panel = wx.Panel(self)
         panel.SetAutoLayout(True)
 
         list_box = wx.ListBox(panel,
                               style = wx.LB_SINGLE | wx.LB_SORT)
-        for key, data in rankings.iteritems():
-            list_box.Append(key, data)
+        for (desc, r) in event.list_rankings():
+            list_box.Append(desc, event.format_ranking([r]))
         self.Bind(wx.EVT_LISTBOX, self.ChangeRanking, list_box)
 
         self._ranking_panel = UpdateableHtmlPanel(panel)
@@ -66,15 +66,13 @@ class SpeakerFrame(wx.Frame):
         
 if __name__ == '__main__':
 
-#    ranking_list = []
-#    for i,k in enumerate(ranking_codes):
-#        ranking_list.append((conf.rankings[k], int(ranking_times[i])))
-
     # add EventObserver to cache for automatic updates
-#    observer = EventObserver(conf.store)
-#    conf.scoreing_cache.set_observer(observer)
-#    conf.validation_cache.set_observer(observer)
+    observer = EventObserver(conf.store)
+    conf.cache.set_observer(observer)
     
     app = wx.App()
-    frame = SpeakerFrame(None, conf.rankings)
+    frame = SpeakerFrame(None, conf.event)
     app.MainLoop()
+
+    conf.cache.remove_observer()
+    observer.stop()

@@ -31,7 +31,8 @@ from ranking import (MassStartTimeScoreing,
                      MassStartRelayTimeScoreing,
                      Validator,
                      SequenceCourseValidator,
-                     Ranking, EventRanking)
+                     Ranking)
+from event import Event
 
 class RunTest(unittest.TestCase):
 
@@ -42,8 +43,8 @@ class RunTest(unittest.TestCase):
     def setUp(self):
 
         # Create start and finish control
-        S = Control(u'S', SIStation(SIStation.START))
-        F = Control(u'F', SIStation(SIStation.FINISH))
+        S = self._store.add(Control(u'S', SIStation(SIStation.START)))
+        F = self._store.add(Control(u'F', SIStation(SIStation.FINISH)))
 
         # create control with 2 sistations
         c200 = Control(u'200', SIStation(200))
@@ -55,7 +56,7 @@ class RunTest(unittest.TestCase):
         
         # Create a Course
         self._course = self._store.add(Course(u'A', length = 1679, climb = 587))
-        self._course.extend([S, u'131', u'132', c200, u'132', F])
+        self._course.extend([u'131', u'132', c200, u'132'])
 
         # Create categorys
         self._cat_ind = self._store.add(Category(u'HAM'))
@@ -227,12 +228,12 @@ class RunTest(unittest.TestCase):
         valid  = validator.validate(self._runs[5])
         self.assertEquals(valid['status'], Validator.DID_NOT_FINISH)
         self.assertEquals([ c.code for c in valid['missing']],
-                          [u'S',  u'131', u'132', u'200', u'132', u'F'])
+                          [u'131', u'132', u'200', u'132'])
         
     def test_ranking_course(self):
         """Test the correct ranking of runs in a course."""
 
-        ranking = list(EventRanking().ranking(self._course))
+        ranking = list(Event({}).ranking(self._course))
         self.assertEquals(ranking[0]['rank'], 1)
         self.assertEquals(ranking[0]['validation']['status'], Validator.OK)
         self.assertTrue(ranking[0]['item'] == self._runs[0] or ranking[0]['item'] == self._runs[2])
@@ -256,7 +257,7 @@ class RunTest(unittest.TestCase):
     def test_ranking_category(self):
         """Test the correct ranking of runs in a category."""
 
-        ranking = list(EventRanking().ranking(self._cat_ind))
+        ranking = list(Event({}).ranking(self._cat_ind))
         self.assertEquals(ranking[0]['rank'], 1)
         self.assertEquals(ranking[0]['validation']['status'], Validator.OK)
         self.assertTrue(ranking[0]['item'] == self._runners[0] or ranking[0]['item'] == self._runners[2])
@@ -283,14 +284,14 @@ class RunTest(unittest.TestCase):
 
         # Add override for control 131
         self._c131.override = True
-        self.assertEquals(validator.validate(self._runs[3])['validation']['status'],
+        self.assertEquals(validator.validate(self._runs[3])['status'],
                           Validator.OK)
         
     def test_overrride_run(self):
         """Test overrride for a run."""
         validator = SequenceCourseValidator(self._course)
         self._runs[3].override = True
-        self.assertEquals(validator.validate(self._runs[3])['validation']['status'],
+        self.assertEquals(validator.validate(self._runs[3])['status'],
                           Validator.OK)
         
 if __name__ == '__main__':

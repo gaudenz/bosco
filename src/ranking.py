@@ -62,7 +62,7 @@ class Ranking(object):
 
     def __init__(self, rankable, event, scoreing_class = None, validator_class = None,
                  scoreing_args = None, validator_args = None, reverse = False):
-        self._rankable = rankable
+        self.rankable = rankable
         self._event = event
         self._scoreing_class = scoreing_class
         self._validator_class = validator_class
@@ -87,7 +87,7 @@ class Ranking(object):
 
         # Create list of (score, member) tuples and sort by score
         ranking_list = []
-        for m in self._rankable.members:
+        for m in self.rankable.members:
             try:
                 ranking_list.append({'scoreing':self._event.score(m,
                                                                   self._scoreing_class,
@@ -109,7 +109,7 @@ class Ranking(object):
         # return the generator
         return ranking_generator(ranking_list)
 
-class Rankable:
+class Rankable(object):
     """Defines the interface for rankable objects like courses and categories.
     The following attributes must be available in subclasses:
     - members
@@ -540,7 +540,8 @@ class Relay24hScoreing(AbstractScoreing, Validator):
         @param speed:         expected speed in minutes per kilometers. Used to compute
                               penalty time for invalid runs
         @type speed:          int
-        @param event_ranking: object of class EventRanking to score and validate single runs
+        @param event_ranking: object of class EventRanking to score and
+                              validate single runs
         @param duration:      Duration of the event
         @param method:        score calculation method, currently implemented:
                               runcount: count valid runs
@@ -781,26 +782,26 @@ class Relay12hScoreing(Relay24hScoreing):
 class Relay24hScore(object):
 
     def __init__(self, runs, time):
-        self._runs = runs
-        self._time = time
+        self.runs = runs
+        self.time = time
 
     def __cmp__(self, other):
         """compares two Relay24hScore objects."""
         
-        if self._runs > other._runs:
+        if self.runs > other.runs:
             return -1
-        elif self._runs < other._runs:
+        elif self.runs < other.runs:
             return 1
         else:
-            if self._time < other._time:
+            if self.time < other.time:
                 return -1
-            elif self._time > other._time:
+            elif self.time > other.time:
                 return 1
             else:
                 return 0
 
     def __str__(self):
-        return "Runs: %s, Time: %s" % (self._runs, self._time) 
+        return "Runs: %s, Time: %s" % (self.runs, self.time) 
 
 class ControlPunchtimeScoreing(AbstractScoreing, Validator):
     """Scores according to the (expected) absolute punchtime at a given control.
@@ -875,188 +876,6 @@ class ControlPunchtimeScoreing(AbstractScoreing, Validator):
         ret = {'score':result}
         self._to_cache_score(run, ret)
         return ret
-    
-class EventRanking(object):
-    """Model of all event specific ranking information. The default
-    implementation uses SequenceCourseValidator and SelfStartTimeScoreing.
-    Subclass this class to customize your event."""
-
-    def __init__(self, cache = None):
-        """
-        @param cache: Cache to use for this object
-        """
-        
-        self._strategies = {}
-        self._cache = cache
-
-    @staticmethod
-    def _key(cls, args):
-        """make a hashable key out of cls and args"""
-        
-        arg_list = []
-        for k,v in args.items():
-            if type(v) == list:
-                v = tuple(v)
-            arg_list.append((k, v))
-        return (cls, tuple(arg_list))
-    
-    def validate(self, obj, validator_class = None, args = None):
-        # Don't define args={}, default arguments are created at function definition time
-        # and you would end up modifing the default args below! You must create a new
-        # empty dictionary on every invocation!
-        
-        """
-        Get a validator
-        @param obj:             object to validate, 
-        @param validator_class: validation class used
-        @param args:            dict of keyword arguments for the validation strategy object
-        @return:                validation result from validator_class.validate(obj)
-        @see:                   Validator for more information about validation classes
-        """
-        
-        from run import Run
-        from runner import Runner
-
-        if validator_class is None:
-            validator_class = SequenceCourseValidator
-            
-        if args is None:
-            args = {}
-            
-        if 'cache' not in args:
-            args['cache'] = self._cache
-            
-        if issubclass(validator_class, CourseValidator):
-            if type(obj) == Runner:
-                # validate run of this runner
-                obj = obj.run
-
-            if type(obj) == Run and 'course' not in args:
-                if obj.course is None:
-                    raise ValidationError("Can't validate run without course")
-                args['course'] = obj.course
-
-        if self._key(validator_class, args) not in self._strategies:
-            # create validator instance
-            self._strategies[self._key(validator_class, args)] = validator_class(**args)
-        return self._strategies[self._key(validator_class, args)].validate(obj)
-    
-    def score(self, obj, scoreing_class = None, args = None):
-        """
-        Get the score of an object
-        @param obj:            object to score
-        @param scoreing_class: scoreing strategy used
-        @param args:           additional arguments for the scoreing class's constructor
-        @type args:            dict of keyword arguments
-        @return:               scoreing result from scoreing_class.score(obj)
-        @see:                  AbstractScoreing for more information about scoreing classes
-        """
-
-        if scoreing_class is None:
-            scoreing_class = SelfStartTimeScoreing
-            
-        if args is None:
-            args = {}
-
-        if not 'cache' in args:
-            args['cache'] = self._cache
-
-        if self._key(scoreing_class, args) not in self._strategies:
-            # create scoreing instance
-            if not 'cache' in args:
-                args['cache'] = self._cache
-            self._strategies[self._key(scoreing_class, args)] = scoreing_class(**args)
-        return self._strategies[self._key(scoreing_class, args)].score(obj)
-
-    def ranking(self, obj, scoreing_class = None, validation_class = None,
-                scoreing_args = None, validation_args = None, reverse = False):
-        """
-        Get a ranking for a Rankable object
-        @param obj:              ranked object (Category, Course, ...)
-        @param scoreing_class:   scoreing strategy used, None for default strategy
-        @param validation_class: validation strategy used, None for default strategy
-        @param scoreing_args:    scoreing args, None for default args
-        @param validation_args:  validation args, None for default args
-        @param reverse:          produce reversed ranking
-        """
-
-        return Ranking(obj, self, scoreing_class, validation_class,
-                       scoreing_args, validation_args, reverse)
-
-class Relay24hEventRanking(EventRanking):
-    """Event Ranking class for the 24h orientieering relay."""
-
-    def __init__(self, starttime_24h, starttime_12h, speed,
-                 duration_24h = timedelta(hours=24), duration_12h = timedelta(hours=12),
-                 cache = None):
-        
-        EventRanking.__init__(self, cache)
-
-        self._starttime = {u'24h':starttime_24h,
-                           u'12h':starttime_12h}
-        self._speed     = speed
-        self._duration  = {u'24h':duration_24h,
-                           u'12h':duration_12h}
-        self._strategy  = {u'24h':Relay24hScoreing,
-                           u'12h':Relay12hScoreing}
-        
-        # create default run scoreing strategies
-        self._strategies[self._key('run_score_24h',
-                                   {'cache':cache})] = RelayTimeScoreing(starttime_24h,
-                                                                         cache)
-        self._strategies[self._key('run_score_12h',
-                                   {'cache':cache})] = RelayTimeScoreing(starttime_12h,
-                                                                         cache)
-        
-    def _get_team_strategy(self, team, args):
-        cat =  team.category.name
-        args['event_ranking'] = self
-        if 'starttime' not in args:
-            args['starttime'] = self._starttime[cat]
-        if 'speed' not in args:
-            args['speed'] = self._speed
-        if 'duration' not in args:
-            args['duration'] = self._duration[cat]
-        return (self._strategy[cat], args)
-
-    @staticmethod
-    def _get_run_strategy(run):
-        cat = run.sicard.runner.team.category.name
-        if cat == u'24h':
-            return 'run_score_24h'
-        elif cat == u'12h':
-            return 'run_score_12h'
-        
-    def validate(self, obj, validator_class = None, args = None):
-
-        from runner import Team
-        from run import Run
-
-        if args is None:
-            args = {}
-        
-        if type(obj) == Team and validator_class is None:
-            (validator_class, args) = self._get_team_strategy(obj, args)
-        elif type(obj) == Run and validator_class is None:
-            validator_class = SequenceCourseValidator
-
-        return EventRanking.validate(self, obj, validator_class, args)
-            
-
-    def score(self, obj, scoreing_class = None, args = None):
-
-        from runner import Team
-        from run import Run
-        
-        if args is None:
-            args = {}
-            
-        if type(obj) == Team and scoreing_class is None:
-            (scoreing_class, args) = self._get_team_strategy(obj, args)
-        elif type(obj) == Run and scoreing_class is None:
-            scoreing_class = self._get_run_strategy(obj)
-
-        return EventRanking.score(self, obj, scoreing_class, args)
     
 class UnscoreableException(Exception):
     pass

@@ -1,0 +1,107 @@
+<%!
+from runner import Category
+from course import Course
+%>
+
+\documentclass[12pt,a4paper]{article}
+\usepackage[ngerman]{babel}
+\usepackage[utf8]{inputenc}
+
+\usepackage[T1]{fontenc}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{fancyhdr}
+
+\fancyhf{} % delete header
+\fancyhead[L]{${header['organiser']}}
+\fancyhead[C]{${header['map']}}
+\fancyhead[R]{${header['place']}, ${header['date']}}
+
+\pagestyle{fancy}
+
+\setlength{\hoffset}{-1cm}
+\setlength{\oddsidemargin}{0cm}
+\setlength{\evensidemargin}{0cm}
+\setlength{\topmargin}{0cm}
+\setlength{\textwidth}{18cm}
+\setlength{\headwidth}{18cm}
+\setlength{\voffset}{-1cm}
+\setlength{\headsep}{0.2cm}
+
+## leave no space at the right and left of the table
+\setlength{\LTleft}{0cm}
+\setlength{\LTright}{0cm}
+
+## don't indent paragraphs
+\setlength{\parindent}{0cm}
+
+\begin{document}
+
+% for r in rankings:
+
+\textbf{${header['event']}}
+
+\vspace{1cm}
+
+\begin{Huge}
+\textbf{${r.rankable}}
+\end{Huge}
+
+%if type(r.rankable) == Category:
+  ${category(r)}
+%elif type(r.rankable) == Course:
+  ${course(r)}
+%endif
+
+\textit{last update: ${now}}
+
+\newpage
+
+% endfor
+
+\end{document}
+
+<%def name="course(r)">
+
+(${r.rankable.length/1000.0}km, ${r.rankable.climb}m, ${r.rankable.controls.count()} cont.)
+
+\begin{longtable}{rp{4cm}lp{6cm}@{\extracolsep{\fill}}l}
+\textbf{Rank} & \textbf{Runner} & \textbf{YofB} & \textbf{Team} & \textbf{Time} \\ 
+\hline
+  % for line in r:
+
+  ${line['rank'] and ('%i.' % line['rank']) or ''} &
+  ${line['item']} & ${line['item'].sicard.runner.dateofbirth.strftime('%y')} &
+  ${line['item'].sicard.runner.team.name} & 
+  ${line['rank'] and line['scoreing']['score'] or validation_codes[line['validation']['status']]} \\ 
+
+  % endfor
+
+\end{longtable}
+</%def>
+
+<%def name="category(r)">
+\begin{longtable}{rp{7cm}@{\extracolsep{\fill}}lll}
+\textbf{Rank} & \textbf{Team} & \textbf{Runs} & \textbf{Time} & \textbf{Finish Time} \\ 
+\hline
+  % for line in r:
+
+    % if line['rank']:
+    ${'%i.' % line['rank']} & 
+    ${line['item']} &
+    ${line['scoreing']['score'].runs} & 
+    ${line['scoreing']['score'].time} &
+    ${line['scoreing']['finishtime'].strftime('%H:%M:%S')} \\ 
+
+    % else:
+    & 
+    ${line['item']} &
+    \multicolumn{2}{l}{${validation_codes[line['validation']['status']]}} &
+    ${line['scoreing']['finishtime'].strftime('%H:%M:%S')} \\ 
+    % endif
+
+  % endfor
+
+\end{longtable}
+
+</%def>

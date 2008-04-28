@@ -216,3 +216,5 @@ class Course(MyStorm, Rankable):
         except TypeError:
             return None
 
+    def __unicode__(self):
+        return self.code

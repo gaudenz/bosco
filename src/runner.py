@@ -186,7 +186,7 @@ class Category(Storm, Rankable):
         self.name = name
 
     def __unicode__(self):
-        return unicode(self.name)
+        return self.name
 
     def _get_members(self):
         l = list(self.runners)

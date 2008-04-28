@@ -1,10 +1,27 @@
+<%!
+from runner import Team
+from course import Course
+from run import Run
+from ranking import OpenRuns
+%>
+
 <%inherit file="base.html"/>
 
 <%include file="header.html"/>
 
+%for ranking in rankings:
+
 <tr>
   <td>
-    <font size="+2"><b>${info['title']}</b></font><br> 
+    %if type(ranking.rankable) == OpenRuns:
+      <font size="+2"><b>Advance Warning</b></font><br>
+      runners at last control
+    %else:
+      <font size="+2"><b>${ranking.rankable}</b></font><br> 
+      %if type(ranking.rankable) == Course:
+      (${ranking.rankable.length/1000.0}km, ${ranking.rankable.climb}m, ${ranking.rankable.controls.count()} cont.)
+      %endif
+    %endif
   <td>
 </tr>
 <tr>
@@ -13,14 +30,46 @@
 <tr>
   <td>
 <table>
-  % for r in ranking:
+  %for r in ranking:
   <tr>
+  %if type(ranking.rankable) == OpenRuns:
+    test
+    ${warning(r)}
+  %elif type(r['item']) == Team:
+    ${team(r)}
+  %elif type(r['item']) == Run:
+    ${run(r)}
+  %endif
+  </tr>
+  %endfor
+</table>
+  </td>
+</tr>
+
+%endfor
+
+<%def name="team(r)">
     <td valign="top">${r['rank'] and ('%3i.' % r['rank']) or ''}</td>
     <td valign="top">${r['item']}</td>
     <td valign="top">${r['rank'] and r['scoreing']['score'] or validation_codes[r['validation']['status']]}</td>
     <td>${r['scoreing']['finishtime'].strftime('%H:%M:%S')}
+</%def>
+
+<%def name="run(r)">
+    <td valign="top">${r['rank'] and ('%3i.' % r['rank']) or ''}</td>
+    <td valign="top">${r['item']}</td>
+    <td valign="top">${r['item'].sicard.runner.dateofbirth.strftime('%y')}</td>
+    <td valign="top">${r['item'].sicard.runner.team.name}</td>
+    <td valign="top">${r['rank'] and r['scoreing']['score'] or validation_codes[r['validation']['status']]}</td>
+</%def>
+
+<%def name="warning(r)">
+  %if r['validation'] == 1:
+  <tr>
+    <td valign="top">${r['item'].sicard.runner.team.name}</td>
+    <td valign="top">${r['item'].sicard.runner.number or ''}</td>
+    <td valign="top">${r['item']}</td>
+    <td valign="top">${r['score']}</td>
   </tr>
-  % endfor
-</table>
-  </td>
-</tr>
+  %endif
+</%def>
