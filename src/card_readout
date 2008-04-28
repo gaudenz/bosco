@@ -367,7 +367,7 @@ class SIReadoutFrame(wx.Frame):
             # set run information
             if self._run.course is not None:
                 self._course_input.SetValue(self._run.course.code)
-                valid  = conf.event_ranking.validate(self._run)
+                valid  = conf.event.validate(self._run)
                 if valid['status'] == Validator.OK:
                     self._validation_info_run.SetLabel('OK')
                     self._validation_info_run.SetForegroundColour('Green')
