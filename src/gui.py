@@ -27,21 +27,28 @@ class UpdateableHtmlPanel(wx.html.HtmlWindow):
     connected to an EventObserver to automatically update.
     """
 
-    def __init__(self, parent, content = ''):
+    def __init__(self, parent, content = None):
         super(type(self), self).__init__(parent)
 
         self._content = content
 
         # bug? call this for acceptable fonts
         self.SetStandardFonts()
-        print self.GetSize(), self.GetInternalRepresentation().GetWidth(), self.GetInternalRepresentation().GetHeight()
         self.update(None)
 
     def update(self, event):
         """Update the content of the panel."""
-        self.SetPage(unicode(self._content))
+        if self._content is not None:
+            self.SetPage(unicode(self._content))
+        else:
+            self.SetPage('')
 
-    def SetContent(self, content):
+    def _set_content(self, content):
         self._content = content
         self.update(None)
-        print self.GetSize(), self.GetInternalRepresentation().GetWidth(), self.GetInternalRepresentation().GetHeight()
+
+    def _get_content(self):
+        return self._content
+
+    content = property(_get_content, _set_content)
+

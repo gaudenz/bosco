@@ -29,7 +29,7 @@ import conf
 class SpeakerFrame(wx.Frame):
     """Rotates through a list of rankings in full screen."""
     
-    def __init__(self, parent, event):
+    def __init__(self, parent, event, observer):
         """
         @param event: object of class Event
         """
@@ -37,6 +37,7 @@ class SpeakerFrame(wx.Frame):
         super(type(self), self).__init__(parent)
         
         self._event = event
+        self._observer = observer
         
         panel = wx.Panel(self)
         panel.SetAutoLayout(True)
@@ -59,9 +60,20 @@ class SpeakerFrame(wx.Frame):
     def ChangeRanking(self, event):
 
         cursor = wx.BusyCursor()
+
+        # unregister rankable object
+        if self._ranking_panel.content is not None:
+            for r in self._ranking_panel.content.rankings:
+                self._observer.unregister(self._ranking_panel, r.rankable)
+                
         list_box = event.GetEventObject()
         data = list_box.GetClientData(list_box.GetSelection())
-        self._ranking_panel.SetContent(data)
+        self._ranking_panel.content = data
+
+        # register rankable object
+        for r in data.rankings:
+            self._observer.register(self._ranking_panel, r.rankable)
+            
         del cursor
         
 if __name__ == '__main__':
@@ -71,7 +83,7 @@ if __name__ == '__main__':
     conf.cache.set_observer(observer)
     
     app = wx.App()
-    frame = SpeakerFrame(None, conf.event)
+    frame = SpeakerFrame(None, conf.event, observer)
     app.MainLoop()
 
     conf.cache.remove_observer()

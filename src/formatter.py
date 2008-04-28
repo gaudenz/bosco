@@ -35,7 +35,7 @@ class AbstractRankingFormatter(object):
         @type ranking:  generator or list as returned by L{Rankable}s ranking method.
         """
         
-        self._rankings = rankings
+        self.rankings = rankings
 
     def __str__(self):
         """
@@ -71,7 +71,7 @@ class MakoRankingFormatter(AbstractRankingFormatter):
         return self._template.render_unicode(header = self._header,
                                              validation_codes = self._validation_codes,
                                              now = datetime.now().strftime('%c'),
-                                             rankings = self._rankings)
+                                             rankings = self.rankings)
 
 class SOLVRankingFormatter(AbstractRankingFormatter):
     """Formats the Ranking for exporting to the SOLV result site."""
