@@ -299,8 +299,8 @@ class OCADXMLCourseImporter(Importer):
 
     def __init__(self, fname, finish, start):
         self.__tree = parse(fname)
-        self.__finish = finish
-        self.__start = start
+        self._start = start
+        self._finish = finish
         
         version = self.__tree.find('/IOFVersion').attrib['version']
         if not version in OCADXMLCourseImporter.KNOWN_VERSIONS:
@@ -342,10 +342,17 @@ class OCADXMLCourseImporter(Importer):
         
     def import_data(self, store):
         
-        # read all control codes
-        controls = {}
+        # create SI Stations for start and finish if requested
+        if self._start:
+            station = store.get(SIStation, SIStation.START)
+            if station is None:
+                station = store.add(SIStation(SIStation.START))
+        if self._finish:
+            station = store.get(SIStation, SIStation.FINISH)
+            if station is None:
+                station = store.add(SIStation(SIStation.FINISH))
 
-        # read start control codes
+        # read control codes
         for path in OCADXMLCourseImporter.CONTROL_PATHS:
             for code_el in self.__tree.findall(path):
                 code = code_el.text.strip() and unicode(code_el.text.strip()) or None
@@ -357,19 +364,6 @@ class OCADXMLCourseImporter(Importer):
                     # Create new control
                     control = Control(code, store=store)
 
-                # add SI Stations for start and finish if requested
-                station = None
-                if self.__start and code_el.tag == 'StartPointCode':
-                    station = store.get(SIStation, SIStation.START)
-                    if station is None:
-                        station = store.add(SIStation(SIStation.START))
-                elif self.__finish and code_el.tag == 'FinishPointCode':
-                    station = store.get(SIStation, SIStation.FINISH)
-                    if station is None:
-                        station = store.add(SIStation(SIStation.FINISH))
-                if station is not None:
-                    control.sistations.add(station)
-                    
         # Read courses
         for c_el in self.__tree.findall('/Course'):
             variations = c_el.findall('CourseVariation')
@@ -380,13 +374,6 @@ class OCADXMLCourseImporter(Importer):
                 (length, climb) = OCADXMLCourseImporter.__length(var, 'total')
                 course = Course(course_code, length, climb)
                 store.add(course)
-
-                # Set start point
-                start_code = var.findtext('StartPointCode').strip()
-                if start_code:
-                    start = store.find(Control, Control.code == unicode(start_code)).one()
-                    if start:
-                        course.append(start)
 
                 # read control codes and sequence numbers into dict
                 controls = {}
@@ -411,15 +398,6 @@ class OCADXMLCourseImporter(Importer):
                         raise ControlNotFoundException("Control with code '%s' not found." % code)
                     course.append(control, length, climb)
 
-                # Set finish point
-                finish_code = var.findtext('FinishPointCode').strip()
-                if finish_code:
-                    (length, climb) = OCADXMLCourseImporter.__length(var, 'finish')
-                    finish = store.find(Control, Control.code == unicode(finish_code)).one()
-                    if finish:
-                        course.append(finish)
-
-                    
 
             elif len(variations) > 1:
                 raise CourseTypeException('Courses with variations are not yet supported.')
