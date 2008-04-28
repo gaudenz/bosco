@@ -397,19 +397,20 @@ class CourseValidator(Validator):
             return self._from_cache_validate(run)
         except KeyError:
             pass
-        
-        if not run.complete:
-            result = Validator.NOT_COMPLETED
-        elif not run.finish():
-            result =  Validator.DID_NOT_FINISH
-        elif run.override is True:
-            result = Validator.OK
-        else:
-            result = Validator.OK
 
-        ret = {'status':result}
-        self._to_cache_validate(run, ret)
-        return ret
+        result = {'override':False}
+        if run.override is not None:
+            result['status'] = run.override
+            result['override'] = True
+        elif not run.complete:
+            result['status'] = Validator.NOT_COMPLETED
+        elif not run.finish():
+            result['status'] =  Validator.DID_NOT_FINISH
+        else:
+            result['status'] = Validator.OK
+
+        self._to_cache_validate(run, result)
+        return result
 
 class SequenceCourseValidator(CourseValidator):
     """Validation strategy for a normal orienteering course.
@@ -501,7 +502,7 @@ class SequenceCourseValidator(CourseValidator):
         except KeyError:
             pass
         
-        result = super(type(self), self).validate(run)['status']
+        result = super(type(self), self).validate(run)
         # check correct sequence of controls
         
         punchlist = [(p, p.sistation.control) for p in run.punches.order_by('punchtime') ]
@@ -516,16 +517,15 @@ class SequenceCourseValidator(CourseValidator):
                                                               punchlist,
                                                               controllist)
 
-        if result == Validator.OK and not run.override is True:
+        if result['status'] == Validator.OK and result['override'] is False:
             if len(missing) > 0:
-                result = Validator.MISSING_CONTROLS
+                result['status'] = Validator.MISSING_CONTROLS
 
-        ret = {'status': result,
-               'missing':    missing,
-               'additional': additional}
+        result['missing'] = missing
+        result['additional'] = additional
             
-        self._to_cache_validate(run, ret)
-        return ret
+        self._to_cache_validate(run, result)
+        return result
 
 class Relay24hScoreing(AbstractScoreing, Validator):
     """This class is both a validation strategy and a scoreing strategy. The strategies
@@ -662,21 +662,21 @@ class Relay24hScoreing(AbstractScoreing, Validator):
         except KeyError:
             pass
 
+        result = {'override':False}
         # check for override
-        if team.override is True:
-            result = Validator.OK
+        if team.override is not None:
+            result['status'] = team.override
+            result['override'] = True
         else:
             # check runner order
-            result = self._check_order(team)
-            if result == Validator.OK:
+            result['status'] = self._check_order(team)
+            if result['status'] == Validator.OK:
                 # check run order
                 # not cheked, this is ensured by proper event organisation :-)
                 pass
 
-        ret = {'status':result}
-        self._to_cache_validate(team, ret)
-        return ret
-
+        self._to_cache_validate(team, result)
+        return result
 
     def score(self, team):
         """Compute score for a 24h team according to the following rules:

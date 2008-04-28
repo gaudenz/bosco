@@ -94,12 +94,17 @@ class Relay24hTest(unittest.TestCase):
         self.assertEquals(self._event.validate(self.getTeam(u'009'))['status'],
                           Validator.OK)
 
-        self.getTeam(u'005').override = True
+        self.getTeam(u'005').override = Validator.OK
         # notify cache that this team has changed
         self._cache.update(self.getTeam(u'005'))
         self.assertEquals(self._event.validate(self.getTeam(u'005'))['status'],
                           Validator.OK)
 
+        self.getTeam(u'019').override = Validator.DISQUALIFIED
+        self._cache.update(self.getTeam(u'019'))
+        self.assertEquals(self._event.validate(self.getTeam(u'019'))['status'],
+                          Validator.DISQUALIFIED)
+        
         self.assertEquals(self._event.score(self.getTeam(u'019'))['score'],
                           Relay24hScore(41,timedelta(minutes=41*6)))        
         self.assertEquals(self._event.score(self.getTeam(u'021'))['score'],

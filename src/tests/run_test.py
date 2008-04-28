@@ -290,9 +290,15 @@ class RunTest(unittest.TestCase):
     def test_overrride_run(self):
         """Test overrride for a run."""
         validator = SequenceCourseValidator(self._course)
-        self._runs[3].override = True
-        self.assertEquals(validator.validate(self._runs[3])['status'],
-                          Validator.OK)
+        self._runs[3].override = Validator.OK
+        valid = validator.validate(self._runs[3])
+        self.assertEquals(valid['status'], Validator.OK)
+        self.assertEquals(valid['override'], True)
+
+        self._runs[1].override = Validator.DISQUALIFIED
+        valid = validator.validate(self._runs[1])
+        self.assertEquals(valid['status'],Validator.DISQUALIFIED)
+        self.assertEquals(valid['override'], True)
         
 if __name__ == '__main__':
     unittest.main()

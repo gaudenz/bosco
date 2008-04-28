@@ -135,7 +135,7 @@ class Team(AbstractRunner, Storm):
     number = Unicode()
     name = Unicode()
     official = Bool()
-    override = Bool()
+    override = Int()
     _responsible_id = Int(name='responsible')
     responsible = Reference(_responsible_id, 'Runner.id')
     _category_id = Int(name='category')

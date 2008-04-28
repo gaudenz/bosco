@@ -61,8 +61,8 @@ class Run(MyStorm, RankableItem):
     sicard = Reference(_sicard_id, 'SICard.id')
     _course_id = Int(name='course')
     course = Reference(_course_id, 'Course.id')
-    complete = Bool(name='complete')
-    override = Bool(name='override')
+    complete = Bool()
+    override = Int()
     punches = ReferenceSet(id, 'Punch._run_id')
 
     
