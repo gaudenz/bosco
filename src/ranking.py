@@ -522,7 +522,9 @@ class SequenceCourseValidator(CourseValidator):
                 result['status'] = Validator.MISSING_CONTROLS
 
         result['missing'] = missing
-        result['additional'] = additional
+        from course import SIStation
+        result['additional'] = [p for p in additional
+                                if p.sistation.id > SIStation.SPECIAL_MAX]
             
         self._to_cache_validate(run, result)
         return result

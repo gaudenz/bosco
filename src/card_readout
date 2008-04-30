@@ -315,7 +315,7 @@ class SIReadoutFrame(wx.Frame):
         self.UpdateInfo()
         return True
 
-    def SaveRun(self, event):
+    def SaveRun(self, event = None):
         """Commits the current run to the database and clears self._run."""
 
         if self._run is None or not self._run.complete:
@@ -388,6 +388,10 @@ class SIReadoutFrame(wx.Frame):
                 
                 # Activate save button
                 self._save_button.Enable()
+
+                if valid['status'] == Validator.OK and len(valid['additional']) == 0:
+                    # if the run is valid and has no additional punches -> save immediately
+                    return self.SaveRun()
             else:
                 # clear course validation info
                 for ctrl in [self._validation_info_run, self._missing_info,
