@@ -69,7 +69,7 @@ class Runner(AbstractRunner, MyStorm):
         if category is not None:
             self.set_category(category)
         
-    def __unicode__(self):
+    def __str__(self):
         return '%s, %s' % (self.surname, self.given_name)
 
     def _get_run(self): 
@@ -160,8 +160,8 @@ class Team(AbstractRunner, Storm):
             for si in m.sicards:
                 runs.extend(list(si.runs.find(Run.complete == True)))
         return runs
-
     runs = property(_get_runs)
+
 
 class SICard(Storm):
     __storm_table__ = 'sicard'
