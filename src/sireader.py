@@ -277,7 +277,12 @@ class SIReader(object):
         nr = SIReader._to_int(number[1:4])
         if nr < 500000:
             # SI5 card
-            return ord(number[1])*100000 + SIReader._to_int(number[2:4])
+            ret = SIReader._to_int(number[2:4])
+            if ord(number[1]) == 1:
+	        # Card series 1 does not have the 1 printed on the card
+                return ret
+            else:
+                return ord(number[1])*100000 + ret
         else:
             # SI6/9
             return nr
