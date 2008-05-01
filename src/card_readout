@@ -24,7 +24,8 @@ import wx, wx.lib.masked
 from storm.locals import *
 from optparse import OptionParser
 from datetime import datetime, timedelta
-import re, os
+from traceback import print_exc
+import re, os, sys
 
 from run import Run, RunException
 from runner import Runner, SICard
@@ -224,7 +225,6 @@ class SIReadoutFrame(wx.Frame):
                     for i, p in enumerate(card_data['punches']):
                         text += '%2s\t%3s\t%s\n' % (i, p[0], p[1])
                     self.MakeRun(card_data)
-                    self.UpdateInfo()
                 else:
                     # SI Card removed
                     if not self._run is None:
@@ -259,6 +259,19 @@ class SIReadoutFrame(wx.Frame):
 
         return None
 
+    def _runs_with_code(self, code):
+        return self._store.find(Run,
+                                Run.course == Course.id,
+                                Run.sicard == self._run.sicard,
+                                Course.code.like(code),
+                                Not(Run.id == self._run.id))
+
+    def _update_cache(self):
+        try:
+            conf.cache.update(self._run)
+        except (KeyError, AttributeError):
+            pass
+
     def MakeRun(self, card_data):
 
         # search for incomplete run with this sicard
@@ -285,17 +298,33 @@ class SIReadoutFrame(wx.Frame):
             self.ErrorDialog(str(msg), 'Error reading SI Card')
 
         self.UpdateInfo()
+
+        # Search Course for this run
+        if self._run.course is None:
+            cursor = wx.BusyCursor()
+            courses = self._store.find(Course)
+            for c in courses:
+                if self._runs_with_code(c.code).count() == 0:
+                    self._run.course = c
+                    self._run.complete = True
+                    self._update_cache()
+                    valid = conf.event.validate(self._run)
+                    self._run.course = None
+                    self._run.complete = False
+                    self._update_cache()
+                    if  valid['status'] == Validator.OK:
+                        self._course_input.SetValue(c.code)
+                        break
+
+            del cursor
+                
         
     def SetCourse(self, event):
 
         if self._run is None:
             return False
         code = self._course_input.GetValue().upper().strip()
-        runs = self._store.find(Run,
-                                Run.course == Course.id,
-                                Run.sicard == self._run.sicard,
-                                Course.code.like(code),
-                                Not(Run.id == self._run.id))
+        runs = self._runs_with_code(code)
         if runs.count() > 0:
             self.ErrorDialog('Another run with this SI Card for this course exists. The old run will be overwritten if you save this run.',
                              'run already exists')
@@ -304,6 +333,7 @@ class SIReadoutFrame(wx.Frame):
                     self._store.remove(punch)
                     self._store.add_flush_order(punch, run)
                 self._store.remove(run)
+                self._store.flush()
                     
         try:
             self._run.set_coursecode(code)
@@ -325,6 +355,7 @@ class SIReadoutFrame(wx.Frame):
             if self._backup is not None:
                 self._backup.export_run(self._run)
         except Exception, msg:
+            print_exc(file=sys.stdout)
             self.ErrorDialog(str(msg), 'Error while writing backup file')
             return False
         
@@ -467,10 +498,7 @@ class SIReadoutFrame(wx.Frame):
             # Add punch and try to notify cache
             self._run.add_punch((sistations_list.GetClientData(sistations_list.GetSelection()),
                                  punchtime))
-            try:
-                conf.cache.update(self._run)
-            except KeyError:
-                pass
+            self._update_cache()
             
             self.UpdateInfo()
             
