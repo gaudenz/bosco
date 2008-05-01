@@ -2,7 +2,7 @@
 from runner import Team
 from course import Course
 from run import Run
-from ranking import OpenRuns
+from ranking import OpenRuns, Validator
 %>
 
 <%inherit file="base.html"/>
@@ -33,7 +33,6 @@ from ranking import OpenRuns
   %for r in ranking:
   <tr>
   %if type(ranking.rankable) == OpenRuns:
-    test
     ${warning(r)}
   %elif type(r['item']) == Team:
     ${team(r)}
@@ -52,24 +51,22 @@ from ranking import OpenRuns
     <td valign="top">${r['rank'] and ('%3i.' % r['rank']) or ''}</td>
     <td valign="top">${r['item']}</td>
     <td valign="top">${r['rank'] and r['scoreing']['score'] or validation_codes[r['validation']['status']]}</td>
-    <td>${r['scoreing']['finishtime'].strftime('%H:%M:%S')}
+    <td>r['rank'] and ${r['scoreing']['finishtime'].strftime('%H:%M:%S') or ''}
 </%def>
 
 <%def name="run(r)">
     <td valign="top">${r['rank'] and ('%3i.' % r['rank']) or ''}</td>
     <td valign="top">${r['item']}</td>
-    <td valign="top">${r['item'].sicard.runner.dateofbirth.strftime('%y')}</td>
+    <td valign="top">${r['item'].sicard.runner.dateofbirth and r['item'].sicard.runner.dateofbirth.strftime('%y') or ''}</td>
     <td valign="top">${r['item'].sicard.runner.team.name}</td>
     <td valign="top">${r['rank'] and r['scoreing']['score'] or validation_codes[r['validation']['status']]}</td>
 </%def>
 
 <%def name="warning(r)">
-  %if r['validation'] == 1:
-  <tr>
+  %if r['validation']['status'] == Validator.OK:
     <td valign="top">${r['item'].sicard.runner.team.name}</td>
     <td valign="top">${r['item'].sicard.runner.number or ''}</td>
     <td valign="top">${r['item']}</td>
-    <td valign="top">${r['score']}</td>
-  </tr>
+    <td valign="top">${r['scoreing']['score']}</td>
   %endif
 </%def>
