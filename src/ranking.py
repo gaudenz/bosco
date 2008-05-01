@@ -330,7 +330,10 @@ class MassStartRelayTimeScoreing(RelayTimeScoreing):
 
     def _start(self, obj):
         prev_finish = super(type(self), self)._start(obj)
-        return self._starttime < prev_finish and self._starttime or prev_finish
+        if prev_finish is None:
+            return self._starttime
+        else:
+            return self._starttime < prev_finish and self._starttime or prev_finish
 
 class Validator(object):
     """Defines a strategy for validating objects (runs, runners, teams). The validation
@@ -529,6 +532,11 @@ class SequenceCourseValidator(CourseValidator):
         self._to_cache_validate(run, result)
         return result
 
+class RelayValidator(Validator):
+
+    def validate(self, obj):
+        return Validator.validate(self, obj)
+    
 class Relay24hScoreing(AbstractScoreing, Validator):
     """This class is both a validation strategy and a scoreing strategy. The strategies
     are combined because they use some common private functions. This class validates
@@ -559,12 +567,10 @@ class Relay24hScoreing(AbstractScoreing, Validator):
         self._event_ranking = event_ranking
         self._method = method
 
-        #START_COURSES_RE  = 'SF[1-4]'
-        START_COURSES_RE  = 'S[1-4]'
+        START_COURSES_RE  = 'SF[1-4]'
         NIGHT_COURSES_RE  = '[LS][DE]N[1-5]'
         DAY_COURSES_RE    = '[LS][DE][1-4]'
-        #FINISH_COURSES_RE = 'FF[1-6]'
-        FINISH_COURSES_RE = 'F[1-6]'
+        FINISH_COURSES_RE = 'FF[1-6]'
     
         if blocks == 'start':
             self._courses_re = re.compile(START_COURSES_RE)

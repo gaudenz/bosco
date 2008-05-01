@@ -25,8 +25,8 @@ from course import Course
 from runner import Category
 from ranking import (SequenceCourseValidator, SelfStartTimeScoreing,
                      RelayTimeScoreing, Ranking, CourseValidator, OpenRuns,
-                     ControlPunchtimeScoreing,
-                     Relay24hScoreing, Relay12hScoreing)
+                     ControlPunchtimeScoreing, MassStartRelayTimeScoreing,
+                     Relay24hScoreing, Relay12hScoreing, ValidationError)
 
 from formatter import MakoRankingFormatter
 
@@ -118,6 +118,7 @@ class Event(object):
         if self._key(validator_class, args) not in self._strategies:
             # create validator instance
             self._strategies[self._key(validator_class, args)] = validator_class(**args)
+
         return self._strategies[self._key(validator_class, args)].validate(obj)
     
     def score(self, obj, scoreing_class = None, args = None):
@@ -186,9 +187,74 @@ class Event(object):
         l.extend([ (e[0], self.ranking(**e[1])) for e in self._extra_rankings ])
         l.sort(key = lambda x: x[0])
         return l
+
+class RelayEvent(Event):
+    """Event class for a traditional relay."""
+
+    def __init__(self, legs, header, extra_rankings=[],
+                 template_dir = 'templates',
+                 print_template = 'relay.tex',
+                 html_template = 'relay.html',
+                 cache = None, store = None):
+        """
+        @param legs: list of (legcode, startime) tuples
+        @see:        Event for other arguments
+        """
+
+        Event.__init__(self, header, extra_rankings, template_dir, print_template,
+                       html_template, cache, store)
+
+        self._starttimes = dict(legs)
+        
+    def validate(self, obj, validator_class = None, args = None):
+
+        from runner import Team
+        
+        if type(obj) == Team and validator_class is None:
+            validator_class = RelayValidator
+
+        return Event.validate(self, obj, validator_class, args)
+
+    def score(self, obj, scoreing_class = None, args = None):
+        """
+        @args: for a team the key 'legs' specifies to score after
+               this leg number (starting from 1).
+        @see:  Event
+        """
+
+        from runner import Team
+        from run import Run
+
+        if args is None:
+            args = {}
+
+        if type(obj) == Run and scoreing_class is None:
+            scoreing_class = MassStartRelayTimeScoreing
+            args['massstart_time'] = self._starttimes[obj.course.code]
+        elif type(obj) == Team and scoreing_class is None:
+            if not 'legs' in args:
+                args['legs'] = len(self._startimes)
+            time = timedelta(0)
+            # compute sum of individual run times
+            # this automatically takes mass starts into account
+            for i, r in enumerate(obj.runners.order_by('number')):
+                if not i < args['legs']:
+                    break
+                time += self.score(r)
+                
+            return {'score':time}
+            
+        return Event.score(self, obj, scoreing_class, args)
+
+#    def ranking(self, obj):
+#        pass
+    
+    def list_rankings(self):
+        l = Event.list_rankings(self)
+        return l
     
 class Relay24hEvent(Event):
-    """Event Ranking class for the 24h orientieering relay."""
+    """Event class for the 24h orientieering relay."""
 
     def __init__(self, starttime_24h, starttime_12h, speed,
                  header,
@@ -200,7 +266,8 @@ class Relay24hEvent(Event):
                  html_template = '24h.html',
                  cache = None, store = None):
         
-        Event.__init__(self, header, extra_rankings, template_dir, print_template, html_template,
+        Event.__init__(self, header, extra_rankings, template_dir, print_template,
+                       html_template,
                        cache, store)
 
         self._starttime = {u'24h':starttime_24h,
@@ -231,15 +298,12 @@ class Relay24hEvent(Event):
     def validate(self, obj, validator_class = None, args = None):
 
         from runner import Team
-        from run import Run
 
         if args is None:
             args = {}
         
         if type(obj) == Team and validator_class is None:
             (validator_class, args) = self._get_team_strategy(obj, args)
-        elif type(obj) == Run and validator_class is None:
-            validator_class = SequenceCourseValidator
 
         return Event.validate(self, obj, validator_class, args)
             
@@ -259,20 +323,9 @@ class Relay24hEvent(Event):
 
         return Event.score(self, obj, scoreing_class, args)
     
-    def format_ranking(self, rankings, type = 'html'):
-        """
-        @param ranking: Rankings to format
-        @type ranking:  list of objects of class Ranking
-        @param type:    'html' (default) or 'print'
-        @return:        RankingFormatter object for the ranking
-        """
-
-        
-        return MakoRankingFormatter(rankings, self._header,
-                                    self._template[type], self._template_dir)
-            
     def list_rankings(self):
         l = Event.list_rankings(self)
         l.extend([(c.name, self.ranking(c)) for c in self._store.find(Category)])
         l.sort(key = lambda x:x[0])
         return l
+
