@@ -17,9 +17,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from storm.locals import *
 from csv import reader, writer
-from optparse import OptionParser
 from datetime import datetime, date
 from sys import exit, hexversion
 if hexversion > 0x20500f0:
@@ -29,7 +27,9 @@ else:
 import re
 from os import fsync
 
-import conf
+from storm.locals import *
+from storm.exceptions import NotOneError
+
 from runner import Runner, Team, SICard, Category
 from course import Control, Course, Course, SIStation
 from run import Run, Punch
@@ -74,8 +74,34 @@ class CSVImporter(Importer):
                 
             self.data.append(d)
 
+class RunnerImporter(CSVImporter):
+    """Import Runner data from CSV file.
+    This class currently only consists of helper functions for derived classes.
+    """
 
-class Team24hImporter(CSVImporter):
+    @staticmethod
+    def _parse_yob(yob):
+        """Parses the year of birth
+        @rtype: date or None
+        """
+        try:
+            return date(int(yob), 1, 1)
+        except ValueError:
+            return None
+
+    @staticmethod
+    def _add_sicard(runner, si_str):
+        """Add SI Card to runner if it is valid."""
+        try:
+            si_int = int(si_str)
+        except ValueError:
+            if not si_str == '':
+                print "Invalid SI Card number '%s' for runner %s" % (si_str, str(runner))
+            return 
+        if not si_int == 0:
+            runner.add_sicard(int(si_str))
+    
+class Team24hImporter(RunnerImporter):
     """Import participant data for 24h event from CSV file."""
 
     RUNNER_NUMBERS       = ['A', 'B', 'C', 'D', 'E', 'F']
@@ -113,19 +139,74 @@ class Team24hImporter(CSVImporter):
                     continue
                 
                 runner = Runner(t['Memfamilyname%s' % str(i)],
-                                t['Memfirstname%s' % str(i)])
+                                t['Memfirstname%s' % str(i)], store = store)
                 if t['Memsex%s' % str(i)] == 'M':
                     runner.sex = 'male'
                 elif t['Memsex%s' % str(i)] == 'F':
                     runner.sex = 'female'
-                runner.dateofbirth = date(int(t['Memyear%s' % str(i)]), 1, 1) 
+                runner.dateofbirth = RunnerImporter._parse_yob(t['Memyear%s' % str(i)])
                 runner.number = Team24hImporter.RUNNER_NUMBER_FORMAT % \
                                 {'team' : team.number,
                                  'runner' : Team24hImporter.RUNNER_NUMBERS[num]}
 
                 # Add SI Card if valid
-                if int(t['Memcardnr%s' % int(i)]) > 0:
-                    runner.sicards.add(SICard(int(t['Memcardnr%s' % int(i)])))
+                RunnerImporter._add_sicard(runner,t['Memcardnr%s' % str(i)])
+
+                # Add runner to team
+                team.members.add(runner)
+                
+                num += 1
+                i += 1
+
+            # Add team to store
+            store.add(team)
+
+class TeamUBOL3Importer(RunnerImporter):
+    """Import participant data for UBOL3 event from CSV file."""
+
+    RUNNER_NUMBERS       = ['', '1', '2', '3']
+    RUNNER_NUMBER_FORMAT = u'%(runner)s%(team)02i'
+    
+    def import_data(self, store):
+
+        # Create category
+        cat = Category(u'UBOL3')
+
+        for t in self.data:
+
+            # Create the team
+            team = Team(t['AnmeldeNummer'],
+                            t['Teamname'], cat)
+
+            # Create individual runners
+            num = 0
+            i = 1
+            while num < 4:
+                
+                runner = Runner(t['Name%s' % str(i)],
+                                t['Vorname%s' % str(i)], store = store)
+                if t['Geschlecht%s' % str(i)] == 'm':
+                    runner.sex = 'male'
+                elif t['Geschlecht%s' % str(i)] == 'f':
+                    runner.sex = 'female'
+                runner.dateofbirth = RunnerImporter._parse_yob(t['Jahrgang%s' % str(i)]) 
+                runner.number = TeamUBOL3Importer.RUNNER_NUMBER_FORMAT % \
+                                {'team' : int(team.number),
+                                 'runner' : TeamUBOL3Importer.RUNNER_NUMBERS[num]}
+                print runner.number
+
+                # Add SI Card if valid
+                RunnerImporter._add_sicard(runner, t['SI-Card%s' % i])
+
+                # Add open run if SICard
+                try:
+                    si = runner.sicards.one()
+                except NotOneError:
+                    pass
+                else:
+                    if si is not None:
+                        r = store.add(Run(si))
+                        r.set_coursecode(unicode(num))
                 
                 # Add runner to team
                 team.members.add(runner)
@@ -421,36 +502,3 @@ class ControlNotFoundException(Exception):
 
 class DuplicateSequenceException(Exception):
     pass
-
-if __name__ == '__main__':
-    # Read program options
-    opt = OptionParser(usage = 'usage: %prog [options] command importfile', 
-                       description = 'Available commands are \'teams\', \'runs\' and \'courses\'.')
-    opt.add_option('-e', '--encoding', action='store', default='utf-8',
-                   help='Encoding of the imported file.')
-    opt.add_option('-f', '--finish', action='store_false', default=True,
-                   help="Don't Connect finish points to the special SI Station for the finish.")
-    opt.add_option('-s', '--start', action='store_true', default=False,
-                   help='Connect all start points to the special SI Station for the start. Only use this option if you use SI Stations for the start.')
-    (options, (command, filename)) = opt.parse_args()
-
-    # Set up connection to datastore
-    db = create_database(conf.db_uri)
-    store = Store(db)
-
-
-    if command == 'teams':
-        # Import teams
-        importer = Team24hImporter(filename, options.encoding)
-    elif command == 'runs':
-        # Import runs
-        importer = SIRunImporter(filename, options.encoding)
-    elif command == 'courses':
-        # Import courses
-        importer = OCADXMLCourseImporter(filename, options.finish, options.start)
-    else:
-        print "Unknown command '%s'" % command
-        exit(1)
-        
-    importer.import_data(store)
-    store.commit()

@@ -1,0 +1,60 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+#    import_teams.py - Import Data from go2ol.ch
+#
+#    Copyright (C) 2008  Gaudenz Steinlin <gaudenz@soziologie.ch>
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+from optparse import OptionParser
+import sys
+
+import conf
+from importer import Team24hImporter, TeamUBOL3Importer, SIRunImporter, OCADXMLCourseImporter
+
+if __name__ == '__main__':
+    # Read program options
+    opt = OptionParser(usage = 'usage: %prog [options] command importfile', 
+                       description = 'Available commands are \'teams\', \'runs\' and \'courses\'.')
+    opt.add_option('-e', '--encoding', action='store', default='utf-8',
+                   help='Encoding of the imported file.')
+    opt.add_option('-t', '--team', action='store',
+                   help="Team event identifier. Currently supported: 24h, UBOL3")
+    opt.add_option('-f', '--finish', action='store_false', default=True,
+                   help="Don't Connect finish points to the special SI Station for the finish.")
+    opt.add_option('-s', '--start', action='store_true', default=False,
+                   help='Connect all start points to the special SI Station for the start. Only use this option if you use SI Stations for the start.')
+    (options, (command, filename)) = opt.parse_args()
+
+    if command == 'teams':
+        # Import teams
+        if options.team == '24h':
+            importer = Team24hImporter(filename, options.encoding)
+        elif options.team == 'UBOL3':
+            importer = TeamUBOL3Importer(filename, options.encoding)
+        else:
+            print 'Unknown Team event identifier!'
+            sys.exit(1)
+    elif command == 'runs':
+        # Import runs
+        importer = SIRunImporter(filename, options.encoding)
+    elif command == 'courses':
+        # Import courses
+        importer = OCADXMLCourseImporter(filename, options.finish, options.start)
+    else:
+        print "Unknown command '%s'" % command
+        exit(1)
+        
+    importer.import_data(conf.store)
+    conf.store.commit()
