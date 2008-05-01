@@ -74,8 +74,8 @@ if __name__ == '__main__':
 
     if options.list:
         print 'Available rankings:', 
-        for r in conf.rankings:
-            print r,
+        for r in conf.event.list_rankings():
+            print r[0],
         print
         sys.exit()
 
