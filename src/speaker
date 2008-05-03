@@ -64,7 +64,12 @@ class SpeakerFrame(wx.Frame):
         # unregister rankable object
         if self._ranking_panel.content is not None:
             for r in self._ranking_panel.content.rankings:
-                self._observer.unregister(self._ranking_panel, r.rankable)
+                try:
+                    self._observer.unregister(self._ranking_panel, r.rankable)
+                except KeyError:
+                    # don't fail if you can't unregister, possibly registration
+                    # never occured due to an Exception
+                    pass
                 
         list_box = event.GetEventObject()
         data = list_box.GetClientData(list_box.GetSelection())
