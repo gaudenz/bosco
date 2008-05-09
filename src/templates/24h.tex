@@ -1,6 +1,12 @@
+# -*- coding: utf-8 -*-
 <%!
 from runner import Category
 from course import Course
+
+blocks_de = {'start' :'Start',
+             'night' :'Nacht',
+             'day'   :'Tag',
+             'finish':'Ziel'}
 %>
 
 \documentclass[12pt,a4paper]{article}
@@ -44,7 +50,13 @@ from course import Course
 \vspace{1cm}
 
 \begin{Huge}
-\textbf{${r.rankable}}
+\textbf{${r.rankable} 
+%if type(r.scoreing_args) == dict and 'blocks' in r.scoreing_args and r.scoreing_args['blocks'] != 'finish':
+${'(nach %s Block)' % blocks_de[r.scoreing_args['blocks']]}
+%elif type(r.scoreing_args) == dict and 'method' in r.scoreing_args and r.scoreing_args['method'] == 'lkm':
+(nach Leistungskilometern)
+%endif
+}
 \end{Huge}
 
 %if type(r.rankable) == Category:
@@ -59,20 +71,25 @@ from course import Course
 
 % endfor
 
+\textit{last update: ${now}}
+
 \end{document}
 
 <%def name="course(r)">
 
 (${r.rankable.length/1000.0}km, ${r.rankable.climb}m, ${r.rankable.controls.count()} cont.)
 
-\begin{longtable}{rp{4cm}lp{6cm}@{\extracolsep{\fill}}l}
-\textbf{Rank} & \textbf{Runner} & \textbf{YofB} & \textbf{Team} & \textbf{Time} \\ 
+\begin{longtable}{rp{4cm}p{1.5cm}lp{4.5cm}p{1cm}@{\extracolsep{\fill}}l}
+\textbf{Rang} & \textbf{Läufer} & \textbf{Nr.} & \textbf{Jg.} & \textbf{Team} & \textbf{Kat.} & \textbf{Zeit} \\ 
 \hline
   % for line in r:
 
   ${line['rank'] and ('%i.' % line['rank']) or ''} &
-  ${line['item']} & ${line['item'].sicard.runner.dateofbirth.strftime('%y')} &
+  ${line['item']} & 
+  ${line['item'].sicard.runner.number or ''} & 
+  ${line['item'].sicard.runner.dateofbirth.strftime('%y')} &
   ${line['item'].sicard.runner.team.name} & 
+  ${line['item'].sicard.runner.team.category} &
   ${line['rank'] and line['scoreing']['score'] or validation_codes[line['validation']['status']]} \\ 
 
   % endfor
@@ -81,14 +98,15 @@ from course import Course
 </%def>
 
 <%def name="category(r)">
-\begin{longtable}{rp{7cm}@{\extracolsep{\fill}}lll}
-\textbf{Rank} & \textbf{Team} & \textbf{Runs} & \textbf{Time} & \textbf{Finish Time} \\ 
+\begin{longtable}{rp{6cm}p{1.5cm}@{\extracolsep{\fill}}lll}
+\textbf{Rang} & \textbf{Team} & \textbf{Nr.} & \textbf{${type(r.scoreing_args) == dict and 'method' in r.scoreing_args and r.scoreing_args['method'] == 'lkm' and 'LKm' or u'Läufe'}} & \textbf{Zeit} & \textbf{Zielzeit} \\ 
 \hline
   % for line in r:
 
     % if line['rank']:
     ${'%i.' % line['rank']} & 
     ${line['item']} &
+    ${line['item'].number or ''} &
     ${line['scoreing']['score'].runs} & 
     ${line['scoreing']['score'].time} &
     ${line['scoreing']['finishtime'].strftime('%H:%M:%S')} \\ 
@@ -96,8 +114,8 @@ from course import Course
     % else:
     & 
     ${line['item']} &
-    \multicolumn{2}{l}{${validation_codes[line['validation']['status']]}} &
-    ${line['scoreing']['finishtime'].strftime('%H:%M:%S')} \\ 
+    ${line['item'].number or ''} &
+    \multicolumn{3}{l}{${validation_codes[line['validation']['status']]}} \\ 
     % endif
 
   % endfor

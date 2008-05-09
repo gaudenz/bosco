@@ -19,6 +19,7 @@
 
 from csv import reader, writer
 from datetime import datetime, date
+from time import sleep
 from sys import exit, hexversion
 if hexversion > 0x20500f0:
     from xml.etree.ElementTree import parse
@@ -112,9 +113,9 @@ class Team24hImporter(RunnerImporter):
 
         # Create categories
         cat_24h = Category(u'24h')
-        next_24h = 1
+        next_24h = 101
         cat_12h = Category(u'12h')
-        next_12h = 101
+        next_12h = 201
 
         for t in self.data:
 
@@ -164,7 +165,9 @@ class Team24hImporter(RunnerImporter):
 class TeamUBOL3Importer(RunnerImporter):
     """Import participant data for UBOL3 event from CSV file."""
 
-    RUNNER_NUMBERS       = ['', '1', '2', '3']
+    # 0 leg needs 0 not '' otherwise the numbers do
+    # not sort correctly as they are strings!
+    RUNNER_NUMBERS       = ['0', '1', '2', '3'] 
     RUNNER_NUMBER_FORMAT = u'%(runner)s%(team)02i'
     
     def import_data(self, store):
@@ -221,10 +224,10 @@ class TeamUBOL3Importer(RunnerImporter):
 class SIRunImporter(Importer):
     """Import SICard readout data from a backup file.
        File Format:
-       Course Code;SICard Number;StartTime;FinishTime;CheckTime;ClearTime;Control Code 1;Time1;Control Code 2;Time2;...
+       Course Code;SICard Number;ReadoutTime;StartTime;FinishTime;CheckTime;ClearTime;Control Code 1;Time1;Control Code 2;Time2;...
        Time Format is YYYY-MM-DD HH:MM:SS.ssssss
        Example:
-       SE1;345213;2008-02-20 12:14:00.000000;2008-02-20 13:27:06.080200;2008-02-20 12:10:21.000000;2008-02-20 12:10:07.002000;32;2008-02-20 12:19:23.000000;76;2008-02-20 12:20:57.300000;...
+       SE1;345213;2008-02-20 12:32:54.000000;2008-02-20 12:14:00.000000;2008-02-20 13:27:06.080200;2008-02-20 12:10:21.000000;2008-02-20 12:10:07.002000;32;2008-02-20 12:19:23.000000;76;2008-02-20 12:20:57.300000;...
        """
 
     timestamp_re = re.compile('([0-9]{4})-([0-9]{2})-([0-9]{2}) ([0-9]{2}):([0-9]{2}):([0-9]{2})(\.([0-9]{6}))?')
@@ -233,13 +236,16 @@ class SIRunImporter(Importer):
 
     COURSE = 0
     CARDNR = 1
-    START  = 2
-    FINISH = 3
-    CHECK  = 4
-    CLEAR  = 5
-    BASE   = 6
+    READOUT= 2
+    START  = 3
+    FINISH = 4
+    CHECK  = 5
+    CLEAR  = 6
+    BASE   = 7
     
-    def __init__(self, fname, encoding = 'utf-8'):
+    def __init__(self, fname, replay = False, interval = 10, encoding = 'utf-8'):
+        self._replay = replay
+        self._interval = interval
         csv = reader(open(fname, 'rb'), delimiter=';')
         self.__runs = []
         for line in csv:
@@ -292,6 +298,7 @@ class SIRunImporter(Importer):
         for line in self.__runs:
             course_code = line[SIRunImporter.COURSE]
             cardnr = line[SIRunImporter.CARDNR]
+            readout = self.__datetime(line[SIRunImporter.READOUT])
             
             self._punches = []
 
@@ -315,9 +322,14 @@ class SIRunImporter(Importer):
                 i += 2
 
             
-            run = Run(int(cardnr), course_code, self._punches, store)
+            run = Run(int(cardnr), course_code, self._punches, readout,
+                      store = store)
             run.complete = True
             store.add(run)
+            if self._replay is True:
+                print "Commiting Run %s for SI-Card %s" % (course_code, cardnr)
+                store.commit()
+                sleep(self._interval)
 
 class SIRunExporter(SIRunImporter):
     """Export Run data to a backup file."""
@@ -346,6 +358,7 @@ class SIRunExporter(SIRunImporter):
         line = [''] * SIRunImporter.BASE
         line[SIRunImporter.COURSE] = run.course.code
         line[SIRunImporter.CARDNR] = run.sicard.id
+        line[SIRunImporter.READOUT] = run.readout_time and run.readout_time.strftime(SIRunImporter.TIMEFORMAT) or ''
         line[SIRunImporter.START] = SIRunExporter.__punch2string(run.punches.find(Punch.sistation == SIStation.START).one())[1]
         line[SIRunImporter.CHECK] = SIRunExporter.__punch2string(run.punches.find(Punch.sistation == SIStation.CHECK).one())[1]
         line[SIRunImporter.CLEAR] = SIRunExporter.__punch2string(run.punches.find(Punch.sistation == SIStation.CLEAR).one())[1]

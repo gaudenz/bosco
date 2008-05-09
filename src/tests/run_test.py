@@ -23,12 +23,13 @@ from datetime import datetime, timedelta
 from course import Course, Control, SIStation
 from runner import SICard, Runner, Category, Team
 
-from run import Run
-from ranking import (MassStartTimeScoreing,
-                     SelfStartTimeScoreing,
-                     RelayTimeScoreing,
+from run import Run, Punch
+from ranking import (TimeScoreing,
+                     MassstartStarttime,
+                     SelfstartStarttime,
+                     RelayStarttime,
+                     RelayMassstartStarttime,
                      UnscoreableException,
-                     MassStartRelayTimeScoreing,
                      Validator,
                      SequenceCourseValidator,
                      Ranking)
@@ -43,8 +44,10 @@ class RunTest(unittest.TestCase):
     def setUp(self):
 
         # Create start and finish control
-        S = self._store.add(Control(u'S', SIStation(SIStation.START)))
-        F = self._store.add(Control(u'F', SIStation(SIStation.FINISH)))
+        self._si_s = SIStation(SIStation.START)
+        self._si_f = SIStation(SIStation.FINISH)
+        S = self._store.add(Control(u'S', self._si_s))
+        F = self._store.add(Control(u'F', self._si_f))
 
         # create control with 2 sistations
         c200 = Control(u'200', SIStation(200))
@@ -65,12 +68,18 @@ class RunTest(unittest.TestCase):
         # Create Runners
         self._runners = []
         
-        self._runners.append(Runner(u'Muster', u'Hans', 655465, u'HAM', self._store))
-        self._runners.append(Runner(u'Gerster', u'Trudi', 765477, u'HAM', self._store))
-        self._runners.append(Runner(u'Mueller', u'Hans', 768765, u'HAM', self._store))
-        self._runners.append(Runner(u'Missing', u'The', 113456, u'HAM', self._store))
-        self._runners.append(Runner(u'Gugus', u'Dada', 56789, u'HAM', self._store))
-        self._runners.append(Runner(u'Al', u'Missing', 12345, u'HAM', self._store))
+        self._runners.append(Runner(u'Muster', u'Hans', 655465, u'HAM', u'101',
+                                    store = self._store))
+        self._runners.append(Runner(u'Gerster', u'Trudi', 765477, u'HAM', u'102',
+                                    store = self._store))
+        self._runners.append(Runner(u'Mueller', u'Hans', 768765, u'HAM', u'103',
+                                    store = self._store))
+        self._runners.append(Runner(u'Missing', u'The', 113456, u'HAM',
+                                    store = self._store))
+        self._runners.append(Runner(u'Gugus', u'Dada', 56789, u'HAM',
+                                    store = self._store))
+        self._runners.append(Runner(u'Al', u'Missing', 12345, u'HAM',
+                                    store = self._store))
         
 
         # Create a team
@@ -95,7 +104,7 @@ class RunTest(unittest.TestCase):
                                (SIStation.FINISH,datetime(2008,3,19,8,25,35)),
                                (SIStation.FINISH,datetime(2008,3,19,8,25,37)),
                                ],
-                              self._store
+                              store = self._store
                               ))
         self._runs[0].complete = True
 
@@ -109,7 +118,7 @@ class RunTest(unittest.TestCase):
                                 (132,datetime(2008,3,19,8,30,0)),
                                 (SIStation.FINISH,datetime(2008,3,19,8,31,23)),
                                 ],
-                              self._store
+                              store = self._store
                               ))
         self._runs[1].complete = True
 
@@ -124,7 +133,7 @@ class RunTest(unittest.TestCase):
                                 (132,datetime(2008,3,19,8,36,0)),
                                 (SIStation.FINISH,datetime(2008,3,19,8,36,25)),
                                 ],
-                              self._store
+                              store = self._store
                               ))
         self._runs[2].complete = True
 
@@ -137,7 +146,7 @@ class RunTest(unittest.TestCase):
                                 (132,datetime(2008,3,19,8,36,0)),
                                 (SIStation.FINISH,datetime(2008,3,19,8,36,25)),
                                 ],
-                              self._store
+                              store = self._store
                               ))
         self._runs[3].complete = True
 
@@ -151,27 +160,18 @@ class RunTest(unittest.TestCase):
                                (132,datetime(2008,3,19,8,25,0)),
                                (SIStation.FINISH,datetime(2008,3,19,8,25,40)),
                                ],
-                              self._store
+                              store = self._store
                               ))
         self._runs[4].complete = True
 
         # empty run
-        self._runs.append(Run(12345, u'A', [], self._store))
+        self._runs.append(Run(12345, u'A', [], store = self._store))
         self._runs[5].complete = True
 
-        self._store.commit()
 
     def tearDown(self):
         # Clean up Database
-        self._store.execute('TRUNCATE course CASCADE')
-        self._store.execute('TRUNCATE sistation CASCADE')
-        self._store.execute('TRUNCATE control CASCADE')
-        self._store.execute('TRUNCATE run CASCADE')
-        self._store.execute('TRUNCATE punch CASCADE')
-        self._store.execute('TRUNCATE sicard CASCADE')
-        self._store.execute('TRUNCATE runner CASCADE')
-        self._store.execute('TRUNCATE category CASCADE')
-        self._store.commit()
+        self._store.rollback()
         
     def test_start_last(self):
         """Test that Run.start() returns the last punch on a start control."""
@@ -183,52 +183,96 @@ class RunTest(unittest.TestCase):
 
     def test_runtime_start_finish(self):
         """Test the run time for a run with start and finish controls."""
-        strategy = SelfStartTimeScoreing()
+        strategy = TimeScoreing(SelfstartStarttime())
         score = strategy.score(self._runs[0])['score']
         self.assertEquals(score, timedelta(minutes=5))
         
     def test_runtime_massstart(self):
         """Test the run time for a run with mass start."""
-        strategy = MassStartTimeScoreing(datetime(2008,3,19,8,15,15))
+        strategy = TimeScoreing(MassstartStarttime(datetime(2008,3,19,8,15,15)))
         score = strategy.score(self._runs[0])['score']
         self.assertEquals(score, timedelta(minutes=10, seconds=20))
 
     def test_runtime_relay(self):
         """Test the run time for a relay leg wich starts with the finish time of the
            previous run."""
-        strategy = RelayTimeScoreing(datetime(2008,3,19,8,20,0))
+        strategy = TimeScoreing(RelayStarttime(datetime(2008,3,19,8,15,15), ordered = True))
         score = strategy.score(self._runs[1])['score']
         self.assertEquals(score, timedelta(minutes=5, seconds=48))
+        score = strategy.score(self._runs[2])['score']
+        self.assertEquals(score, timedelta(minutes=5, seconds=2))
 
     def test_runtime_relay_first(self):
         """Test RelayTimeScoreing for the first runner (mass start)"""
-        strategy = RelayTimeScoreing(datetime(2008,3,19,8,20,0))
+        strategy = TimeScoreing(RelayStarttime(datetime(2008,3,19,8,20,0)))
         score = strategy.score(self._runs[0])['score']
         self.assertEquals(score, timedelta(minutes=5, seconds=35))
 
     def test_runtime_relay_massstart(self):
         """Test the run time for a relay leg which was started with a mass start if
         the finish time of the previous runner is after the mass start time."""
-        strategy = MassStartRelayTimeScoreing(datetime(2008,3,19,8,30,23))
+        strategy = TimeScoreing(RelayMassstartStarttime(datetime(2008,3,19,8,30,23)))
         score = strategy.score(self._runs[1])['score']
         self.assertEquals(score, timedelta(minutes=5, seconds=48))
         score = strategy.score(self._runs[2])['score']
         self.assertEquals(score, timedelta(minutes=6, seconds=2))
 
+    @staticmethod
+    def _convert_punchlist(punchlist):
+        return [ (p[0], type(p[1]) == Punch and p[1].sistation.id or p[1].code) for
+                      p in punchlist ]
+
+    def test_validation_valid(self):
+        """Test validation of a valid run."""
+        validator = SequenceCourseValidator(self._course)
+        valid = validator.validate(self._runs[1])
+        self.assertEquals(valid['status'], Validator.OK)
+        self.assertEquals(self._convert_punchlist(valid['punchlist']),
+                          [('', SIStation.START),
+                           ('ok', 131),
+                           ('ok', 132),
+                           ('ok', 200),
+                           ('ok', 132),
+                           ('', SIStation.FINISH)])
+        
+    def test_validation_additional(self):
+        """Test validation of a valid run with additional punches."""
+        validator = SequenceCourseValidator(self._course)
+        valid = validator.validate(self._runs[2])
+        self.assertEquals(valid['status'], Validator.OK)
+        self.assertEquals(self._convert_punchlist(valid['punchlist']),
+                          [('', SIStation.START),
+                           ('ok', 131),
+                           ('ok', 132),
+                           ('additional', 133),
+                           ('ok', 200),
+                           ('ok', 132),
+                           ('', SIStation.FINISH)])
+        
     def test_validation_missing(self):
         """Test validation of a run with missing controls."""
         validator = SequenceCourseValidator(self._course)
         valid = validator.validate(self._runs[3])
         self.assertEquals(valid['status'], Validator.MISSING_CONTROLS)
-        self.assertEquals(valid['missing'], [self._c131])
+        self.assertEquals(self._convert_punchlist(valid['punchlist']),
+                          [('missing', u'131'),
+                           ('', SIStation.START),
+                           ('ok', 132),
+                           ('ok', 200),
+                           ('ok', 132),
+                           ('', SIStation.FINISH)])
 
     def test_validation_all_missing(self):
         """Test that all controls of a run are missing if the validated run is empty."""
         validator = SequenceCourseValidator(self._course)
         valid  = validator.validate(self._runs[5])
         self.assertEquals(valid['status'], Validator.DID_NOT_FINISH)
-        self.assertEquals([ c.code for c in valid['missing']],
-                          [u'131', u'132', u'200', u'132'])
+        punchlist = [ (p[0], type(p[1]) == Punch and p[1].sistation.id or p[1].code) for
+                      p in valid['punchlist'] ]
+        self.assertEquals(punchlist,[('missing', u'131'),
+                                     ('missing', u'132'),
+                                     ('missing', u'200'),
+                                     ('missing', u'132')])
         
     def test_ranking_course(self):
         """Test the correct ranking of runs in a course."""
@@ -299,6 +343,72 @@ class RunTest(unittest.TestCase):
         valid = validator.validate(self._runs[1])
         self.assertEquals(valid['status'],Validator.DISQUALIFIED)
         self.assertEquals(valid['override'], True)
+
+    def test_punchtime(self):
+        """check for correct punchtime handling."""
+        p = Punch(SIStation(10), card_punchtime = datetime(2008,5,3,12,02))
+        self.assertEquals(p.punchtime, datetime(2008,5,3,12,02))
+        p.manual_punchtime = datetime(2008,5,3,12,03)
+        self.assertEquals(p.punchtime, datetime(2008,5,3,12,03))
+        p.manual_punchtime = datetime(2008,5,3,12,01)
+        self.assertEquals(p.punchtime, datetime(2008,5,3,12,01))
         
+    def test_check_sequence(self):
+        """Test punch sequence checking"""
+        s10 = SIStation(10)
+        c10 = Control(u'10', s10)
+        s11 = SIStation(11)
+        c11 = Control(u'11', s11)
+        s12 = SIStation(12)
+        c12 = Control(u'12',s12)
+        s13 = SIStation(13)
+        c13 = Control(u'13', s13)
+        
+        run = Run(SICard(1))
+        run.punches.add(Punch(s10,
+                              card_punchtime = datetime(2008,5,3,12,36), sequence=1))
+        p2 = Punch(s11,
+                   card_punchtime = datetime(2008,5,3,12,38), sequence=2)
+        run.punches.add(p2)
+        run.punches.add(Punch(s12,
+                              manual_punchtime = datetime(2008,5,3,12,39)))
+        run.punches.add(Punch(s13,
+                              card_punchtime = datetime(2008,5,3,12,37), sequence=3))
+        self._store.add(run)
+        self.assertFalse(run.check_sequence())
+        p2.ignore = True
+        self.assertTrue(run.check_sequence())
+        p2.ignore = False
+        p2.manual_punchtime = datetime(2008,5,3,12,36,30)
+        self.assertTrue(run.check_sequence())
+        p2.manual_punchtime = None
+        c11.override = True
+        self.assertTrue(run.check_sequence())
+
+    def test_punchlist(self):
+        """check punchlist"""
+        run = Run(SICard(2))
+        p_1 = Punch(SIStation(9), card_punchtime = datetime(2008,5,3,11,58))
+        p1 = Punch(SIStation(10), card_punchtime = datetime(2008,5,3,12,0))
+        p2 = Punch(SIStation(11), card_punchtime = datetime(2008,5,3,12,1))
+        p3 = Punch(SIStation(12), card_punchtime = datetime(2008,5,3,12,2))
+        p5 = Punch(SIStation(13), card_punchtime = datetime(2008,5,3,12,5))
+
+        run.punches.add(p_1)
+        run.punches.add(p1)
+        run.punches.add(p2)
+        run.punches.add(p3)
+        run.punches.add(p5)
+        self._store.add(run)
+        self.assertEquals(run.punchlist(), [p_1, p1,p2,p3,p5])
+        p0 = Punch(self._si_s, card_punchtime = datetime(2008,5,3,11,59))
+        run.punches.add(p0)
+        self.assertEquals(run.punchlist(), [p1,p2,p3,p5])
+        p4 = Punch(self._si_f, card_punchtime = datetime(2008,5,3,12,4))
+        run.punches.add(p4)
+        self.assertEquals(run.punchlist(), [p1, p2, p3])
+        p3.manual_punchtime = datetime(2008,5,3,12,0,30)
+        self.assertEquals(run.punchlist(), [p1, p3, p2])
+                        
 if __name__ == '__main__':
     unittest.main()

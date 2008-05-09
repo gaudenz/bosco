@@ -23,16 +23,18 @@ from datetime import timedelta
 
 from course import Course
 from runner import Category
-from ranking import (SequenceCourseValidator, SelfStartTimeScoreing,
-                     RelayTimeScoreing, Ranking, CourseValidator, OpenRuns,
-                     ControlPunchtimeScoreing, MassStartRelayTimeScoreing,
-                     Relay24hScoreing, Relay12hScoreing, ValidationError)
+from ranking import (SequenceCourseValidator, TimeScoreing, SelfstartStarttime,
+                     RelayStarttime, RelayMassstartStarttime,
+                     Ranking, CourseValidator, OpenRuns,
+                     ControlPunchtimeScoreing,
+                     Relay24hScoreing, Relay12hScoreing, RelayValidator,
+                     ValidationError, UnscoreableException)
 
 from formatter import MakoRankingFormatter
 
 class Event(object):
     """Model of all event specific ranking information. The default
-    implementation uses SequenceCourseValidator and SelfStartTimeScoreing.
+    implementation uses SequenceCourseValidator, TimeScoreing and SelfstartStarttime.
     Subclass this class to customize your event."""
 
     def __init__(self, header, extra_rankings = [],
@@ -78,7 +80,22 @@ class Event(object):
                 v = tuple(v)
             arg_list.append((k, v))
         return (cls, tuple(arg_list))
-    
+
+    def remove_cache(self):
+        """Removes the cache. No caching occurs anymore."""
+        self._cache = None
+        self._strategies = {}
+
+    def clear_cache(self, obj = None):
+        """
+        Clear the cache
+        @param obj: Only clear the cache for obj
+        """
+        if obj is not None:
+            self._cache.update(obj)
+        else:
+            self._cache.clear()
+        
     def validate(self, obj, validator_class = None, args = None):
         # Don't define args={}, default arguments are created at function definition time
         # and you would end up modifing the default args below! You must create a new
@@ -96,6 +113,9 @@ class Event(object):
         from run import Run
         from runner import Runner
 
+        if obj is None:
+            raise ValidationError("Can't validate objects of type %s" % type(obj))
+        
         if validator_class is None:
             validator_class = SequenceCourseValidator
             
@@ -132,15 +152,21 @@ class Event(object):
         @see:                  AbstractScoreing for more information about scoreing classes
         """
 
-        if scoreing_class is None:
-            scoreing_class = SelfStartTimeScoreing
             
+        if obj is None:
+            raise UnscoreableException("Can't score objects of type %s" % type(obj))
+        
         if args is None:
             args = {}
 
         if not 'cache' in args:
             args['cache'] = self._cache
 
+        if scoreing_class is None:
+            scoreing_class = TimeScoreing
+            if 'starttime_strategy' not in args:
+                args['starttime_strategy'] = SelfstartStarttime(args['cache'])
+                
         if self._key(scoreing_class, args) not in self._strategies:
             # create scoreing instance
             if not 'cache' in args:
@@ -188,6 +214,18 @@ class Event(object):
         l.sort(key = lambda x: x[0])
         return l
 
+    def list_courses(self):
+        """
+        @return: list of all courses in the event 
+        """
+        return list(self._store.find(Course))
+
+    def list_categories(self):
+        """
+        @return: list of all categories in the event
+        """
+        return list(self._store.find(Category))
+    
 class RelayEvent(Event):
     """Event class for a traditional relay."""
 
@@ -228,9 +266,14 @@ class RelayEvent(Event):
         if args is None:
             args = {}
 
+        if not 'cache' in args:
+            args['cache'] = self._cache
+            
         if type(obj) == Run and scoreing_class is None:
-            scoreing_class = MassStartRelayTimeScoreing
-            args['massstart_time'] = self._starttimes[obj.course.code]
+            if obj.course is None:
+                raise UnscoreableException("Can't score a relay leg without a course.")
+            scoreing_class = TimeScoreing
+            args['starttime_strategy'] = RelayMassstartStarttime(self._starttimes[obj.course.code], args['cache'])
         elif type(obj) == Team and scoreing_class is None:
             if not 'legs' in args:
                 args['legs'] = len(self._startimes)
@@ -290,10 +333,16 @@ class Relay24hEvent(Event):
         return (self._strategy[cat], args)
 
     def _get_run_strategy(self, run, args):
-        cat = run.sicard.runner.team.category.name
-        if 'starttime' not in args:
-            args['starttime'] = self._starttime[cat]
-        return (RelayTimeScoreing, args)
+        try:
+            cat = run.sicard.runner.team.category.name
+        except AttributeError:
+            return (None, args)
+        
+        if 'starttime_strategy' not in args:
+            args['starttime_strategy'] = RelayStarttime(self._starttime[cat],
+                                                        ordered = False,
+                                                        cache = self._cache)
+        return (TimeScoreing, args)
         
     def validate(self, obj, validator_class = None, args = None):
 

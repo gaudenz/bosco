@@ -29,6 +29,13 @@ from course import SIStation
 class AbstractRankingFormatter(object):
     """Formats a ranking. str(rankingRormatter) returns the formatted ranking."""
 
+    validation_codes = {Validator.OK               : 'OK',
+                        Validator.NOT_COMPLETED    : 'not yet finished',
+                        Validator.MISSING_CONTROLS : 'missing controls',
+                        Validator.DID_NOT_FINISH   : 'did not finish',
+                        Validator.DISQUALIFIED     : 'disqualified',
+                        Validator.DID_NOT_START    : 'did not (yet) start'}
+    
     def __init__(self, rankings):
         """
         @param ranking: the ranking to format
@@ -46,12 +53,6 @@ class AbstractRankingFormatter(object):
 class MakoRankingFormatter(AbstractRankingFormatter):
     """Uses the Mako Templating Engine to format a ranking as HTML."""
 
-    _validation_codes = {Validator.NOT_COMPLETED    : 'not yet finished',
-                         Validator.MISSING_CONTROLS : 'missing controls',
-                         Validator.DID_NOT_FINISH   : 'did not finish',
-                         Validator.DISQUALIFIED     : 'disqualified',
-                         Validator.DID_NOT_START    : 'did not (yet) start'}
-    
     def __init__(self, rankings, header, template_file, template_dir):
         """
         @type ranking:        list of dicts with keys 'ranking' and 'info'
@@ -69,7 +70,7 @@ class MakoRankingFormatter(AbstractRankingFormatter):
     def __str__(self):
 
         return self._template.render_unicode(header = self._header,
-                                             validation_codes = self._validation_codes,
+                                             validation_codes = self.validation_codes,
                                              now = datetime.now().strftime('%c'),
                                              rankings = self.rankings)
 

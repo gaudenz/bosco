@@ -98,6 +98,54 @@ class SIReader(object):
     SI9_RC        = 22
     SI9_1         = 56
 
+    # SI Card data structures
+    CARD          = {'SI5':{'CN2': 6,   # card number byte 2
+                            'CN1': 4,   # card number byte 1
+                            'CN0': 5,   # card number byte 0
+                            'ST' : 19,  # start time
+                            'FT' : 21,  # finish time
+                            'CT' : 25,  # check time
+                            'LT' : None,# clear time
+                            'RC' : 23,  # punch counter
+                            'P1' : 32,  # first punch
+                            'PL' : 3,   # punch data length in bytes
+                            'PM' : 30,  # punch maximum (punches 31-36 have no time)
+                            'CN' : 0,   # control number offset in punch record
+                            'PTH' :1,   # punchtime high byte offset in punch record
+                            'PTL' :2,   # punchtime low byte offset in punch record
+                            },
+                     'SI6':{'CN2': 11,
+                            'CN1': 12,
+                            'CN0': 13,
+                            'ST' : 26,
+                            'FT' : 22,
+                            'CT' : 20,
+                            'LT' : 34,
+                            'RC' : 18,
+                            'P1' : 128,
+                            'PL' : 4,
+                            'PM' : 64,
+                            'CN' : 1,
+                            'PTH': 2,
+                            'PTL': 3,
+                            },
+                     'SI9':{'CN2': 25,
+                            'CN1': 26,
+                            'CN0': 27,
+                            'ST' : 14,
+                            'FT' : 18,
+                            'CT' : 10,
+                            'LT' : None,
+                            'RC' : 22,
+                            'P1' : 56,
+                            'PL' : 4,
+                            'PM' : 50,
+                            'CN' : 1,
+                            'PTH': 2,
+                            'PTL': 3,
+                            },
+                     }
+
     # punch trigger in control mode data structure
     T_OFFSET      = 8
     T_CN          = 0
@@ -296,7 +344,9 @@ class SIReader(object):
             return None
 
         if reftime is None:
-            reftime = datetime.now()
+            # add two hours as a safety marging for cases where the
+            # machine time runs a bit ahead of the stations time.
+            reftime = datetime.now() + timedelta(hours=2)
 
         #punchtime is in the range 0h-12h!
         punchtime = timedelta(seconds = SIReader._to_int(raw_time))
@@ -326,117 +376,62 @@ class SIReader(object):
         time = SIReader._decode_time(timedata, reftime)
         if time is not None:
             list.append((station, time))
-                
+
     @staticmethod
-    def _decode_si5(data, reftime = None):
-        """Decodes a data record read from an SI Card 5."""
+    def _decode_carddata(data, card_type, reftime = None):
+        """Decodes a data record read from an SI Card."""
 
         ret = {}
+        card = SIReader.CARD[card_type]
+        
         ret['card_number'] = SIReader._decode_cardnr('\x00'
-                                                     + data[SIReader.SI5_CNS]
-                                                     + data[SIReader.SI5_CN1]
-                                                     + data[SIReader.SI5_CN0])
-        ret['punches'] = []
-        SIReader._append_punch(ret['punches'],
-                               SIStation.START,
-                               data[SIReader.SI5_ST:SIReader.SI5_ST+2],
-                               reftime)
-        SIReader._append_punch(ret['punches'],
-                               SIStation.FINISH,
-                               data[SIReader.SI5_FT:SIReader.SI5_FT+2],
-                               reftime)
-        SIReader._append_punch(ret['punches'],
-                               SIStation.CHECK,
-                               data[SIReader.SI5_CT:SIReader.SI5_CT+2],
-                               reftime)
+                                                     + data[card['CN2']]
+                                                     + data[card['CN1']]
+                                                     + data[card['CN0']])
+        ret['start'] = SIReader._decode_time(data[card['ST']:card['ST']+2],
+                                             reftime)
+        ret['finish'] = SIReader._decode_time(data[card['FT']:card['FT']+2],
+                                             reftime)
+        ret['check'] = SIReader._decode_time(data[card['CT']:card['CT']+2],
+                                             reftime)
+        if card['LT'] is not None:
+            ret['clear'] = SIReader._decode_time(data[card['LT']:card['LT']+2],
+                                                 reftime)
+        else:
+            ret['clear'] = None # SI 5 and 9 cards don't store the clear time
 
-        punch_count = ord(data[SIReader.SI5_RC]) - 1 # RC is the index of the next punch
-        if punch_count > 30:
-            # Only 30 punches with time available
-            punch_count = 30
+        punch_count = ord(data[card['RC']])
+        if card_type == 'SI5':
+            # RC is the index of the next punch on SI5
+            punch_count -= 1
             
+        if punch_count > card['PM']:
+            punch_count = card['PM']
+            
+        ret['punches'] = []
         p = i = 0
         while p < punch_count:
-            if i % 16 == 0:
+            if card_type == 'SI5' and i % 16 == 0:
                 # first byte of each block is reserved for punches 31-36
                 i += 1
             SIReader._append_punch(ret['punches'],
-                                   ord(data[SIReader.SI5_1 + i]),
-                                   data[SIReader.SI5_1 + i + 1:SIReader.SI5_1 + i + 3],
+                                   ord(data[card['P1'] + i + card['CN']]),
+                                   data[card['P1'] + i + card['PTH']] +
+                                   data[card['P1'] + i + card['PTL']],
                                    reftime)
-            i += 3
+            i += card['PL']
             p += 1
-
-        return ret
-    
-    @staticmethod
-    def _decode_si6(data, reftime = None):
-        """Decodes a data record read from an SI Card 6."""
-        ret = {}
-        ret['card_number'] = SIReader._to_int(data[SIReader.SI6_CN:SIReader.SI6_CN+4])
-
-        ret['punches'] = []
-        SIReader._append_punch(ret['punches'],
-                               SIStation.START,
-                               data[SIReader.SI6_ST:SIReader.SI6_ST+2],
-                               reftime)
-        SIReader._append_punch(ret['punches'],
-                               SIStation.FINISH,
-                               data[SIReader.SI6_FT:SIReader.SI6_FT+2],
-                               reftime)
-        SIReader._append_punch(ret['punches'],
-                               SIStation.CHECK,
-                               data[SIReader.SI6_CT:SIReader.SI6_CT+2],
-                               reftime)
-        SIReader._append_punch(ret['punches'],
-                               SIStation.CLEAR,
-                               data[SIReader.SI6_LT:SIReader.SI6_LT+2],
-                               reftime)
-
-        punch_count = ord(data[SIReader.SI6_RC]) # RC is the punch count on the SI Card 6
-        if punch_count > 64:
-            # Currently SI Card 6* is not supported
-            punch_count = 64
             
-        for i in range(punch_count):
-            SIReader._append_punch(ret['punches'],
-                                   ord(data[SIReader.SI6_1 + i*4 + 1]),
-                                   data[SIReader.SI6_1 + i*4 + 2:SIReader.SI6_1 + i*4 + 4],
-                                   reftime)
-
-        return ret
-    
-    @staticmethod
-    def _decode_si9(data, reftime = None):
-        """Decodes a data record read from an SI Card 9."""
+        # compatibility hack: add start, finish, clear and check as punches
+        if ret['start'] is not None:
+            ret['punches'].append((SIStation.START, ret['start']))
+        if ret['finish'] is not None:
+            ret['punches'].append((SIStation.FINISH, ret['finish']))
+        if ret['check'] is not None:
+            ret['punches'].append((SIStation.CHECK, ret['check']))
+        if ret['clear'] is not None:
+            ret['punches'].append((SIStation.CLEAR, ret['clear']))
         
-        ret = {}
-        ret['card_number'] = SIReader._to_int(data[SIReader.SI9_CN:SIReader.SI9_CN+3])
-
-        ret['punches'] = []
-        SIReader._append_punch(ret['punches'],
-                               SIStation.START,
-                               data[SIReader.SI9_ST:SIReader.SI9_ST+2],
-                               reftime)
-        SIReader._append_punch(ret['punches'],
-                               SIStation.FINISH,
-                               data[SIReader.SI9_FT:SIReader.SI9_FT+2],
-                               reftime)
-        SIReader._append_punch(ret['punches'],
-                               SIStation.CHECK,
-                               data[SIReader.SI9_CT:SIReader.SI9_CT+2],
-                               reftime)
-
-        punch_count = ord(data[SIReader.SI9_RC]) # RC is the punch count on the SI Card 6
-        if punch_count > 50:
-            raise SIReaderException('SI Card 9 with invalid punch count')
-            
-        for i in range(punch_count):
-            SIReader._append_punch(ret['punches'],
-                                   ord(data[SIReader.SI9_1 + i*4 + 1]),
-                                   data[SIReader.SI9_1 + i*4 + 2:SIReader.SI9_1 + i*4 + 4],
-                                   reftime)
-
         return ret
 
     def _send_command(self, command, parameters):
@@ -502,49 +497,55 @@ class SIReaderReadout(SIReader):
         self.cardtype = None
 
     def poll_sicard(self):
-        """Polls for an SI-Card inserted or removed into the SI Station. Returns true on
-        state changes and false otherwise. If other commands are received an Exception is
-        raised."""
-        try:
-            c = self._read_command(timeout = 0)
-        except SIReaderTimeout:
-            return False
-        
-        if c[0] == SIReader.C_SI_REM:
-            self.sicard = None
-            self.cardtype = None
-        elif c[0] == SIReader.C_SI5_DET:
-            self.sicard = self._decode_cardnr(c[1])
-            self.cardtype = 'SI5'
-        elif c[0] == SIReader.C_SI6_DET:
-            self.sicard = self._to_int(c[1])
-            self.cardtype = 'SI6'
-        elif c[0] == SIReader.C_SI9_DET:
-            self.sicard = self._to_int(c[1][1:]) # SI 9 sends corrupt first byte (insignificant)
-            self.cardtype = 'SI9'
-        else:
-            raise SIReaderException('Unexpected command %s received' % hex(ord(c[0])))
+        """Polls for an SI-Card inserted or removed into the SI Station.
+        Returns true on state changes and false otherwise. If other commands
+        are received an Exception is raised."""
 
-        return True
+        if self._serial.inWaiting() == 0:
+            return False
+
+        oldcard = self.sicard
+        while self._serial.inWaiting() > 0:
+            c = self._read_command(timeout = 0)
+                    
+            if c[0] == SIReader.C_SI_REM:
+                self.sicard = None
+                self.cardtype = None
+            elif c[0] == SIReader.C_SI5_DET:
+                self.sicard = self._decode_cardnr(c[1])
+                self.cardtype = 'SI5'
+            elif c[0] == SIReader.C_SI6_DET:
+                self.sicard = self._to_int(c[1])
+                self.cardtype = 'SI6'
+            elif c[0] == SIReader.C_SI9_DET:
+                # SI 9 sends corrupt first byte (insignificant)
+                self.sicard = self._to_int(c[1][1:]) 
+                self.cardtype = 'SI9'
+            else:
+                raise SIReaderException('Unexpected command %s received' % hex(ord(c[0])))
+
+        return not oldcard == self.sicard
 
     def read_sicard(self):
         """Reads out the SI Card currently inserted into the station. The card must be
         detected with poll_sicard before."""
             
         if self.cardtype == 'SI5':
-            return SIReader._decode_si5(self._send_command(SIReader.C_GET_SI5, '')[1])
+            return SIReader._decode_carddata(self._send_command(SIReader.C_GET_SI5,
+                                                                '')[1],
+                                             self.cardtype)
         elif self.cardtype == 'SI6':
             raw_data  = self._send_command(SIReader.C_GET_SI6,
                                            SIReader.P_SI6_CB)[1][1:]
             raw_data += self._read_command()[1][1:]
             raw_data += self._read_command()[1][1:]
-            return SIReader._decode_si6(raw_data)
+            return SIReader._decode_carddata(raw_data, self.cardtype)
         elif self.cardtype == 'SI9':
             raw_data  = self._send_command(SIReader.C_GET_SI9,
                                            '\x00')[1][1:]
             raw_data += self._send_command(SIReader.C_GET_SI9,
                                            '\x01')[1][1:]
-            return SIReader._decode_si9(raw_data)
+            return SIReader._decode_carddata(raw_data, self.cardtype)
         else:
             raise SIReaderException('No card in the device.')
     

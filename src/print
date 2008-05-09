@@ -21,6 +21,7 @@ print - print rankings
 from tempfile import mkdtemp
 from shutil import move, rmtree, copy
 from optparse import OptionParser
+from subprocess import call
 import os, sys
 
 import conf
@@ -65,7 +66,7 @@ if __name__ == '__main__':
 
     orig_dir = os.getcwd()
     os.chdir(tempdir)
-    os.system('pdflatex print.tex > /dev/null')
+    call(['pdflatex','--interaction=batchmode', 'print.tex'])
     os.chdir(orig_dir)
     if len(args) == 1:
         move(os.path.join(tempdir, 'print.pdf'), args[0])
@@ -73,4 +74,4 @@ if __name__ == '__main__':
         f = open(os.path.join(tempdir, 'print.pdf'), 'rb')
         print f.read(),
         
-    rmtree(tempdir)
+    #rmtree(tempdir)

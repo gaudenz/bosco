@@ -21,12 +21,15 @@
              static data.
 """
 
+from copy import copy
+from datetime import datetime
 from storm.locals import *
 from storm.exceptions import NoStoreError
+from storm.expr import Column
 import re
 
 from base import MyStorm
-from course import SIStation, Course
+from course import SIStation, Course, Control
 from runner import SICard
 from ranking import RankableItem
 
@@ -38,14 +41,27 @@ class Punch(Storm):
     run = Reference(_run_id, 'Run.id')
     _sistation_id = Int(name='sistation')
     sistation = Reference(_sistation_id, 'SIStation.id')
-    punchtime = DateTime()
+    card_punchtime = DateTime(name = 'card_punchtime')
+    manual_punchtime = DateTime()
+    ignore = Bool()
+    sequence = Int()
 
-    def __init__(self, sistation, punchtime):
+    def __init__(self, sistation, card_punchtime=None, manual_punchtime = None,
+                 sequence = None):
         """Creates a new punch object. This object needs to be added to a
            run. It can not "live" on its own."""
         self.sistation = sistation
-        self.punchtime = punchtime
+        self.card_punchtime = card_punchtime
+        self.manual_punchtime = manual_punchtime
+        self.sequence = sequence
 
+    def _get_punchtime(self):
+        if self.manual_punchtime is not None:
+            return self.manual_punchtime
+        else:
+            return self.card_punchtime
+    punchtime = property(_get_punchtime)
+        
 class Run(MyStorm, RankableItem):
     """A run is directly connected to a single readout of an SI-Card.
        Competitors can have multiple runs during an event, but one
@@ -63,10 +79,12 @@ class Run(MyStorm, RankableItem):
     course = Reference(_course_id, 'Course.id')
     complete = Bool()
     override = Int()
+    readout_time = DateTime()
     punches = ReferenceSet(id, 'Punch._run_id')
 
     
-    def __init__(self, card, course=None, punches = [], store = None):
+    def __init__(self, card, course=None, punches = [], readout_time = None,
+                 store = None):
         """Creates a new Run object.
 
         @param card:    SICard
@@ -77,6 +95,8 @@ class Run(MyStorm, RankableItem):
         @type  course:  Object of class L{Course} or course code as string.
         @param punches: Punches to add to the run.
         @type  punches: List of (stationcode, punchtime) tuples.
+        @param readout_time: Time the run was read from the SI-Card
+        @type  readout_time: datetime or None if unknown
         @param store:   Storm store for the objects referenced by this run.
                         A store is needed if card or course are given as int/string
                         or if punches is non empty.
@@ -86,31 +106,28 @@ class Run(MyStorm, RankableItem):
             cardnr = card
             card = store.get(SICard, card)
             if not card:
-                raise RunException("Could not find SI Card Nr. '%s'" % cardnr)
+                card = SICard(cardnr)
 
         self.sicard = card
+
+        if store is not None:
+            self._store = store
 
         if type(course) == unicode:
             self.set_coursecode(course)
         else:
             self.course = course
-            
+
+        self.readout_time = readout_time
+        
         self.add_punchlist(punches)
-
-        if store is not None:
-            self._store = store
-
-    def __storm_pre_flush__(self):
-        """Do some consistency checks before flushing the object to the database.
-        @todo: Better implement this on the db layer (triggers)? Or even better
-        subclass boolean to check this when accessing the property.
-        """
-        if self.complete and self.course is None:
-            raise RunException("Can't complete a run without a Course.")
 
     def __str__(self):
         runner = self.sicard.runner
-        return '%s %s' % (runner.given_name, runner.surname)
+        if runner is not None:
+            return '%s %s' % (runner.given_name, runner.surname)
+        else:
+            return 'SI-Card: %s' % self.sicard.id
     
     def add_punch(self, punch):
         """Adds a (stationnumber, punchtime) tuple to the run."""
@@ -120,11 +137,11 @@ class Run(MyStorm, RankableItem):
         # Only add punch if it does not yet exist on this run
         if self._store.find(Punch, And(Punch.run == self.id,
                                        Punch.sistation == number,
-                                       Punch.punchtime == punchtime)).count() == 0:
+                                       Punch.card_punchtime == punchtime)).count() == 0:
             
             station = self._store.get(SIStation, number)
             if station is None:
-                raise RunException('si-station number \'%s\' not found' % number)
+                station = SIStation(number)
         
             self.punches.add(Punch(station, punchtime))
 
@@ -162,12 +179,12 @@ class Run(MyStorm, RankableItem):
         intrpreted as an SI station number or object."""
             
         if sistation:
-            result = self.punches.find(Punch.sistation == control).order_by('punchtime')
+            result = self.punches.find(Punch.sistation == control).order_by('COALESCE(manual_punchtime, card_punchtime)')
         else:
             # The search term here is far from optimal from an encapsulation viewpoint, but 
             # I couldn't find anything better...
             sistation_ids = [i.id for i in control.sistations]
-            result = self.punches.find(Punch._sistation_id.is_in(sistation_ids)).order_by('punchtime')
+            result = self.punches.find(Punch._sistation_id.is_in(sistation_ids)).order_by('COALESCE(manual_punchtime, card_punchtime)')
             
         if result.count() > 0:
             if first:
@@ -183,7 +200,32 @@ class Run(MyStorm, RankableItem):
     
     def finish(self):
         """Returns the time the finish control was punched or None."""
-        return self.punchtime(SIStation.FINISH, first=True, sistation=True)
+        finishpunch = self.punchtime(SIStation.FINISH, first=True, sistation=True)
+#        if finishpunch is None and self.complete == False:
+            # return datetime.max to indicate that the finish will be in the
+            # future, better return datetime.now()?
+#            finishpunch = datetime.max
+        return finishpunch
+
+    def punchlist(self):
+        """Return all valid 'normal' punches ordered by punchtime"""
+        return [p for p in self.punches.order_by('COALESCE(manual_punchtime, card_punchtime)')
+                if (p.ignore is not True
+                    and p.sistation > SIStation.SPECIAL_MAX
+                    and p.punchtime > (self.start() or datetime.min)
+                    and p.punchtime < (self.finish() or datetime.max))]
+    
+    def check_sequence(self):
+        """Check if punchtimes match punch sequence numbers."""
+        punchsequence = list(self.punches.find(Not(Punch.card_punchtime == None),
+                                               Not(Punch.ignore == True),
+                                               Punch.sistation == SIStation.id,
+                                               SIStation.id > SIStation.SPECIAL_MAX,
+                                               SIStation.control == Control.id,
+                                               Not(Control.override == True)).order_by('COALESCE(manual_punchtime, card_punchtime)').values(Column('sequence')))
+        sorted = copy(punchsequence)
+        sorted.sort()
+        return punchsequence == sorted
 
 class RunException(Exception):
     pass

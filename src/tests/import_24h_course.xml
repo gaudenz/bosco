@@ -144,7 +144,7 @@
   </FinishPoint>
 
   <Course>
-    <CourseName> S1 </CourseName>
+    <CourseName> SF1 </CourseName>
     <CourseId> 0 </CourseId>
     <CourseVariation>
       <CourseVariationId> 0 </CourseVariationId>
@@ -182,7 +182,7 @@
   </Course>
 
   <Course>
-    <CourseName> S2 </CourseName>
+    <CourseName> SF2 </CourseName>
     <CourseId> 1 </CourseId>
     <CourseVariation>
       <CourseVariationId> 0 </CourseVariationId>
@@ -220,7 +220,7 @@
   </Course>
 
   <Course>
-    <CourseName> S3 </CourseName>
+    <CourseName> SF3 </CourseName>
     <CourseId> 2 </CourseId>
     <CourseVariation>
       <CourseVariationId> 0 </CourseVariationId>
@@ -258,7 +258,7 @@
   </Course>
 
   <Course>
-    <CourseName> S4 </CourseName>
+    <CourseName> SF4 </CourseName>
     <CourseId> 3 </CourseId>
     <CourseVariation>
       <CourseVariationId> 0 </CourseVariationId>
@@ -1474,7 +1474,7 @@
   </Course>
 
   <Course>
-    <CourseName> F1 </CourseName>
+    <CourseName> FF1 </CourseName>
     <CourseId> 35 </CourseId>
     <CourseVariation>
       <CourseVariationId> 0 </CourseVariationId>
@@ -1512,7 +1512,7 @@
   </Course>
 
   <Course>
-    <CourseName> F2 </CourseName>
+    <CourseName> FF2 </CourseName>
     <CourseId> 36 </CourseId>
     <CourseVariation>
       <CourseVariationId> 0 </CourseVariationId>
@@ -1550,7 +1550,7 @@
   </Course>
 
   <Course>
-    <CourseName> F3 </CourseName>
+    <CourseName> FF3 </CourseName>
     <CourseId> 37 </CourseId>
     <CourseVariation>
       <CourseVariationId> 0 </CourseVariationId>
@@ -1588,7 +1588,7 @@
   </Course>
 
   <Course>
-    <CourseName> F4 </CourseName>
+    <CourseName> FF4 </CourseName>
     <CourseId> 38 </CourseId>
     <CourseVariation>
       <CourseVariationId> 0 </CourseVariationId>
@@ -1626,7 +1626,7 @@
   </Course>
 
   <Course>
-    <CourseName> F5 </CourseName>
+    <CourseName> FF5 </CourseName>
     <CourseId> 39 </CourseId>
     <CourseVariation>
       <CourseVariationId> 0 </CourseVariationId>
@@ -1664,7 +1664,7 @@
   </Course>
 
   <Course>
-    <CourseName> F6 </CourseName>
+    <CourseName> FF6 </CourseName>
     <CourseId> 40 </CourseId>
     <CourseVariation>
       <CourseVariationId> 0 </CourseVariationId>
