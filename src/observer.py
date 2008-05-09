@@ -19,8 +19,10 @@ observer.py - Classes to observe the data store
 
 from threading import Timer
 from storm.locals import *
+from datetime import datetime
 
-from run import Punch
+from run import Punch, Run
+from runner import Team
 import conf
 
 class EventObserver(object):
@@ -29,32 +31,63 @@ class EventObserver(object):
     """
 
     def _punch_notify(self, punch):
-        
-        # send notifications for run
-        self._notify(punch.run)
-            
-        # send notifications for runner
-        self._notify(punch.run.sicard.runner)
 
-        # send notifications for team
-        self._notify(punch.run.sicard.runner.team)
+        print 'sending not for punch %s' % punch.id
+        self._notify_run(punch.run)
+        
+    def _run_notify(self, run):
+
+        # send notification for run
+        self._notify(run)
+
+        # send for runner
+        if run.sicard.runner is not None:
+            self._runner_notify(run.sicard.runner)
 
         # send notifications for course
-        self._notify(punch.run.course)
+        if run.course is not None:
+            self._course_notify(run.course)
+
+
+    def _runner_notify(self, runner):
+        self._notify(runner)
+
+        # send for team
+        if runner.team is not None:
+            self._team_notify(runner.team)
 
         # send notifications for category
-        self._notify(punch.run.sicard.runner.category)
-            
+        if runner.category is not None:
+            self._category_notify(runner.category)
+                
+    def _team_notify(self, team):
+        self._notify(team)
+
+        # send for category
+        if team.category is not None:
+            self._category_notify(team.category)
+
+    def _category_notify(self, category):
+        self._notify(category)
+
+    def _course_notify(self, course):
+        self._notify(course)
+        
     _tables = [(Punch, _punch_notify),
                ]
     
-    def __init__(self, store, interval = 5):
+    def __init__(self, store, interval = 5, rollback = True):
+        """
+        @param interval: Check interval
+        @param rollback: Rollback store before checking for new objects?
+                         This is necessary to get new objects added by other
+                         connections but it resets all uncommited changes.
+        """
 
         self._interval = interval
         
-        # allocate own store and db connection to make sure this is independant of
-        # running transactions
         self._store = store
+        self._rollback = rollback
         
         self._registry = {}
 
@@ -99,7 +132,8 @@ class EventObserver(object):
         """Does the actual observation."""
 
         # rollback store to end transaction
-        self._store.rollback()
+        if self._rollback:
+            self._store.rollback()
 
         for t in EventObserver._tables:
             last = self._get_max(t[0])
@@ -123,5 +157,59 @@ class EventObserver(object):
                 obj.update(observable)
         except KeyError:
             pass
+
+    
+class TriggerEventObserver(EventObserver):
+    """Observes an Event for new data (e.g. new punches).
+    This implementation uses triggers and a log table to
+    also get notified of changed values.
+    @warn: This will rollback the store every <intervall> seconds!
+    """
+
+    _tables = {Punch : EventObserver._punch_notify,
+               Run   : EventObserver._run_notify,
+               Team  : EventObserver._team_notify,
+               }
+
+    def __init__(self, store, interval = 5, rollback = True):
+        """
+        @param interval: Check interval
+        @param rollback: Rollback store before checking for new objects?
+                         This is necessary to get new objects added by other
+                         connections but it resets all uncommited changes.
+        """
+        EventObserver.__init__(self, store, interval, rollback)
+        self._last = datetime.now()
+        
+    def observe(self):
+        """Does the actual observation."""
+
+        try:
+            # rollback store to end transaction
+            if self._rollback:
+                self._store.rollback()
+
+            changed = self._store.execute("""SELECT object_type, change_time, row
+                                               FROM log
+                                               WHERE change_time > %s
+                                               ORDER BY change_time""",
+                                          params = [self._last])
+        
+            for row in changed:
+                for obj_type in self._tables.keys():
+                    if row[0] == obj_type.__storm_table__:
+                        obj = self._store.get(obj_type, row[2])
+                        if obj is not None:
+                            self._tables[obj_type](self, obj)
+
+            # obj is now the last object
+            try:
+                self._last = row[1]
+            except UnboundLocalError:
+                pass
+
+        finally:
+            # start new timer, even if an exception occurs
+            self._start_timer()
 
     

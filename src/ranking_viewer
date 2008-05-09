@@ -24,7 +24,6 @@ import wx.html
 from optparse import OptionParser
 import sys
 
-from observer import EventObserver
 import conf
 
 class RotatingRankingViewer(wx.Frame):
@@ -97,9 +96,11 @@ if __name__ == '__main__':
         ranking_tuples.append((conf.event.format_ranking([r]), int(ranking_times[i])))
 
     # add EventObserver to cache for automatic updates
-    observer = EventObserver(conf.store)
-    conf.cache.set_observer(observer)
+    conf.cache.set_observer(conf.observer)
     
     app = wx.App()
     frame = RotatingRankingViewer(None, ranking_tuples, options.size)
     app.MainLoop()
+
+    conf.cache.remove_observer()
+    conf.observer.stop()

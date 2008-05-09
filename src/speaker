@@ -22,7 +22,6 @@ import wx
 import wx.html
 import wx.lib.anchors
 
-from observer import EventObserver
 from gui import UpdateableHtmlPanel
 import conf
 
@@ -84,12 +83,11 @@ class SpeakerFrame(wx.Frame):
 if __name__ == '__main__':
 
     # add EventObserver to cache for automatic updates
-    observer = EventObserver(conf.store)
-    conf.cache.set_observer(observer)
+    conf.cache.set_observer(conf.observer)
     
     app = wx.App()
-    frame = SpeakerFrame(None, conf.event, observer)
+    frame = SpeakerFrame(None, conf.event, conf.observer)
     app.MainLoop()
 
     conf.cache.remove_observer()
-    observer.stop()
+    conf.observer.stop()
