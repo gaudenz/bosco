@@ -59,9 +59,11 @@ class Runner(AbstractRunner, MyStorm):
     team = Reference(_team_id, 'Team.id')
     sicards = ReferenceSet(id, 'SICard._runner_id')
 
-    def __init__(self, sname, gname, sicard = None, category = None, store = None):
+    def __init__(self, sname, gname, sicard = None, category = None, number = None,
+                 store = None):
         self.surname = sname
         self.given_name = gname
+        self.number = number
         if store is not None:
             self._store = store
         if sicard is not None:
@@ -70,7 +72,7 @@ class Runner(AbstractRunner, MyStorm):
             self.set_category(category)
         
     def __str__(self):
-        return '%s, %s' % (self.surname, self.given_name)
+        return '%s %s' % (self.given_name, self.surname)
 
     def _get_run(self): 
         runs = []
@@ -81,9 +83,15 @@ class Runner(AbstractRunner, MyStorm):
         if len(runs) == 1:
             return runs[0]
         elif len(runs) > 1:
-            raise UnscoreableException('%s runs for runner %' % (len(runs), self))
+            # search for complete runs
+            complete_runs = [ r for r in runs if r.complete == True ]
+            if len(complete_runs) == 1:
+                # if there is only one complete run, return this run
+                return complete_runs[0]
+            else:
+                raise RunnerException('%s runs for runner %s' % (len(runs), self))
         else:
-            raise UnscoreableException('No run found for runner %s' % self)
+            raise RunnerException('No run found for runner %s' % self)
     run = property(_get_run)
 
 
@@ -158,7 +166,7 @@ class Team(AbstractRunner, Storm):
         from run import Run
         for m in self.members:
             for si in m.sicards:
-                runs.extend(list(si.runs.find(Run.complete == True)))
+                runs.extend(list(si.runs))
         return runs
     runs = property(_get_runs)
 
