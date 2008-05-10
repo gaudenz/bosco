@@ -18,7 +18,7 @@ editor.py - High level editing classes.
 """
 
 from datetime import datetime
-
+from time import sleep
 from storm.exceptions import NotOneError, LostObjectError
 from storm.locals import *
 
@@ -126,6 +126,8 @@ class RunEditor(Observable):
         self.connect_reader(sireader_port)
         
     def _get_has_runner(self):
+        if self._run is None:
+            return False
         return self._run.sicard.runner is not None
     has_runner = property(_get_has_runner)
 
