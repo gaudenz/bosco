@@ -41,7 +41,7 @@ cache = Cache()
 observer = TriggerEventObserver(store)
 
 # EventRanking object
-starttime = datetime(2008,5,11,19,00)
+starttime = datetime(2008,5,10,19,00)
 _cat24h = store.find(Category, Category.name == u'24h').one()
 _cat12h = store.find(Category, Category.name == u'12h').one()
 _last_ctrls = [store.find(Control, Control.code == u'200').one(),
