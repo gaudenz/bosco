@@ -567,7 +567,8 @@ class RunEditor(Observable):
 
         # wrap everything in a try - except block to be able to roll back
         # on error
-        try: 
+        try:
+            self.rollback()
             self.progress = None
             self.progress = 'Reading card data...'
         
