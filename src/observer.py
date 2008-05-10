@@ -32,7 +32,6 @@ class EventObserver(object):
 
     def _punch_notify(self, punch):
 
-        print 'sending not for punch %s' % punch.id
         self._run_notify(punch.run)
         
     def _run_notify(self, run):
