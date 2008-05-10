@@ -45,17 +45,21 @@ class RotatingRankingViewer(wx.Frame):
         self.ShowNext()
         self.ShowFullScreen(True)
 
+    def ScrollDown(self):
+        self._panel.Scroll(-1, 100)
+        wx.FutureCall(self._duration/2*1000, self.ShowNext)
+
     def ShowNext(self):
 
         # take next ranking from the list and show
-        (ranking, duration) = self._rankings.pop(0)
+        (ranking, self._duration) = self._rankings.pop(0)
         self._panel.SetPage(unicode(ranking))
         
         # add at the end of the stack
-        self._rankings.append((ranking, duration))
+        self._rankings.append((ranking, self._duration))
 
         # schedule next panel change
-        wx.FutureCall(duration*1000, self.ShowNext)
+        wx.FutureCall(self._duration/2*1000, self.ScrollDown)
 
 if __name__ == '__main__':
     # Read program options
