@@ -41,14 +41,14 @@ cache = Cache()
 observer = TriggerEventObserver(store)
 
 # EventRanking object
-starttime = datetime(2008,5,10,15,24)
+starttime = datetime(2008,4,30,21,55)
 _cat24h = store.find(Category, Category.name == u'24h').one()
 _cat12h = store.find(Category, Category.name == u'12h').one()
 _last_ctrls = [store.find(Control, Control.code == u'31').one(),
                store.find(Control, Control.code == u'32').one()]
 
 event = Relay24hEvent(starttime_24h = starttime,
-                      starttime_12h = datetime(2008,5,10,15,30),
+                      starttime_12h = datetime(2008,4,30,22,50),
                       speed = 1.5,
                       extra_rankings = [('24h_lkm',
                                          {'obj':_cat24h,
@@ -102,8 +102,8 @@ event = Relay24hEvent(starttime_24h = starttime,
                                 'place'  : 'Heitere, Neuenegg',
                                 'date'   : '11./12. May 2008',
                                 'organiser' : 'UBOL / OLG Bern'},
-                      duration_24h = timedelta(hours=1, minutes = 0),
-                      duration_12h = timedelta(hours=1, minutes = 0),
+                      duration_24h = timedelta(hours=2, minutes = 6),
+                      duration_12h = timedelta(hours=1, minutes = 3),
                       cache = cache, store = store)
                                      
                                      

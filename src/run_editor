@@ -464,6 +464,8 @@ class RunEditorFrame(wx.Frame):
                 if self.notebook.GetSelection() == 1:
                     if (self.run_editor.has_runner == False
                         or self.run_editor.has_course == False):
+                        # stop reader
+                        self.run_editor.stop_reader()
                         # change to edit run page
                         self.notebook.SetSelection(0)
                     
