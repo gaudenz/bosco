@@ -119,7 +119,7 @@ class SIReader(object):
                             'CN0': 13,
                             'ST' : 26,
                             'FT' : 22,
-                            'CT' : 20,
+                            'CT' : 30,
                             'LT' : 34,
                             'RC' : 18,
                             'P1' : 128,
