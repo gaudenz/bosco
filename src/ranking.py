@@ -727,9 +727,24 @@ class Relay24hScoreing(AbstractScoreing, Validator):
         try:
             return self._from_cache(self._runs, team)
         except KeyError:
-            runs = [ r for r in team.runs if r.complete and
-                     r.course is not None and
-                     r.course.code in self._courses ]
+            runs = []
+            for r in team.runs:
+                if r.complete is False:
+                    continue
+                if r.course is None:
+                    continue
+                if not r.course.code in self._courses:
+                    continue
+                runs.append( {'finish':r.finish(),
+                              'runner':r.sicard.runner.id,
+                              'course':r.course.code,
+                              'validation':self._event_ranking.validate(r)['status']})
+                if runs[-1]['validation'] == Validator.OK:
+                    runs[-1]['lkm'] = r.course.lkm()
+                else:
+                    runs[-1]['score'] = self._event_ranking.score(r)['score']
+                    runs[-1]['expected_time'] = r.course.expected_time(self._speed)
+                
             self._to_cache(self._runs, team, runs)
             return runs
 
@@ -746,16 +761,16 @@ class Relay24hScoreing(AbstractScoreing, Validator):
             pass
         
         # collect team members and runs
-        members = list(team.members.order_by('number'))
+        members = [ r.id for r in  team.members.order_by('number')]
         runs = self._runs(team)
-        runs.sort(key=lambda x:x.finish() or datetime.max)
+        runs.sort(key=lambda x:x['finish'] or datetime.max)
         
         # check runner order
         remaining = copy(members)
         next_runner = 0
         status = Validator.OK
         for i,r in enumerate(runs):
-            while not r.sicard.runner == remaining[next_runner]:
+            while not r['runner'] == remaining[next_runner]:
                 if i < len(members):
                     # not every runner has run at least once
                     status = Validator.DISQUALIFIED
@@ -796,7 +811,7 @@ class Relay24hScoreing(AbstractScoreing, Validator):
 
         i = 0
         runs = self._runs(team)
-        runs.sort(key = lambda x:x.finish() or datetime.max)
+        runs.sort(key = lambda x:x['finish'] or datetime.max)
         remaining_runs = copy(runs)
         for r in runs:
             while i <= 2 and len(pool[i]) == 0:
@@ -808,12 +823,12 @@ class Relay24hScoreing(AbstractScoreing, Validator):
                 break
 
             try:
-                pool[i].remove(r.course.code)
+                pool[i].remove(r['course'])
                 remaining_runs.remove(r)
             except ValueError:
                 return {'status': Validator.DISQUALIFIED,
                         'unfinished pool': self.POOLNAMES[i],
-                        'run': r.course.code}
+                        'run': r['course']}
                     
 
         # check for proper order of finish courses
@@ -824,10 +839,10 @@ class Relay24hScoreing(AbstractScoreing, Validator):
                 # no more runs
                 break
             
-            if c != remaining_runs[i].course.code:
+            if c != remaining_runs[i]['course']:
                 return {'status': Validator.DISQUALIFIED,
                         'unfinished pool': self.POOLNAMES[3],
-                        'run': remaining_runs[i].course.code}
+                        'run': remaining_runs[i]['course']}
 
         return {'status': Validator.OK}
     
@@ -886,11 +901,11 @@ class Relay24hScoreing(AbstractScoreing, Validator):
             pass
         
         runs = self._runs(team)
-        runs.sort(key = lambda x:x.finish() or datetime.max)
+        runs.sort(key = lambda x:x['finish'] or datetime.max)
         
         failed = []
         for r in runs:
-            status = self._event_ranking.validate(r)['status']
+            status = r['validation']
             if status in [Validator.MISSING_CONTROLS,
                           Validator.DID_NOT_FINISH,
                           Validator.DISQUALIFIED]:
@@ -898,8 +913,8 @@ class Relay24hScoreing(AbstractScoreing, Validator):
                 
         fail_penalty = timedelta(0)
         for f in failed:
-            penalty = (f.course.expected_time(self._speed)
-                       - self._event_ranking.score(f)['score'])
+            penalty = (f['expected_time']
+                       - f['score'])
             if penalty < timedelta(0):
                 # no negative penalty
                 penalty = timedelta(0)
@@ -914,11 +929,11 @@ class Relay24hScoreing(AbstractScoreing, Validator):
                        - fail_penalty - give_up_penalty)
 
         valid_runs  = [ r for r in runs
-                        if self._event_ranking.validate(r)['status'] == Validator.OK
-                        and r.finish() <= finish_time]
+                        if r['validation'] == Validator.OK
+                        and r['finish'] <= finish_time]
 
         if len(valid_runs) > 0:
-            runtime = max(valid_runs, key=lambda x: x.finish()).finish() - self._starttime
+            runtime = max(valid_runs, key=lambda x: x['finish'])['finish'] - self._starttime
         else:
             runtime = timedelta(0)
             
@@ -927,7 +942,7 @@ class Relay24hScoreing(AbstractScoreing, Validator):
         elif self._method == 'lkm':
             lkm = 0
             for r in valid_runs:
-                lkm += r.course.lkm()
+                lkm += r['lkm']
             result = Relay24hScore(lkm, runtime)
         else:
             raise UnscoreableException("Unknown scoreing method '%s'." % self._method)

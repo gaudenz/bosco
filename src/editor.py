@@ -229,6 +229,7 @@ class RunEditor(Observable):
         if team is None:
             return na
         try:
+            print 'validating team'
             validation = self._event.validate(team)
         except ValidationError:
             return ''
@@ -625,8 +626,9 @@ class RunEditor(Observable):
             else:
                 self.progress = 'Course already set.'
 
-            self.progress = 'Commiting run to database...'
+            self.progress = 'Updating validation...'
             self.changed = True
+            self.progress = 'Commiting run to database...'
             self.commit()
             self._sireader.ack_sicard()
                 
