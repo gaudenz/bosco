@@ -81,7 +81,7 @@ class Ranking(object):
                 # Only increase the rank if the current item scores higher than the previous item
                 if (i > 0 and (ranking_list[i]['scoreing']['score']
                               > ranking_list[i-1]['scoreing']['score'])
-                         or (reverse and (ranking_list[i]['scoreing']['score']
+                         or (self._reverse and (ranking_list[i]['scoreing']['score']
                               < ranking_list[i-1]['scoreing']['score']))):
                     rank = i + 1
                 result = copy(m)
