@@ -30,17 +30,16 @@ import conf
 def register_punch(station, cardnr, punchtime):
 
     # search for incomplete run with this sicard
-    run = store.find(Run,
-                     Run.sicard == cardnr,
-                     Run.complete == False).one()
+    run = conf.store.find(Run,
+                          Run.sicard == cardnr,
+                          Run.complete == False).one()
     
     if run is None:
-        run = store.add(Run(cardnr, store=store))
+        run = conf.store.add(Run(cardnr, store=conf.store))
 
     run.add_punch((station, punchtime))
 
 
-store = Store(create_database(conf.db_uri))
 sireader = SIReaderControl(len(sys.argv) > 1 and sys.argv[1] or None)
 
 while True:
@@ -50,12 +49,12 @@ while True:
             print "Punch received from %s at %s" % (p[0], p[1])
             try:
                 register_punch(sireader.station_code, p[0], p[1])
-                store.commit()
+                conf.store.commit()
             except RunException, msg:
                 print_exc(file=sys.stderr)
-                store.rollback()
+                conf.store.rollback()
     except Exception, msg:
-        store.rollback()
+        conf.store.rollback()
         print_exc(file=sys.stdout)
 
     sleep(1)
