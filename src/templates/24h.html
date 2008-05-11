@@ -53,7 +53,7 @@ blocks_de = {'start' :'Start',
     <td><b>Rang</b></td>
     <td><b>Team</b></td>
     <td><b>Start Nr.</b></td>
-    <td><b>${type(ranking.scoreing_args) == dict and 'method' in ranking.scoreing_args and ranking.scoreing_args['method'] == 'lkm' and 'LKm' or ranking.scoreing_args['method'] == 'speed' and 'min/Lkm' or u'Läufe'}</b></td>
+    <td><b>${type(ranking.scoreing_args) == dict and 'method' in ranking.scoreing_args and (ranking.scoreing_args['method'] == 'lkm' and 'LKm' or ranking.scoreing_args['method'] == 'speed' and 'min/Lkm') or u'Läufe'}</b></td>
     <td><b>Laufzeit</b></td>
     <td><b>Zielzeit</b></td
   %elif type(ranking.rankable) == Course:
