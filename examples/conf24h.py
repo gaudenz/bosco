@@ -55,9 +55,21 @@ event = Relay24hEvent(starttime_24h = starttime,
                                           'scoreing_args':{'method':'lkm'}
                                           }
                                          ),
+                                        ('24h_speed',
+                                         {'obj':_cat24h,
+                                          'scoreing_args':{'method':'speed'},
+                                          'reverse':True,
+                                          }
+                                         ),
                                         ('12h_lkm',
                                          {'obj':_cat12h,
                                           'scoreing_args':{'method':'lkm'}
+                                          }
+                                         ),
+                                        ('12h_speed',
+                                         {'obj':_cat12h,
+                                          'scoreing_args':{'method':'speed'},
+                                          'reverse':True
                                           }
                                          ),
                                         ('24h_start',

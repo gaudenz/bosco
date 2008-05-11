@@ -79,8 +79,10 @@ class Ranking(object):
             rank = 1
             for i, m in enumerate(ranking_list):
                 # Only increase the rank if the current item scores higher than the previous item
-                if i > 0 and (ranking_list[i]['scoreing']['score']
-                              > ranking_list[i-1]['scoreing']['score']):
+                if (i > 0 and (ranking_list[i]['scoreing']['score']
+                              > ranking_list[i-1]['scoreing']['score'])
+                         or (reverse and (ranking_list[i]['scoreing']['score']
+                              < ranking_list[i-1]['scoreing']['score']))):
                     rank = i + 1
                 result = copy(m)
                 result['rank'] =  (m['validation']['status'] == Validator.OK and rank
@@ -939,11 +941,14 @@ class Relay24hScoreing(AbstractScoreing, Validator):
             
         if self._method == 'runcount':
             result = Relay24hScore(len(valid_runs),runtime)
-        elif self._method == 'lkm':
+        elif self._method in ['lkm', 'speed']:
             lkm = 0
             for r in valid_runs:
                 lkm += r['lkm']
-            result = Relay24hScore(lkm, runtime)
+            if self._method == 'lkm':
+                result = Relay24hScore(lkm, runtime)
+            elif self._method == 'speed':
+                result = Relay24hScore((runtime.seconds/60.0)/lkm, runtime)
         else:
             raise UnscoreableException("Unknown scoreing method '%s'." % self._method)
         

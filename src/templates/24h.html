@@ -3,7 +3,7 @@
 from runner import Team, Category
 from course import Course
 from run import Run
-from ranking import OpenRuns, Validator
+from ranking import OpenRuns, Validator, Relay24hScore
 blocks_de = {'start' :'Start',
              'night' :'Nacht',
              'day'   :'Tag',
@@ -27,6 +27,8 @@ blocks_de = {'start' :'Start',
         ${'(nach %s Block)' % blocks_de[ranking.scoreing_args['blocks']]}
       %elif type(ranking.scoreing_args) == dict and 'method' in ranking.scoreing_args and ranking.scoreing_args['method'] == 'lkm':
         (nach Leistungskilometern)
+      %elif type(ranking.scoreing_args) == dict and 'method' in ranking.scoreing_args and ranking.scoreing_args['method'] == 'speed':
+        (nach Geschwindigkeit)
       %endif
       </b></font><br> 
       %if type(ranking.rankable) == Course:
@@ -51,7 +53,7 @@ blocks_de = {'start' :'Start',
     <td><b>Rang</b></td>
     <td><b>Team</b></td>
     <td><b>Start Nr.</b></td>
-    <td><b>${type(ranking.scoreing_args) == dict and 'method' in ranking.scoreing_args and ranking.scoreing_args['method'] == 'lkm' and 'LKm' or u'Läufe'}</b></td>
+    <td><b>${type(ranking.scoreing_args) == dict and 'method' in ranking.scoreing_args and ranking.scoreing_args['method'] == 'lkm' and 'LKm' or ranking.scoreing_args['method'] == 'speed' and 'min/Lkm' or u'Läufe'}</b></td>
     <td><b>Laufzeit</b></td>
     <td><b>Zielzeit</b></td
   %elif type(ranking.rankable) == Course:
@@ -85,7 +87,7 @@ blocks_de = {'start' :'Start',
     <td valign="top">${r['item']}</td>
     <td valign="top">${r['item'].number or ''}</td>
     %if r['rank']:
-    <td valign="top">${r['scoreing']['score'].runs}</td>
+    <td valign="top">${'%1.2f' % r['scoreing']['score'].runs}</td>
     <td valign="top">${r['scoreing']['score'].time}</td> 
     <td>${'finishtime' in r['scoreing'] and r['scoreing']['finishtime'].strftime('%H:%M:%S') or ''}
     %else:
