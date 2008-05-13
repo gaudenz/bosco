@@ -77,51 +77,54 @@ class MakoRankingFormatter(AbstractRankingFormatter):
 class SOLVRankingFormatter(AbstractRankingFormatter):
     """Formats the Ranking for exporting to the SOLV result site."""
 
-    def __init__(self, ranking, info, encoding = 'utf-8',
+    def __init__(self, ranking, reftime, encoding = 'utf-8',
                  lineterminator = '\n'):
         """
-        @param info: dict with informations about the course. Necessary keys:
-                     code, length, climb, controlcount, reftime                     
+        @reftime: reference time for the event (usually first starttime)
         """
         super(type(self), self).__init__(ranking)
-        self._info = info
+        self._reftime = reftime
         self._encoding = encoding
         self._lineterminator = lineterminator
 
     def __str__(self):
 
-        info = self._info
         encoding = self._encoding
         
 
         outstr = StringIO()
         output = writer(outstr, delimiter=';',
                         lineterminator=self._lineterminator)
-        output.writerow([info['code'], info['length'], info['climb'], info['controlcount']])
-        for r in self._ranking:
-            line = [r['rank'] or '',
-                    r['item'].sicard.runner.surname.encode(encoding),
-                    r['item'].sicard.runner.given_name.encode(encoding),
-                    r['item'].sicard.runner.dateofbirth.strftime('%y'),
-                    r['item'].sicard.runner.sex,
-                    r['item'].sicard.runner.team.name.encode(encoding),
-                    r['scoreing']['score'],
-                    ]
-            try:
-                line.append(r['scoreing']['start'] - info['reftime'])
-            except TypeError:
-                line.append('')
-            try:
-                line.append(r['scoreing']['finish'] - info['reftime'])
-            except TypeError:
-                line.append('')
+        for ranking in self.rankings:
+            output.writerow([ranking.rankable.code,
+                             ranking.rankable.length,
+                             ranking.rankable.climb,
+                             ranking.rankable.controls.count()
+                             ])
+            for r in ranking:
+                line = [r['rank'] or '',
+                        r['item'].sicard.runner.surname.encode(encoding),
+                        r['item'].sicard.runner.given_name.encode(encoding),
+                        r['item'].sicard.runner.dateofbirth and r['item'].sicard.runner.dateofbirth.strftime('%y') or '',
+                        r['item'].sicard.runner.sex,
+                        r['item'].sicard.runner.team.name.encode(encoding),
+                        r['scoreing']['score'],
+                        ]
+                try:
+                    line.append(r['scoreing']['start'] - self._reftime)
+                except TypeError:
+                    line.append('')
+                try:
+                    line.append(r['scoreing']['finish'] - self._reftime)
+                except TypeError:
+                    line.append('')
                     
-            for p in r['item'].punches.order_by('punchtime'):
-                if (not p.sistation.control is None
-                    and p.sistation.id > SIStation.SPECIAL_MAX):
-                     line.extend([p.sistation.control.code.encode(encoding),
-                                  p.punchtime - r['scoreing']['start']])
+                for p in r['item'].punches.order_by('COALESCE(manual_punchtime, card_punchtime)'):
+                    if (not p.sistation.control is None
+                        and p.sistation.id > SIStation.SPECIAL_MAX):
+                        line.extend([p.sistation.control.code.encode(encoding),
+                                     p.punchtime - r['scoreing']['start']])
 
-            output.writerow(line)
+                output.writerow(line)
 
         return outstr.getvalue()

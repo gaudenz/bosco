@@ -27,12 +27,7 @@ from run import Run
 
 f = open(sys.argv[1], 'wb')
 courses = conf.store.find(Course)
-for c in courses:
-    f.write(str(SOLVRankingFormatter(conf.event_ranking.ranking(c),
-                                     {'code':c.code,
-                                      'length':c.length,
-                                      'climb':c.climb,
-                                      'controlcount':c.controls.count(),
-                                      'reftime': conf.starttime})))
+f.write(str(SOLVRankingFormatter([conf.event.ranking(c) for c in courses],
+                                 conf.starttime)))
 
 f.close()
