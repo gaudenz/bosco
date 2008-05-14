@@ -37,7 +37,7 @@ class Event(object):
     implementation uses SequenceCourseValidator, TimeScoreing and SelfstartStarttime.
     Subclass this class to customize your event."""
 
-    def __init__(self, header, extra_rankings = [],
+    def __init__(self, header = {}, extra_rankings = [],
                  template_dir = 'templates',
                  print_template = 'course.tex', html_template = 'course.html',
                  cache = None, store = None):
@@ -229,7 +229,7 @@ class Event(object):
 class RelayEvent(Event):
     """Event class for a traditional relay."""
 
-    def __init__(self, legs, header, extra_rankings=[],
+    def __init__(self, legs, header={}, extra_rankings=[],
                  template_dir = 'templates',
                  print_template = 'relay.tex',
                  html_template = 'relay.html',
@@ -300,7 +300,7 @@ class Relay24hEvent(Event):
     """Event class for the 24h orientieering relay."""
 
     def __init__(self, starttime_24h, starttime_12h, speed,
-                 header,
+                 header = {},
                  duration_24h = timedelta(hours=24),
                  duration_12h = timedelta(hours=12),
                  extra_rankings = [],
