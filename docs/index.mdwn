@@ -3,7 +3,7 @@
 
 Check out our [API Documentation](/epydoc/).
 
-## Preriquisites
+## Prerequisites
 * python-storm
 
 * python-mako
