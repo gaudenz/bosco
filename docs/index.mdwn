@@ -1,7 +1,20 @@
 # Welcome to Bosco
 ## Free Orienteering Software
 
+
+## Features
+
+## Screenshots
+
+## Use
+
+For Information on who to install and use Bosco see [[ Useing Bosco ]]
+
+## Contribute
+
 Check out our [API Documentation](/epydoc/).
+
+For information on how to contribute to Bosco see [[ Controbuting to Bosco ]]
 
 ## Prerequisites
 * python-storm
