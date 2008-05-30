@@ -1,0 +1,11 @@
+# Welcome to Bosco
+## Free Orienteering Software
+
+Check out our [API Documentation](/epydoc/).
+
+## Preriquisites
+* python-storm
+
+* python-mako
+
+* python-wxgtk2.6
