@@ -23,7 +23,6 @@ from datetime import datetime
 
 from run import Punch, Run
 from runner import Team
-import conf
 
 class EventObserver(object):
     """Observes an Event for new data (e.g. new punches).
