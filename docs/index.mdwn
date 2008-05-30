@@ -1,0 +1,4 @@
+# Welcome to Bosco
+## Free Orienteering Software
+
+Check out our [API Documentation](/epydoc/).
