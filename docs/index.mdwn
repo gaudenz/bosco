@@ -14,6 +14,8 @@ For Information on who to install and use Bosco see [[ Useing Bosco ]]
 
 Check out our [API Documentation](/epydoc/).
 
+Check out the [GIT repository](http://git.durcheinandertal.ch/?p=bosco.git)
+
 For information on how to contribute to Bosco see [[ Controbuting to Bosco ]]
 
 ## Prerequisites
