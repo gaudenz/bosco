@@ -1,0 +1,1 @@
+grant all on category,category_id_seq,control,control_id_seq,controlsequence,controlsequence_id_seq,course,course_id_seq,coursecontrol,punch,punch_id_seq,run,run_id_seq,runner,runner_id_seq,sicard,sistation,team,team_id_seq to "24h";
