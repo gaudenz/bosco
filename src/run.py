@@ -25,7 +25,7 @@ from copy import copy
 from datetime import datetime
 from storm.locals import *
 from storm.exceptions import NoStoreError
-from storm.expr import Column
+from storm.expr import Column, Func, LeftJoin
 import re
 
 from base import MyStorm
@@ -79,11 +79,21 @@ class Run(MyStorm, RankableItem):
     course = Reference(_course_id, 'Course.id')
     complete = Bool()
     override = Int()
+    card_start_time = DateTime()
+    manual_start_time = DateTime()
+    start_time = property(lambda obj: obj.manual_start_time or obj.card_start_time)
+    card_finish_time = DateTime()
+    manual_finish_time = DateTime()
+    finish_time = property(lambda obj: obj.manual_finish_time or obj.card_finish_time)
+    check_time = DateTime()
+    clear_time = DateTime()
     readout_time = DateTime()
     punches = ReferenceSet(id, 'Punch._run_id')
 
     
-    def __init__(self, card, course=None, punches = [], readout_time = None,
+    def __init__(self, card, course=None, punches = [], card_start_time = None,
+                 card_finish_time = None, check_time = None, clear_time = None,
+                 readout_time = None,
                  store = None):
         """Creates a new Run object.
 
@@ -95,6 +105,14 @@ class Run(MyStorm, RankableItem):
         @type  course:  Object of class L{Course} or course code as string.
         @param punches: Punches to add to the run.
         @type  punches: List of (stationcode, punchtime) tuples.
+        @param card_start_time: Time the SI-Card last punched a start control
+        @type  card_start_time: datetime or None if unknown
+        @param card_finish_time: Time the SI-Card last punched a finish control
+        @type  card_finish_time: datetime or None if unknown
+        @param check_time: Time the SI-Card was checked
+        @type  check_time: datetime or None if unknown
+        @param clear_time: Time the SI-Card was cleared
+        @type  clear_time: datetime or None if unknown
         @param readout_time: Time the run was read from the SI-Card
         @type  readout_time: datetime or None if unknown
         @param store:   Storm store for the objects referenced by this run.
@@ -119,6 +137,10 @@ class Run(MyStorm, RankableItem):
             self.course = course
 
         self.readout_time = readout_time
+        self.card_start_time = card_start_time
+        self.card_finish_time = card_finish_time
+        self.check_time = check_time
+        self.clear_time = clear_time
         
         self.add_punchlist(punches)
 
@@ -173,54 +195,42 @@ class Run(MyStorm, RankableItem):
 
         self.course = course
 
-    def punchtime(self, control, first = False, sistation=False):
-        """Gets the time a specific control was last (first) punched. Returns None if
-        the control was never punched. If sistation is True the control argument is 
-        intrpreted as an SI station number or object."""
-            
-        if sistation:
-            result = self.punches.find(Punch.sistation == control).order_by('COALESCE(manual_punchtime, card_punchtime)')
-        else:
-            # The search term here is far from optimal from an encapsulation viewpoint, but 
-            # I couldn't find anything better...
-            sistation_ids = [i.id for i in control.sistations]
-            result = self.punches.find(Punch._sistation_id.is_in(sistation_ids)).order_by('COALESCE(manual_punchtime, card_punchtime)')
-            
-        if result.count() > 0:
-            if first:
-                return result.first().punchtime
-            else:
-                return result.last().punchtime
-        else:
-            return None
-        
-    def start(self):
-        """Returns the time the start control was punched or None."""
-        return self.punchtime(SIStation.START, sistation=True)
-    
-    def finish(self):
-        """Returns the time the finish control was punched or None."""
-        finishpunch = self.punchtime(SIStation.FINISH, first=True, sistation=True)
-#        if finishpunch is None and self.complete == False:
-            # return datetime.max to indicate that the finish will be in the
-            # future, better return datetime.now()?
-#            finishpunch = datetime.max
-        return finishpunch
+    def punchlist(self, ignored = False):
+        """
+        Return all valid 'normal' punches ordered by punchtime
+        @param ignored: Return punches normally ignored
+        @rtype: (Punch, Control) tuples
+        """
 
-    def punchlist(self):
-        """Return all valid 'normal' punches ordered by punchtime"""
-        return [p for p in self.punches.order_by('COALESCE(manual_punchtime, card_punchtime)')
-                if (p.ignore is not True
-                    and p.sistation > SIStation.SPECIAL_MAX
-                    and p.punchtime > (self.start() or datetime.min)
-                    and p.punchtime < (self.finish() or datetime.max))]
-    
+        # Do a direct search in the store for Punch, Control tuples. This is much faster
+        # than first fetching punches from self.punches and then getting their controls via
+        # punch.sistation.control
+        punch_cond = And(Punch.ignore != True,
+                         Func('COALESCE', Punch.manual_punchtime, Punch.card_punchtime)
+                         > (self.start_time or datetime.min),
+                         Func('COALESCE', Punch.manual_punchtime, Punch.card_punchtime)
+                         < (self.finish_time or datetime.max),
+                         Not(SIStation.control == None),
+                         )
+        
+        if ignored is True:
+            punch_cond = Not(punch_cond)
+
+        return list(self._store.using(Join(Punch, SIStation, Punch.sistation == SIStation.id),
+                                      LeftJoin(Control, SIStation.control == Control.id)
+                                      ).find((Punch, Control),
+                                             punch_cond,
+                                             Punch.run == self.id,
+                                             ).order_by(Func('COALESCE',
+                                                             Punch.manual_punchtime,
+                                                             Punch.card_punchtime))
+                    )
+
     def check_sequence(self):
         """Check if punchtimes match punch sequence numbers."""
         punchsequence = list(self.punches.find(Not(Punch.card_punchtime == None),
                                                Not(Punch.ignore == True),
                                                Punch.sistation == SIStation.id,
-                                               SIStation.id > SIStation.SPECIAL_MAX,
                                                SIStation.control == Control.id,
                                                Not(Control.override == True)).order_by('COALESCE(manual_punchtime, card_punchtime)').values(Column('sequence')))
         sorted = copy(punchsequence)

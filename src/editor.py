@@ -254,7 +254,7 @@ class RunEditor(Observable):
             punchlist = [ ('', p) for p in self._run.punches ]
 
         # add finish punch if it does not have one
-        if self._run.finish() is None:
+        if self._run.finish_time is None:
             punchlist.append(('missing',
                               self._store.get(SIStation, SIStation.FINISH)))
         return punchlist
@@ -711,7 +711,7 @@ class TeamEditor(Observable):
             return []
         
         runs = self._team.runs
-        runs.sort(key = lambda x: x.finish() or datetime.max)
+        runs.sort(key = lambda x: x.finish_time or datetime.max)
         result = []
         for r in runs:
             try:

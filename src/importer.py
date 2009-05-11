@@ -277,52 +277,38 @@ class SIRunImporter(Importer):
         return datetime(int(year), int(month), int(day), int(hour),
                         int(minute), int(second), int(microsecond))
 
-    def add_punch(self, station, timestring, mandatory = True):
+    def add_punch(self, station, timestring):
         """
         Adds a punch to the list of punches.
 
-        @param mandatory: If true an exception is raised if the time is empty.
-        @type mandatory: boolean
         """
         
         time = self.__datetime(timestring)
         if time is not None:
             self._punches.append((station, time))
-        elif not mandatory:
-            return
         else:
-            raise RunImportException('Empty time for non mandatory field.')
+            raise RunImportException('Empty punchtime for station "%s".' % station)
             
     def import_data(self, store):
 
         for line in self.__runs:
             course_code = line[SIRunImporter.COURSE]
             cardnr = line[SIRunImporter.CARDNR]
-            readout = self.__datetime(line[SIRunImporter.READOUT])
             
             self._punches = []
-
-            # These fields may be empty
-            self.add_punch(SIStation.START,
-                           line[SIRunImporter.START],
-                           mandatory = False)
-            self.add_punch(SIStation.CHECK,
-                           line[SIRunImporter.CHECK],
-                           mandatory = False)
-            self.add_punch(SIStation.CLEAR,
-                           line[SIRunImporter.CLEAR],
-                           mandatory = False)
-
-            # These fields must be present
-            self.add_punch(SIStation.FINISH,
-                           line[SIRunImporter.FINISH])
             i = SIRunImporter.BASE
             while i < len(line):
                 self.add_punch(int(line[i]), line[i+1])
                 i += 2
-
             
-            run = Run(int(cardnr), course_code, self._punches, readout,
+            run = Run(int(cardnr),
+                      course = course_code,
+                      punches = self._punches,
+                      card_start_time = self.__datetime(line[SIRunImporter.START]),
+                      card_finish_time = self.__datetime(line[SIRunImporter.FINISH]),
+                      check_time = self.__datetime(line[SIRunImporter.CHECK]),
+                      clear_time = self.__datetime(line[SIRunImporter.CLEAR]),
+                      readout_time = self.__datetime(line[SIRunImporter.READOUT]),
                       store = store)
             run.complete = True
             store.add(run)

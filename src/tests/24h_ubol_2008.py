@@ -37,9 +37,9 @@ class Relay24h2008Test(EventTest):
         self.import_sql('tests/24h_ubol_2008.sql')
         self.import_refdata('tests/24h_ubol_2008.pck')
         
-        store = Store(create_database('postgres:24h_test'))
-        cat24h = store.find(Category, Category.name == u'24h').one()
-        cat12h = store.find(Category, Category.name == u'12h').one()
+        self.store = Store(create_database('postgres:24h_test'))
+        cat24h = self.store.find(Category, Category.name == u'24h').one()
+        cat12h = self.store.find(Category, Category.name == u'12h').one()
 
         # Set up event object
         self.event = Relay24hEvent(starttime_24h = datetime(2008,5,10,19,00),
@@ -100,7 +100,7 @@ class Relay24h2008Test(EventTest):
                                                 ],
                               duration_24h = timedelta(hours=24, minutes = 0),
                               duration_12h = timedelta(hours=12, minutes = 0),
-                              cache = Cache(), store = store)
+                              cache = Cache(), store = self.store)
 
     def testRanking(self):
         """Test the correct ranking of all courses and runs."""

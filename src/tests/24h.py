@@ -81,6 +81,7 @@ class Relay24hTest(unittest.TestCase):
     
     def testRelay24h(self):
         valid = self._event.validate(self.getTeam(u'119'))
+
         self.assertEquals(valid['status'],
                           Validator.OK)
         self.assertEquals(self._event.validate(self.getTeam(u'121'))['status'],

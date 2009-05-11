@@ -130,11 +130,6 @@ class Runner(AbstractRunner, MyStorm):
             category = category_name
         self.category = category
         
-    def start(self):
-        return self._get_run().start()
-
-    def finish(self):
-        return self._get_run().finish()
         
 class Team(AbstractRunner, Storm):
     __storm_table__ = 'team'

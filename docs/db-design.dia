@@ -1396,16 +1396,16 @@
         <dia:point val="25.7,5.5"/>
       </dia:attribute>
       <dia:attribute name="obj_bb">
-        <dia:rectangle val="25.65,5.45;37.1,12.35"/>
+        <dia:rectangle val="25.65,5.45;39.2,17.15"/>
       </dia:attribute>
       <dia:attribute name="elem_corner">
         <dia:point val="25.7,5.5"/>
       </dia:attribute>
       <dia:attribute name="elem_width">
-        <dia:real val="11.35"/>
+        <dia:real val="13.449999999999999"/>
       </dia:attribute>
       <dia:attribute name="elem_height">
-        <dia:real val="6.8000000000000007"/>
+        <dia:real val="11.600000000000001"/>
       </dia:attribute>
       <dia:attribute name="name">
         <dia:string>#run#</dia:string>
@@ -1609,7 +1609,145 @@
         </dia:composite>
         <dia:composite type="umlattribute">
           <dia:attribute name="name">
+            <dia:string>#card_start_time#</dia:string>
+          </dia:attribute>
+          <dia:attribute name="type">
+            <dia:string>#timestamp#</dia:string>
+          </dia:attribute>
+          <dia:attribute name="value">
+            <dia:string>#null#</dia:string>
+          </dia:attribute>
+          <dia:attribute name="comment">
+            <dia:string>##</dia:string>
+          </dia:attribute>
+          <dia:attribute name="visibility">
+            <dia:enum val="0"/>
+          </dia:attribute>
+          <dia:attribute name="abstract">
+            <dia:boolean val="false"/>
+          </dia:attribute>
+          <dia:attribute name="class_scope">
+            <dia:boolean val="false"/>
+          </dia:attribute>
+        </dia:composite>
+        <dia:composite type="umlattribute">
+          <dia:attribute name="name">
+            <dia:string>#manual_start_time#</dia:string>
+          </dia:attribute>
+          <dia:attribute name="type">
+            <dia:string>#timestamp#</dia:string>
+          </dia:attribute>
+          <dia:attribute name="value">
+            <dia:string>#null#</dia:string>
+          </dia:attribute>
+          <dia:attribute name="comment">
+            <dia:string>##</dia:string>
+          </dia:attribute>
+          <dia:attribute name="visibility">
+            <dia:enum val="0"/>
+          </dia:attribute>
+          <dia:attribute name="abstract">
+            <dia:boolean val="false"/>
+          </dia:attribute>
+          <dia:attribute name="class_scope">
+            <dia:boolean val="false"/>
+          </dia:attribute>
+        </dia:composite>
+        <dia:composite type="umlattribute">
+          <dia:attribute name="name">
+            <dia:string>#card_finish_time#</dia:string>
+          </dia:attribute>
+          <dia:attribute name="type">
+            <dia:string>#timestamp#</dia:string>
+          </dia:attribute>
+          <dia:attribute name="value">
+            <dia:string>#null#</dia:string>
+          </dia:attribute>
+          <dia:attribute name="comment">
+            <dia:string>##</dia:string>
+          </dia:attribute>
+          <dia:attribute name="visibility">
+            <dia:enum val="0"/>
+          </dia:attribute>
+          <dia:attribute name="abstract">
+            <dia:boolean val="false"/>
+          </dia:attribute>
+          <dia:attribute name="class_scope">
+            <dia:boolean val="false"/>
+          </dia:attribute>
+        </dia:composite>
+        <dia:composite type="umlattribute">
+          <dia:attribute name="name">
+            <dia:string>#manual_finish_time#</dia:string>
+          </dia:attribute>
+          <dia:attribute name="type">
+            <dia:string>#timestamp#</dia:string>
+          </dia:attribute>
+          <dia:attribute name="value">
+            <dia:string>#null#</dia:string>
+          </dia:attribute>
+          <dia:attribute name="comment">
+            <dia:string>##</dia:string>
+          </dia:attribute>
+          <dia:attribute name="visibility">
+            <dia:enum val="0"/>
+          </dia:attribute>
+          <dia:attribute name="abstract">
+            <dia:boolean val="false"/>
+          </dia:attribute>
+          <dia:attribute name="class_scope">
+            <dia:boolean val="false"/>
+          </dia:attribute>
+        </dia:composite>
+        <dia:composite type="umlattribute">
+          <dia:attribute name="name">
             <dia:string>#readout_time#</dia:string>
+          </dia:attribute>
+          <dia:attribute name="type">
+            <dia:string>#timestamp#</dia:string>
+          </dia:attribute>
+          <dia:attribute name="value">
+            <dia:string>#null#</dia:string>
+          </dia:attribute>
+          <dia:attribute name="comment">
+            <dia:string>##</dia:string>
+          </dia:attribute>
+          <dia:attribute name="visibility">
+            <dia:enum val="0"/>
+          </dia:attribute>
+          <dia:attribute name="abstract">
+            <dia:boolean val="false"/>
+          </dia:attribute>
+          <dia:attribute name="class_scope">
+            <dia:boolean val="false"/>
+          </dia:attribute>
+        </dia:composite>
+        <dia:composite type="umlattribute">
+          <dia:attribute name="name">
+            <dia:string>#check_time#</dia:string>
+          </dia:attribute>
+          <dia:attribute name="type">
+            <dia:string>#timestamp#</dia:string>
+          </dia:attribute>
+          <dia:attribute name="value">
+            <dia:string>#null#</dia:string>
+          </dia:attribute>
+          <dia:attribute name="comment">
+            <dia:string>##</dia:string>
+          </dia:attribute>
+          <dia:attribute name="visibility">
+            <dia:enum val="0"/>
+          </dia:attribute>
+          <dia:attribute name="abstract">
+            <dia:boolean val="false"/>
+          </dia:attribute>
+          <dia:attribute name="class_scope">
+            <dia:boolean val="false"/>
+          </dia:attribute>
+        </dia:composite>
+        <dia:composite type="umlattribute">
+          <dia:attribute name="name">
+            <dia:string>#clear_time#</dia:string>
           </dia:attribute>
           <dia:attribute name="type">
             <dia:string>#timestamp#</dia:string>
@@ -2065,13 +2203,13 @@
     </dia:object>
     <dia:object type="UML - Class" version="0" id="O6">
       <dia:attribute name="obj_pos">
-        <dia:point val="29,14.75"/>
+        <dia:point val="27.75,19.6"/>
       </dia:attribute>
       <dia:attribute name="obj_bb">
-        <dia:rectangle val="28.95,14.7;51.95,23.5425"/>
+        <dia:rectangle val="27.7,19.55;50.7,28.3925"/>
       </dia:attribute>
       <dia:attribute name="elem_corner">
-        <dia:point val="29,14.75"/>
+        <dia:point val="27.75,19.6"/>
       </dia:attribute>
       <dia:attribute name="elem_width">
         <dia:real val="22.899999999999999"/>
@@ -2692,13 +2830,13 @@
         <dia:point val="47,3.75"/>
       </dia:attribute>
       <dia:attribute name="obj_bb">
-        <dia:rectangle val="36.3,2.665;47.05,9.75"/>
+        <dia:rectangle val="38.4,2.665;47.05,9.75"/>
       </dia:attribute>
       <dia:attribute name="orth_points">
         <dia:point val="47,3.75"/>
-        <dia:point val="42.025,3.75"/>
-        <dia:point val="42.025,9"/>
-        <dia:point val="37.05,9"/>
+        <dia:point val="43.075,3.75"/>
+        <dia:point val="43.075,9"/>
+        <dia:point val="39.15,9"/>
       </dia:attribute>
       <dia:attribute name="orth_orient">
         <dia:enum val="0"/>
@@ -2828,13 +2966,13 @@
         <dia:point val="25.7,7.4"/>
       </dia:attribute>
       <dia:attribute name="obj_bb">
-        <dia:rectangle val="24.2,6.315;29.75,18.2"/>
+        <dia:rectangle val="24.2,6.315;28.5,23.05"/>
       </dia:attribute>
       <dia:attribute name="orth_points">
         <dia:point val="25.7,7.4"/>
         <dia:point val="24.25,7.4"/>
-        <dia:point val="24.25,17.45"/>
-        <dia:point val="29,17.45"/>
+        <dia:point val="24.25,22.3"/>
+        <dia:point val="27.75,22.3"/>
       </dia:attribute>
       <dia:attribute name="orth_orient">
         <dia:enum val="0"/>
@@ -2893,16 +3031,16 @@
     </dia:object>
     <dia:object type="UML - Association" version="1" id="O14">
       <dia:attribute name="obj_pos">
-        <dia:point val="55.5003,20.25"/>
+        <dia:point val="57.2503,23.05"/>
       </dia:attribute>
       <dia:attribute name="obj_bb">
-        <dia:rectangle val="51.15,17.165;56.65,20.765"/>
+        <dia:rectangle val="49.9,21.965;57.3003,23.85"/>
       </dia:attribute>
       <dia:attribute name="orth_points">
-        <dia:point val="55.5003,20.25"/>
-        <dia:point val="52.8,20.25"/>
-        <dia:point val="52.8,18.25"/>
-        <dia:point val="51.9,18.25"/>
+        <dia:point val="57.2503,23.05"/>
+        <dia:point val="52.8,23.05"/>
+        <dia:point val="52.8,23.1"/>
+        <dia:point val="50.65,23.1"/>
       </dia:attribute>
       <dia:attribute name="orth_orient">
         <dia:enum val="0"/>
@@ -3665,13 +3803,13 @@ CREATE LANGUAGE plpgsql;#</dia:string>
     </dia:object>
     <dia:object type="UML - Class" version="0" id="O21">
       <dia:attribute name="obj_pos">
-        <dia:point val="55.5003,18.35"/>
+        <dia:point val="57.2503,21.15"/>
       </dia:attribute>
       <dia:attribute name="obj_bb">
-        <dia:rectangle val="55.4503,18.3;64.4503,22"/>
+        <dia:rectangle val="57.2003,21.1;66.2003,24.8"/>
       </dia:attribute>
       <dia:attribute name="elem_corner">
-        <dia:point val="55.5003,18.35"/>
+        <dia:point val="57.2503,21.15"/>
       </dia:attribute>
       <dia:attribute name="elem_width">
         <dia:real val="8.9000000000000004"/>
@@ -3822,13 +3960,13 @@ CREATE LANGUAGE plpgsql;#</dia:string>
         <dia:point val="71.65,21"/>
       </dia:attribute>
       <dia:attribute name="obj_bb">
-        <dia:rectangle val="63.6503,19.915;71.7,21.8"/>
+        <dia:rectangle val="65.4003,19.915;71.7,24.6"/>
       </dia:attribute>
       <dia:attribute name="orth_points">
         <dia:point val="71.65,21"/>
-        <dia:point val="68.0251,21"/>
-        <dia:point val="68.0251,21.05"/>
-        <dia:point val="64.4003,21.05"/>
+        <dia:point val="68.9001,21"/>
+        <dia:point val="68.9001,23.85"/>
+        <dia:point val="66.1503,23.85"/>
       </dia:attribute>
       <dia:attribute name="orth_orient">
         <dia:enum val="0"/>
@@ -3887,13 +4025,13 @@ CREATE LANGUAGE plpgsql;#</dia:string>
     </dia:object>
     <dia:object type="UML - Class" version="0" id="O23">
       <dia:attribute name="obj_pos">
-        <dia:point val="29.85,25.75"/>
+        <dia:point val="30.35,32.45"/>
       </dia:attribute>
       <dia:attribute name="obj_bb">
-        <dia:rectangle val="29.8,25.7;42.3,30.2"/>
+        <dia:rectangle val="30.3,32.4;42.8,36.9"/>
       </dia:attribute>
       <dia:attribute name="elem_corner">
-        <dia:point val="29.85,25.75"/>
+        <dia:point val="30.35,32.45"/>
       </dia:attribute>
       <dia:attribute name="elem_width">
         <dia:real val="12.4"/>

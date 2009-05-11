@@ -269,10 +269,6 @@ class TimeScoreing(AbstractScoreing):
         """Returns the start time as a datetime object."""
         return self._starttime_strategy.starttime(obj)
     
-    def _finish(self, obj):
-        """Returns the finish time as a datetime object."""
-        return obj.finish()
-    
     def score(self, obj):
         """Returns a timedelta object as the score by calling start and finish on 
         the object."""
@@ -283,7 +279,7 @@ class TimeScoreing(AbstractScoreing):
 
         result = {}
         result['start'] = self._start(obj)
-        result['finish'] = self._finish(obj)
+        result['finish'] = obj.finish_time
         try:
             result['score'] = result['finish'] - result['start']
         except TypeError:
@@ -301,24 +297,13 @@ class Starttime(CachingObject):
     """Basic start time strategy. """
     
     def starttime(self, obj):
-        from run import Punch
-        from course import SIStation
-        try:
-            manual_startpunch = obj.punches.find(Punch.sistation == SIStation.START,
-                                                 Punch.manual_punchtime != None).one()
-        except NotOneError:
-            return None
-        else:
-            if manual_startpunch is None:
-                return None
-            else:
-                return manual_startpunch.punchtime
+        return obj.manual_start_time
 
 class SelfstartStarttime(Starttime):
     """StarttimeStrategy for Selfstart"""
 
     def starttime(self, obj):
-        return obj.start()
+        return obj.start_time
 
 class MassstartStarttime(Starttime):
     """Returns start time relative to a fixed mass start time."""
@@ -373,10 +358,7 @@ class RelayStarttime(MassstartStarttime):
         else:
             # this assumes that each runner runs only once, use unordered if this
             # is not the case
-            try:
-                return runners[i-1].finish()
-            except RunnerException:
-                return None
+            return runners[i-1].run.finish_time
         
     def _prev_finish_unordered(self, obj):
         
@@ -387,36 +369,42 @@ class RelayStarttime(MassstartStarttime):
         # but it is a huge perfomance win
         from course import SIStation
         from run import Punch
-        store = Store.of(team)
+        store = Store.of(obj)
 
 
         # get reference time (search for finish punch of the previous runner
         # before this time
-        reftime = obj.finish()
-        if reftime is None and obj.punches.count() == 0:
-            # Assume this is the last run of this team
-            reftime = datetime.max
-        elif reftime is None:
-            # last real punch of this run
-            reftime = obj.punches.find(Punch.sistation == SIStation.id,
-                                       SIStation.id > SIStation.SPECIAL_MAX
-                                       ).order_by('COALESCE(manual_punchtime, card_punchtime)').last().punchtime
+        reftime = obj.finish_time
+        if reftime is None:
+            punchlist = [p for p,c in obj.punchlist()]
+            if len(punchlist) == 0:
+                # Assume this is the last run of this team
+                reftime = datetime.max
+            else:
+                # last real punch of this run
+                reftime = obj.punchlist()[-1][0].punchtime
         
         prev_finish = store.execute(
-            """SELECT MAX(finishtime) FROM (
-                  SELECT MIN(COALESCE(punch.manual_punchtime, punch.card_punchtime)) AS finishtime
-                     FROM team JOIN runner ON team.id = runner.team
-                        JOIN sicard ON runner.id = sicard.runner
-                        JOIN run ON sicard.id = run.sicard
-                        JOIN punch ON run.id = punch.run
-                     WHERE team.id = %s
-                        AND punch.sistation = %s
-                        AND COALESCE(punch.manual_punchtime, punch.card_punchtime) < %s
-                        AND run.complete = true
-                     GROUP BY run.id)
-                  AS finishtimes""",
+            """SELECT MAX(COALESCE(run.manual_finish_time, run.card_finish_time))
+                  FROM team JOIN runner ON team.id = runner.team
+                     JOIN sicard ON runner.id = sicard.runner
+                     JOIN run ON sicard.id = run.sicard
+                  WHERE team.id = %s
+                     AND COALESCE(run.manual_finish_time, run.card_finish_time) < %s
+                     AND run.complete = true""",
+#            """SELECT MAX(COALESCE(run.manual_finish_time, run.card_finish_time))
+#                  FROM team JOIN runner ON team.id = runner.team
+#                     JOIN sicard ON runner.id = sicard.runner
+#                     JOIN run ON sicard.id = run.sicard
+#                  WHERE team.id = (SELECT runner.team
+#                                      FROM run
+#                                         JOIN sicard ON run.sicard = sicard.id
+#                                         JOIN runner ON sicard.runner = runner.id
+#                                      WHERE run.id = %s)             
+#                     AND COALESCE(run.manual_finish_time, run.card_finish_time) < %s
+#                     AND run.complete = true""",
+#            params = (obj.id,
             params = (team.id,
-                      SIStation.FINISH,
                       reftime,
                       )
             ).get_one()[0]
@@ -489,19 +477,9 @@ class CourseValidator(Validator):
             result['override'] = True
         elif not run.complete:
             result['status'] = Validator.NOT_COMPLETED
-        elif not run.finish():
+        elif not run.finish_time:
             result['status'] =  Validator.DID_NOT_FINISH
         else:
-            # check punch sequence order
-            if not run.check_sequence():
-                result['status'] = Validator.DISQUALIFIED
-                result['reason'] = 'sequence of punchtimes and punch sequence differ'
-            # check for punches after finish
-            if not run.punches.order_by('COALESCE(manual_punchtime, card_punchtime)').last() == run.finish():
-                result['status'] = Validator.DISQUALIFIED
-            
-            # check for punche before start punch
-            
             result['status'] = Validator.OK
 
         self._to_cache(self.validate, run, result)
@@ -513,6 +491,16 @@ class SequenceCourseValidator(CourseValidator):
     algorithm to validate the run and find missing and additional punches.
     @see http://en.wikipedia.org/wiki/Longest_common_subsequence_problem.
     """
+
+    def __init__(self, course, cache = None):
+
+        CourseValidator.__init__(self, course, cache)
+        
+        # list of all controls which have sistations
+        self._controllist = [ i.control for i in
+                              self._course.sequence.order_by('sequence_number')
+                              if (i.control.sistations.count() > 0 and
+                                  i.control.override is not True) ]
 
     @staticmethod
     def _exact_match(plist, clist):
@@ -737,7 +725,7 @@ class Relay24hScoreing(AbstractScoreing, Validator):
                     continue
                 if not r.course.code in self._courses:
                     continue
-                runs.append( {'finish':r.finish(),
+                runs.append( {'finish':r.finish_time,
                               'runner':r.sicard.runner.id,
                               'course':r.course.code,
                               'validation':self._event_ranking.validate(r)['status']})

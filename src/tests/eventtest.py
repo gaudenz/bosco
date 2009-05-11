@@ -26,6 +26,7 @@ from cPickle import load
 import sys
 
 from course import Course
+from run import Run
 
 class EventTest(unittest.TestCase):
     """Test class which tests the ranking for a whole event against known reference data."""
@@ -41,10 +42,21 @@ class EventTest(unittest.TestCase):
         # import reference data
         self.ref_ranking = load(open(fname))
 
+    def check_result(self, result, reference, ranking, index):
+        for key in ['item', 'scoreing', 'validation', 'rank']:
+            self.assertEquals(result[key], reference[key],
+                              ('Ranking error in ranking %s on index %s for value %s: %s != %s' %
+                               (ranking, index, key, result[key], reference[key])))
+
+    def tearDown(self):
+        self.store.rollback()
+        self.import_sql('../docs/empty_db.sql')
+        
     def doTestRanking(self):
         """Test the correct ranking of all courses and runs."""
 
         for key, ranking in self.event.list_rankings():
+
             print "Computing and testing ranking for %s..." % key,
             sys.stdout.flush()
             ranking_list = list(ranking)
@@ -61,9 +73,21 @@ class EventTest(unittest.TestCase):
 
 
             # check correctness rank by rank
+            ref_ranking = self.ref_ranking[key]
             for i,r in enumerate(ranking_list):
-                self.assertEquals(r,self.ref_ranking[key][i],
-                                  ('Ranking error in ranking %s on index %s: %s != %s' %
-                                   (key, i, r, self.ref_ranking[key][i])))
-
+                if i < len(ref_ranking)-1 and ref_ranking[i]['rank'] == ref_ranking[i+1]['rank']:
+                    try:
+                        self.check_result(r, ref_ranking[i], key, i)
+                    except AssertionError:
+                        # also check next reference result
+                        self.check_result(r, ref_ranking[i+1], key, '%s (=%s)' % (i, i+1))
+                elif i > 0 and ref_ranking[i]['rank'] == ref_ranking[i-1]['rank']:
+                    try:
+                        self.check_result(r, ref_ranking[i], key, i)
+                    except AssertionError:
+                        # also check previous reference result
+                        self.check_result(r, ref_ranking[i-1], key, '%s (=%s)' % (i, i-1))
+                else:
+                    self.check_result(r, ref_ranking[i], key, i)
+                    
             print 'done.'
