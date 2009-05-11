@@ -1,14 +1,3 @@
-*~
 *.pyc
-.project
-.pydevproject
-docs/CRCCalculator.java
-docs/SI_cards_data_structure_developer.ods
-docs/crc529.bas
-docs/crc529.c
-docs/db-design.dia~
 docs/empty_db.sql
-docs/pcprog5.pdf
-docs/080225_Interne Regelung Bahnlegung.pdf
-docs/080325_Fallprotokoll Gaudi.pdf
-wx-examples
+src/conf.py
