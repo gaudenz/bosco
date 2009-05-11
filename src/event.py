@@ -152,7 +152,8 @@ class Event(object):
         @see:                  AbstractScoreing for more information about scoreing classes
         """
 
-            
+        from runner import Runner
+        
         if obj is None:
             raise UnscoreableException("Can't score objects of type %s" % type(obj))
         
@@ -172,6 +173,11 @@ class Event(object):
             if not 'cache' in args:
                 args['cache'] = self._cache
             self._strategies[self._key(scoreing_class, args)] = scoreing_class(**args)
+
+        if type(obj) == Runner:
+            # Score run of this runner
+            obj = obj.run
+            
         return self._strategies[self._key(scoreing_class, args)].score(obj)
 
     def ranking(self, obj, scoreing_class = None, validation_class = None,

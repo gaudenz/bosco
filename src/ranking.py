@@ -604,41 +604,31 @@ class SequenceCourseValidator(CourseValidator):
             pass
 
         from course import SIStation
-        
-        result = super(type(self), self).validate(run)
-        # check correct sequence of controls
-        
-        punchlist = [(p, p.sistation.control) for p in run.punches.order_by('COALESCE(manual_punchtime, card_punchtime)')
-                     if p.ignore is not True
-                     and p.sistation.id > SIStation.SPECIAL_MAX]
-        
-        # list of all controls which have sistations
-        controllist = [ i.control for i in
-                        self._course.sequence.order_by('sequence_number')
-                        if (i.control.sistations.count() > 0 and
-                            i.control.override is not True) ]
 
-        if SequenceCourseValidator._exact_match(punchlist, controllist):
+        # do basic checks from CourseValidator
+        result = super(type(self), self).validate(run)
+        
+        punchlist = run.punchlist()
+
+        if SequenceCourseValidator._exact_match(punchlist, self._controllist):
             diff_list = [('ok', p[0]) for p in punchlist]
         else:
-            C = SequenceCourseValidator._build_lcs_matrix(punchlist, controllist)
+            C = SequenceCourseValidator._build_lcs_matrix(punchlist, self._controllist)
             diff_list = SequenceCourseValidator._diff(C,
                                                       punchlist,
-                                                      controllist)
+                                                      self._controllist)
 
         # add ignored and special punches into diff_list
-        ignorelist = [p for p in run.punches.order_by('COALESCE(manual_punchtime, card_punchtime)')
-                      if p.ignore is True
-                      or p.sistation.id <= SIStation.SPECIAL_MAX]
+        ignorelist = run.punchlist(ignored=True)
         i = 0
-        for p in ignorelist:
+        for p,c in ignorelist:
             while i < len(diff_list):
                 if (diff_list[i][0] == 'missing'
                     or p.punchtime > diff_list[i][1].punchtime):
                     i += 1
                 else:
                     break
-            diff_list.insert(i, (p.ignore and 'ignored' or '', p))
+            diff_list.insert(i, ('ignored', p))
             
         if result['status'] == Validator.OK and result['override'] is False:
             if 'missing' in dict(diff_list):
@@ -936,7 +926,7 @@ class Relay24hScoreing(AbstractScoreing, Validator):
             if self._method == 'lkm':
                 result = Relay24hScore(lkm, runtime)
             elif self._method == 'speed':
-                result = Relay24hScore((runtime.seconds/60.0)/lkm, runtime)
+                result = lkm > 0 and Relay24hScore((runtime.seconds/60.0)/lkm, runtime) or Relay24hScore(0, runtime)
         else:
             raise UnscoreableException("Unknown scoreing method '%s'." % self._method)
         
@@ -1042,7 +1032,7 @@ class ControlPunchtimeScoreing(AbstractScoreing, Validator):
         except KeyError:
             pass
 
-        punchlist = [p.sistation.control for p in run.punches]
+        punchlist = [c for p,c in run.punchlist()]
         result = Validator.NOT_COMPLETED
         for c in self._controls:
             if c in punchlist:
