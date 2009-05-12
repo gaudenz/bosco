@@ -22,10 +22,11 @@ from datetime import datetime, timedelta
 
 from ranking import (ControlPunchtimeScoreing, OpenRuns,
                      Cache)
-from formatter import MakoRankingFormatter
+
 from event import RelayEvent
 from course import Course, Control
 from runner import Category
+from observer import TriggerEventObserver
                     
 # Database URI and store
 db_uri = 'postgres:ubol3'
@@ -36,6 +37,9 @@ template_dir = 'templates'
 
 # create cache (but don't connect to an observer)
 cache = Cache()
+
+# create an Event Observer
+observer = TriggerEventObserver(store)
 
 event = RelayEvent(legs = [(u'0', datetime(2008,5,1,11,50)),
                            (u'1', datetime(2008,5,1,11,55)),
