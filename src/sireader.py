@@ -194,7 +194,12 @@ class SIReader(object):
             raise SIReaderException("Could not open port '%s'" % port)
         
         # flush possibly available input
-        self._serial.flushInput()
+        try:
+            self._serial.flushInput()
+        except (SerialException, OSError):
+            # This happens if the serial port is not ready for
+            # whatever reason (eg. there is no real device behind this device node). 
+            raise SIReaderException("Could not flush port '%s'" % port)
         
         self.station_code = None
 
