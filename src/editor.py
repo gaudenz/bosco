@@ -229,7 +229,6 @@ class RunEditor(Observable):
         if team is None:
             return na
         try:
-            print 'validating team'
             validation = self._event.validate(team)
         except ValidationError:
             return ''
