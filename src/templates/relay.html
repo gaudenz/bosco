@@ -1,0 +1,110 @@
+# -*- coding: utf-8 -*-
+<%!
+from runner import Team, Category
+from course import Course
+from run import Run
+from ranking import OpenRuns, Validator, Relay24hScore
+blocks_de = {'start' :'Start',
+             'night' :'Nacht',
+             'day'   :'Tag',
+             'finish':'Ziel'}
+%>
+
+<%inherit file="base.html"/>
+
+<%include file="header.html"/>
+
+%for ranking in rankings:
+
+<tr>
+  <td>
+    %if type(ranking.rankable) == OpenRuns:
+      <font size="+2"><b>Vorwarnung</b></font><br>
+      Läufer beim letzten Posten
+    %else:
+      <font size="+2"><b>${ranking.rankable}
+      %if type(ranking.scoreing_args) == dict and 'legs' in ranking.scoreing_args:
+      nach ${ranking.scoreing_args['legs']} Strecken
+      %endif
+      </b></font><br> 
+      %if type(ranking.rankable) == Course:
+      (${ranking.rankable.length/1000.0}km, ${ranking.rankable.climb}m, ${ranking.rankable.controls.count()} Po.)
+      %endif
+    %endif
+  <td>
+</tr>
+<tr>
+  <td>&nbsp;</td>
+</tr>
+<tr>
+  <td>
+<table>
+  <tr>
+  %if type(ranking.rankable) == OpenRuns:
+    <td><b>Team</b></td>
+    <td><b>Start Nr.</b></td>
+    <td><b>Läufer</b></td>
+    <td><b>Zeit</b></td>
+  %elif type(ranking.rankable) == Category:
+    <td><b>Rang</b></td>
+    <td><b>Team</b></td>
+    <td><b>Start Nr.</b></td>
+    <td><b>Zeit</b></td>
+  %elif type(ranking.rankable) == Course:
+    <td><b>Rang</b></td>
+    <td><b>Läufer</b></td>
+    <td><b>Jg.</b></td>
+    <td><b>Nummer</b></td>
+    <td><b>Team</b></td>
+    <td><b>Zeit</b></td>
+  %endif
+  </tr>
+  %for r in ranking:
+  <tr>
+  %if type(ranking.rankable) == OpenRuns:
+    ${warning(r)}
+  %elif type(r['item']) == Team:
+    ${team(r)}
+  %elif type(r['item']) == Run:
+    ${run(r)}
+  %endif
+  </tr>
+  %endfor
+</table>
+  </td>
+</tr>
+
+%endfor
+
+<%def name="team(r)">
+    <td valign="top">${r['rank'] and ('%3i.' % r['rank']) or ''}</td>
+    <td valign="top">${r['item']}</td>
+    <td valign="top">${r['item'].number or ''}</td>
+    <td valign="top">${r['rank'] and r['scoreing']['score'] or validation_codes[r['validation']['status']]}</td>
+</%def>
+
+<%def name="run(r)">
+    <%
+      runner = r['item'].sicard.runner
+      team = runner and runner.team or None
+    %>
+    <td valign="top">${r['rank'] and ('%3i.' % r['rank']) or ''}</td>
+    <td valign="top">${r['item']}</td>
+    <td valign="top">${runner and runner.dateofbirth and runner.dateofbirth.strftime('%y') or ''}</td>
+    <td valign="top">${runner and runner.number or ''}</td>
+    <td valign="top">${team and team.name or ''}</td>
+    <td valign="top">${r['rank'] and r['scoreing']['score'] or validation_codes[r['validation']['status']]}</td>
+</%def>
+
+<%def name="warning(r)">
+  %if r['validation']['status'] == Validator.OK:
+    <%
+      runner = r['item'].sicard.runner
+      team = runner and runner.team or None
+    %>
+    <td valign="top">${team and team.name or ''}</td>
+    <td valign="top">${runner and runner.number or ''}</td>
+    <td valign="top">${r['item']}</td>
+    <td valign="top">${r['scoreing']['score']}</td>
+  %endif
+</%def>

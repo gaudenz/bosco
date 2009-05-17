@@ -57,7 +57,7 @@ event = RelayEvent(legs = [(u'0', datetime(2008,5,1,11,50)),
                                        }
                                       ),
                                      ],
-                   html_template = '24h.html',
+                   html_template = 'relay.html',
                    store = store,
                    cache = cache
                    )
