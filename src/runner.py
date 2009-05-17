@@ -72,7 +72,10 @@ class Runner(AbstractRunner, MyStorm):
             self.set_category(category)
         
     def __str__(self):
-        return '%s %s' % (self.given_name, self.surname)
+        return unicode(self).encode('utf-8')
+
+    def __unicode__(self):
+        return (u'%s %s' % (self.given_name, self.surname))
 
     def _get_run(self): 
         runs = []
@@ -89,9 +92,9 @@ class Runner(AbstractRunner, MyStorm):
                 # if there is only one complete run, return this run
                 return complete_runs[0]
             else:
-                raise RunnerException('%s runs for runner %s' % (len(runs), self))
+                raise RunnerException(u'%s runs for runner %s (%s)' % (len(runs), self, self.number))
         else:
-            raise RunnerException('No run found for runner %s' % self)
+            raise RunnerException(u'No run found for runner %s (%s)' % (self, self.number))
     run = property(_get_run)
 
 
