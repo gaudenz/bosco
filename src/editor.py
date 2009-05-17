@@ -335,6 +335,12 @@ class RunEditor(Observable):
         if self._run is None:
             return
 
+        runner = self._store.get(Runner, runner)
+
+        if runner == self._run.sicard.runner:
+            # return if runner did not change
+            return
+
         if runner is None:
             # connect to a virtual sicard not belonging to any runner
             # leaves the sicard with the runner so to not reconnect this
@@ -342,16 +348,7 @@ class RunEditor(Observable):
             self._run.sicard = self._create_virtual_sicard()
             self.changed = True
             return
-        
-        runner = self._store.get(Runner, runner)
-        # check if the run has a virtual SI-Card
-        if self._run.sicard.id < 0 and runner is not None:
-            try:
-                self._run.sicard = runner.sicards.one()
-                self.changed = True
-                return
-            except NotOneError:
-                pass
+
         if self._run.sicard.runner is None or self._run.sicard.runs.count() == 1:
             self._run.sicard.runner = runner
         else:
@@ -435,6 +432,8 @@ class RunEditor(Observable):
         """
         self.rollback()
         self._run = self._store.add(Run(self._create_virtual_sicard()))
+        # Flush the store to assign default values to the new run
+        self._store.flush()
         self.changed = True
         
     def commit(self):
