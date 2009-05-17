@@ -358,7 +358,11 @@ class RelayStarttime(MassstartStarttime):
         else:
             # this assumes that each runner runs only once, use unordered if this
             # is not the case
-            return runners[i-1].run.finish_time
+            try:
+                return runners[i-1].run.finish_time
+            except RunnerException, e:
+                raise UnscoreableException(u'Unable to get finish time of previous runner: %s'
+                                           % e.message) 
         
     def _prev_finish_unordered(self, obj):
         

@@ -81,7 +81,6 @@ class RunTest(unittest.TestCase):
 
         # Create a team
         team = Team(u'1', u'The best team ever', category= cat_team)
-        # Add team to store and flush to avoid cycles
         team.members.add(self._runners[0])
         team.members.add(self._runners[1])
         team.members.add(self._runners[2])
@@ -217,6 +216,23 @@ class RunTest(unittest.TestCase):
         strategy = TimeScoreing(RelayMassstartStarttime(datetime(2008,3,19,8,30,23)))
         score = strategy.score(self._runs[1])['score']
         self.assertEquals(score, timedelta(minutes=5, seconds=48))
+        score = strategy.score(self._runs[2])['score']
+        self.assertEquals(score, timedelta(minutes=6, seconds=2))
+
+    def test_score_relay_missing(self):
+        """Test that scoreing a relay runner without a run for the previous runner
+           throws an UnscoreableException."""
+
+        # remove first run
+        run = self._runners[0].sicards.one().runs.one()
+        for p in run.punches:
+            self._store.remove(p)
+        self._store.remove(run)
+
+        strategy = TimeScoreing(RelayMassstartStarttime(datetime(2008,3,19,8,30,23)))
+        self.assertRaises(UnscoreableException, strategy.score, self._runs[1])
+
+        # the third runner should still score as normal
         score = strategy.score(self._runs[2])['score']
         self.assertEquals(score, timedelta(minutes=6, seconds=2))
 

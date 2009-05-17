@@ -22,7 +22,7 @@ event.py - Event configuration. All front-end programs should use
 from datetime import timedelta
 
 from course import Course
-from runner import Category
+from runner import (Category, RunnerException)
 from ranking import (SequenceCourseValidator, TimeScoreing, SelfstartStarttime,
                      RelayStarttime, RelayMassstartStarttime,
                      Ranking, CourseValidator, OpenRuns,
@@ -215,7 +215,8 @@ class Event(object):
         """
         @return: list of possible rankings
         """
-        l = [ (c.code, self.ranking(c)) for c in self._store.find(Course)]
+        l = [ (c.code, self.ranking(c)) for c in self.list_courses()]
+        l.extend([ (c.name, self.ranking(c)) for c in self.list_categories() ])
         l.extend([ (e[0], self.ranking(**e[1])) for e in self._extra_rankings ])
         l.sort(key = lambda x: x[0])
         return l
@@ -274,7 +275,7 @@ class RelayEvent(Event):
 
         if not 'cache' in args:
             args['cache'] = self._cache
-            
+        
         if type(obj) == Run and scoreing_class is None:
             if obj.course is None:
                 raise UnscoreableException("Can't score a relay leg without a course.")
@@ -282,14 +283,17 @@ class RelayEvent(Event):
             args['starttime_strategy'] = RelayMassstartStarttime(self._starttimes[obj.course.code], args['cache'])
         elif type(obj) == Team and scoreing_class is None:
             if not 'legs' in args:
-                args['legs'] = len(self._startimes)
+                args['legs'] = len(self._starttimes)
             time = timedelta(0)
             # compute sum of individual run times
             # this automatically takes mass starts into account
-            for i, r in enumerate(obj.runners.order_by('number')):
-                if not i < args['legs']:
+            for i, r in enumerate(obj.members.order_by('number')):
+                if i >= args['legs']:
                     break
-                time += self.score(r)
+                try:
+                    time += self.score(r.run)['score']
+                except RunnerException, e:
+                    raise UnscoreableException(e.message)
                 
             return {'score':time}
             
@@ -378,9 +382,4 @@ class Relay24hEvent(Event):
 
         return Event.score(self, obj, scoreing_class, args)
     
-    def list_rankings(self):
-        l = Event.list_rankings(self)
-        l.extend([(c.name, self.ranking(c)) for c in self._store.find(Category)])
-        l.sort(key = lambda x:x[0])
-        return l
 
