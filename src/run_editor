@@ -8,7 +8,7 @@ import wx.grid
 from datetime import timedelta, datetime
 
 import conf
-from editor import RunSelector, RunEditor, TeamEditor
+from editor import RunSelector, RunEditor, TeamEditor, RunEditorException
 
 # begin wxGlade: extracode
 # end wxGlade
@@ -219,9 +219,6 @@ class RunPanel(EditingPanel):
         self.editor.add_observer(self)
 
     def UpdateRun(self):
-        self.runner_number.SetLabel(self.editor.runner_number)
-        self.runner_name.SetLabel(self.editor.runner_name)
-        self.runner_team.SetLabel(self.editor.runner_team)
         self.runner_sicard.SetLabel(self.editor.runner_sicard)
 
         self.run_id.SetLabel(self.editor.run_id)
@@ -292,10 +289,12 @@ class EditRunPanel(RunPanel):
         self.button_5 = wx.Button(self, wx.ID_EXIT, "")
         self.connect_button = wx.Button(self, -1, "Connect SI-Reader")
         self.run_runner_combo = wx.ComboBox(self, -1, choices=[], style=wx.CB_DROPDOWN|wx.CB_DROPDOWN|wx.CB_READONLY)
-        self.runner_number = wx.StaticText(self, -1, "101A")
-        self.runner_name = wx.StaticText(self, -1, "Gaudenz Steinlin")
-        self.runner_team = wx.StaticText(self, -1, u"UBOL 3 \"saugrün\"")
-        self.runner_sicard = wx.StaticText(self, -1, "654324")
+        self.runner_number = wx.TextCtrl(self, -1, "101A")
+        self.runner_given_name = wx.TextCtrl(self, -1, "Gaudenz")
+        self.runner_surname = wx.TextCtrl(self, -1, "Steinlin")
+        self.label_4 = wx.StaticText(self, -1, "Date of birth:")
+        self.runner_dateofbirth = wx.TextCtrl(self, -1, "1975-10-05")
+        self.runner_team = wx.ComboBox(self, -1, choices=[], style=wx.CB_DROPDOWN|wx.CB_DROPDOWN|wx.CB_READONLY)
         self.run_id = wx.StaticText(self, -1, "1234")
         self.course = wx.TextCtrl(self, -1, "LDN1", style=wx.TE_PROCESS_ENTER)
         self.label_12 = wx.StaticText(self, -1, "Manual start time:")
@@ -312,6 +311,7 @@ class EditRunPanel(RunPanel):
         self.label_7 = wx.StaticText(self, -1, "Check time:")
         self.label_7_copy = wx.StaticText(self, -1, "Start time:")
         self.label_7_copy_1 = wx.StaticText(self, -1, "Finish time:")
+        self.runner_sicard = wx.StaticText(self, -1, "7644523")
         self.readout_time = wx.StaticText(self, -1, "2008-05-04 12:00:54")
         self.clear_time = wx.StaticText(self, -1, "2008-05-04 11:02:54")
         self.check_time = wx.StaticText(self, -1, "2008-05-04 11:03:01")
@@ -331,7 +331,14 @@ class EditRunPanel(RunPanel):
         self.Bind(wx.EVT_BUTTON, self.Quit, self.button_5)
         self.Bind(wx.EVT_BUTTON, self.ConnectReader, self.connect_button)
         self.Bind(wx.EVT_COMBOBOX, self.SetRunRunner, self.run_runner_combo)
+        self.Bind(wx.EVT_TEXT, self.FieldChanged, self.runner_number)
+        self.Bind(wx.EVT_TEXT, self.FieldChanged, self.runner_given_name)
+        self.Bind(wx.EVT_TEXT, self.FieldChanged, self.runner_surname)
+        self.Bind(wx.EVT_TEXT, self.FieldChanged, self.runner_dateofbirth)
+        self.Bind(wx.EVT_COMBOBOX, self.SetRunnerTeam, self.runner_team)
         self.Bind(wx.EVT_TEXT, self.SetCourse, self.course)
+        self.Bind(wx.EVT_TEXT, self.FieldChanged, self.manual_start_time)
+        self.Bind(wx.EVT_TEXT, self.FieldChanged, self.manual_finish_time)
         self.Bind(wx.EVT_RADIOBOX, self.SetOverride, self.override)
         self.Bind(wx.EVT_CHECKBOX, self.SetComplete, self.complete)
         self.Bind(wx.grid.EVT_GRID_CMD_CELL_CHANGE, self.ChangePunch, self.punches_grid)
@@ -341,6 +348,19 @@ class EditRunPanel(RunPanel):
 
         self.manual_start_time.Bind(wx.EVT_KILL_FOCUS, self.SetManualStartTime)
         self.manual_finish_time.Bind(wx.EVT_KILL_FOCUS, self.SetManualFinishTime)
+        self.runner_number.Bind(wx.EVT_KILL_FOCUS, self.SetRunnerNumber)
+        self.runner_given_name.Bind(wx.EVT_KILL_FOCUS, self.SetRunnerGivenName)
+        self.runner_surname.Bind(wx.EVT_KILL_FOCUS, self.SetRunnerSurname)
+        self.runner_dateofbirth.Bind(wx.EVT_KILL_FOCUS, self.SetRunnerDateofbirth)
+
+        # To avoid updates if the field is not changed and the focus just enters the
+        # field and leaves it again without the user changeing any text, track if the field
+        # was changed: self.ResetFieldChanged sets self.field_changed = False and self.FieldChanged
+        # which is called on any EVT_TEXT event sets it to True. All the callbacks called on EVT_KILL_FOCUS
+        # first check this self.field_changed.
+        for field in (self.manual_start_time, self.manual_finish_time, self.runner_number,
+                      self.runner_given_name, self.runner_surname, self.runner_dateofbirth):
+            field.Bind(wx.EVT_SET_FOCUS, self.ResetFieldChanged)
         
         self.selector = RunSelector(conf.store)
         self.selector.add_observer(self)
@@ -348,6 +368,7 @@ class EditRunPanel(RunPanel):
         self.update(self.editor, 'run')
         
         self.UpdateCombo(self.run_runner_combo, self.editor.get_runnerlist())
+        self.UpdateCombo(self.runner_team, self.editor.get_teamlist())
 
     def __set_properties(self):
         # begin wxGlade: EditRunPanel.__set_properties
@@ -355,10 +376,12 @@ class EditRunPanel(RunPanel):
         self.runner_combo.SetMinSize((300, 34))
         self.run_combo.SetMinSize((300, 34))
         self.run_runner_combo.SetMinSize((250, 27))
-        self.runner_number.SetFont(wx.Font(12, wx.DEFAULT, wx.NORMAL, wx.BOLD, 0, ""))
-        self.runner_name.SetFont(wx.Font(12, wx.DEFAULT, wx.NORMAL, wx.BOLD, 0, ""))
-        self.runner_team.SetFont(wx.Font(12, wx.DEFAULT, wx.NORMAL, wx.BOLD, 0, ""))
-        self.runner_sicard.SetFont(wx.Font(12, wx.DEFAULT, wx.NORMAL, wx.BOLD, 0, ""))
+        self.runner_number.SetMinSize((250, 25))
+        self.runner_given_name.SetMinSize((122, 25))
+        self.runner_surname.SetMinSize((122, 25))
+        self.runner_dateofbirth.SetMinSize((90, 25))
+        self.runner_team.SetMinSize((250, 27))
+        self.course.SetMinSize((150, 25))
         self.manual_start_time.SetMinSize((150, 25))
         self.manual_finish_time.SetMinSize((150, 25))
         self.override.SetSelection(0)
@@ -396,9 +419,12 @@ class EditRunPanel(RunPanel):
         sizer_23 = wx.BoxSizer(wx.VERTICAL)
         sizer_6_copy = wx.BoxSizer(wx.VERTICAL)
         sizer_2 = wx.StaticBoxSizer(self.sizer_2_staticbox, wx.HORIZONTAL)
+        sizer_10 = wx.BoxSizer(wx.VERTICAL)
         sizer_4 = wx.BoxSizer(wx.VERTICAL)
         sizer_27 = wx.BoxSizer(wx.HORIZONTAL)
         sizer_8 = wx.StaticBoxSizer(self.sizer_8_staticbox, wx.VERTICAL)
+        sizer_29 = wx.BoxSizer(wx.HORIZONTAL)
+        sizer_28 = wx.BoxSizer(wx.HORIZONTAL)
         sizer_13 = wx.BoxSizer(wx.HORIZONTAL)
         sizer_19 = wx.BoxSizer(wx.VERTICAL)
         sizer_7 = wx.StaticBoxSizer(self.sizer_7_staticbox, wx.HORIZONTAL)
@@ -433,34 +459,36 @@ class EditRunPanel(RunPanel):
         sizer_8.Add((20, 10), 0, wx.ADJUST_MINSIZE, 0)
         label_20 = wx.StaticText(self, -1, "Runner:")
         sizer_8.Add(label_20, 0, wx.ALL|wx.ADJUST_MINSIZE, 2)
-        sizer_8.Add(self.runner_name, 0, wx.ALL|wx.ADJUST_MINSIZE, 2)
+        sizer_28.Add(self.runner_given_name, 0, wx.ALL|wx.ADJUST_MINSIZE, 2)
+        sizer_28.Add(self.runner_surname, 0, wx.ALL|wx.ADJUST_MINSIZE, 2)
+        sizer_8.Add(sizer_28, 0, wx.EXPAND, 0)
+        sizer_29.Add(self.label_4, 0, wx.LEFT|wx.TOP|wx.BOTTOM|wx.ALIGN_CENTER_VERTICAL|wx.ADJUST_MINSIZE, 2)
+        sizer_29.Add(self.runner_dateofbirth, 0, wx.ALL|wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL|wx.ADJUST_MINSIZE, 2)
+        sizer_8.Add(sizer_29, 0, wx.EXPAND, 0)
         sizer_8.Add((20, 5), 0, wx.ADJUST_MINSIZE, 0)
         label_22 = wx.StaticText(self, -1, "Team:")
         sizer_8.Add(label_22, 0, wx.ALL|wx.ADJUST_MINSIZE, 2)
         sizer_8.Add(self.runner_team, 0, wx.ALL|wx.ADJUST_MINSIZE, 2)
-        sizer_8.Add((20, 5), 0, wx.ADJUST_MINSIZE, 0)
-        label_24 = wx.StaticText(self, -1, "SI-Card:")
-        sizer_8.Add(label_24, 0, wx.ALL|wx.ADJUST_MINSIZE, 2)
-        sizer_8.Add(self.runner_sicard, 0, wx.ALL|wx.ADJUST_MINSIZE, 2)
         sizer_9.Add(sizer_8, 0, wx.ALL|wx.EXPAND, 5)
         label_24_copy_copy_copy_copy = wx.StaticText(self, -1, "Run ID:")
         sizer_27.Add(label_24_copy_copy_copy_copy, 0, wx.ALL|wx.ADJUST_MINSIZE, 2)
         sizer_27.Add(self.run_id, 0, wx.ALL|wx.ADJUST_MINSIZE, 2)
-        sizer_4.Add(sizer_27, 1, wx.EXPAND, 0)
-        sizer_4.Add((10, 5), 1, wx.ADJUST_MINSIZE, 0)
+        sizer_4.Add(sizer_27, 0, wx.EXPAND, 0)
+        sizer_4.Add((10, 5), 0, wx.ADJUST_MINSIZE, 0)
         label_3 = wx.StaticText(self, -1, "Course Code:")
         sizer_4.Add(label_3, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL|wx.ADJUST_MINSIZE, 2)
         sizer_4.Add(self.course, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL|wx.ADJUST_MINSIZE, 2)
-        sizer_4.Add((10, 5), 1, wx.ADJUST_MINSIZE, 0)
+        sizer_4.Add((10, 5), 0, wx.ADJUST_MINSIZE, 0)
         sizer_4.Add(self.label_12, 0, wx.ADJUST_MINSIZE, 0)
         sizer_4.Add(self.manual_start_time, 0, wx.ADJUST_MINSIZE, 0)
-        sizer_4.Add((10, 10), 1, wx.ADJUST_MINSIZE, 0)
+        sizer_4.Add((10, 10), 0, wx.ADJUST_MINSIZE, 0)
         sizer_4.Add(self.label_13, 0, wx.ADJUST_MINSIZE, 0)
         sizer_4.Add(self.manual_finish_time, 0, wx.ADJUST_MINSIZE, 0)
-        sizer_4.Add((10, 5), 1, wx.ADJUST_MINSIZE, 0)
-        sizer_4.Add(self.override, 0, wx.ALL|wx.ADJUST_MINSIZE, 2)
-        sizer_4.Add(self.complete, 0, wx.ALL|wx.ADJUST_MINSIZE, 2)
         sizer_2.Add(sizer_4, 0, wx.EXPAND, 0)
+        sizer_2.Add((20, 20), 0, wx.ADJUST_MINSIZE, 0)
+        sizer_10.Add(self.override, 0, wx.ALL|wx.ADJUST_MINSIZE, 2)
+        sizer_10.Add(self.complete, 0, wx.ALL|wx.ADJUST_MINSIZE, 2)
+        sizer_2.Add(sizer_10, 1, wx.EXPAND, 0)
         sizer_9.Add(sizer_2, 0, wx.ALL|wx.EXPAND, 5)
         label_4_copy_1 = wx.StaticText(self, -1, "Run Validation:")
         sizer_6_copy.Add(label_4_copy_1, 0, wx.ALL|wx.ADJUST_MINSIZE, 2)
@@ -477,6 +505,8 @@ class EditRunPanel(RunPanel):
         sizer_23.Add(self.team_score, 0, wx.ALL|wx.ADJUST_MINSIZE, 2)
         sizer_25.Add(sizer_23, 0, wx.EXPAND, 0)
         sizer_24.Add(sizer_25, 1, wx.ALL|wx.EXPAND, 5)
+        label_24 = wx.StaticText(self, -1, "SI-Card:")
+        sizer_6.Add(label_24, 0, wx.ALL|wx.ADJUST_MINSIZE, 2)
         label_26 = wx.StaticText(self, -1, "Readout time:")
         sizer_6.Add(label_26, 0, wx.ALL|wx.ADJUST_MINSIZE, 2)
         sizer_6.Add(self.label_5, 0, wx.ALL|wx.ADJUST_MINSIZE, 2)
@@ -484,6 +514,7 @@ class EditRunPanel(RunPanel):
         sizer_6.Add(self.label_7_copy, 0, wx.ALL|wx.ADJUST_MINSIZE, 2)
         sizer_6.Add(self.label_7_copy_1, 0, wx.ALL|wx.ADJUST_MINSIZE, 2)
         sizer_26.Add(sizer_6, 0, wx.EXPAND, 0)
+        sizer_23_copy.Add(self.runner_sicard, 0, wx.ALL|wx.ADJUST_MINSIZE, 2)
         sizer_23_copy.Add(self.readout_time, 0, wx.ALL|wx.ADJUST_MINSIZE, 2)
         sizer_23_copy.Add(self.clear_time, 0, wx.ALL|wx.ADJUST_MINSIZE, 2)
         sizer_23_copy.Add(self.check_time, 0, wx.ALL|wx.ADJUST_MINSIZE, 2)
@@ -503,6 +534,12 @@ class EditRunPanel(RunPanel):
     def GetComboData(combo):
         return combo.GetClientData(combo.GetSelection())
 
+    def ResetFieldChanged(self, e):
+        self.field_changed = False
+
+    def FieldChanged(self, e): # wxGlade: EditRunPanel.<event_handler>
+        self.field_changed = True
+        
     def SetTeam(self, event): # wxGlade: EditRunPanel.<event_handler>
         self.selector.set_team(self.GetComboData(self.team_combo))
 
@@ -520,6 +557,9 @@ class EditRunPanel(RunPanel):
         self.editor.set_course(self.course.GetValue().upper().strip())
 
     def SetManualStartTime(self, event):
+        if not self.field_changed:
+            return
+        
         try: 
             self.editor.set_manual_start_time(self.manual_start_time.GetValue().strip())
         except ValueError, msg:
@@ -527,11 +567,57 @@ class EditRunPanel(RunPanel):
             self.manual_start_time.SetFocus()
 
     def SetManualFinishTime(self, event):
+        if not self.field_changed:
+            return
+        
         try:
             self.editor.set_manual_finish_time(self.manual_finish_time.GetValue().strip())
         except ValueError, msg:
             self.ErrorDialog(str(msg), 'invalid time format')
             self.manual_finish_time.SetFocus()
+
+    def SetRunnerNumber(self, event):
+        if not self.field_changed:
+            return
+        
+        try:
+            self.editor.set_runner_number(self.runner_number.GetValue().strip())
+        except RunEditorException, e:
+            dlg = wx.MessageDialog(self, u'%s Only one runner may have this number. Do you want to assign the number to this runner?' % e.message,
+                                   'duplicate number',
+                                   style = wx.YES_NO|wx.ICON_QUESTION)
+            answer = dlg.ShowModal()
+            dlg.Destroy()
+            if answer == wx.ID_YES:
+                self.editor.set_runner_number(self.runner_number.GetValue().strip(), force = True)
+            elif answer == wx.ID_NO:
+                self.runner_number.SetFocus()
+            
+    
+    def SetRunnerGivenName(self, event):
+        if not self.field_changed:
+            return
+        
+        self.editor.set_runner_given_name(self.runner_given_name.GetValue().strip())
+
+    def SetRunnerSurname(self, event):
+        if not self.field_changed:
+            return
+        
+        self.editor.set_runner_surname(self.runner_surname.GetValue().strip())
+
+    def SetRunnerDateofbirth(self, event):
+        if not self.field_changed:
+            return
+        
+        try:
+            self.editor.set_runner_dateofbirth(self.runner_dateofbirth.GetValue().strip())
+        except ValueError, msg:
+            self.ErrorDialog(str(msg), 'invalid date format')
+            self.runner_dateofbirth.SetFocus()
+    
+    def SetRunnerTeam(self, event): # wxGlade: EditRunPanel.<event_handler>
+        self.editor.set_runner_team(self.GetComboData(self.runner_team))
 
     def SetOverride(self, event): # wxGlade: EditRunPanel.<event_handler>
         self.editor.set_override(self.override.GetSelection())
@@ -660,6 +746,11 @@ class EditRunPanel(RunPanel):
                 self.manual_finish_time.SetValue(self.editor.run_manual_finish_time)
                 self.complete.SetValue(self.editor.run_complete)
 
+                self.runner_number.SetValue(self.editor.runner_number)
+                self.runner_given_name.SetValue(self.editor.runner_given_name)
+                self.runner_surname.SetValue(self.editor.runner_surname)
+                self.runner_dateofbirth.SetValue(self.editor.runner_dateofbirth)
+                self.runner_team.SetValue(self.editor.runner_team)
                                 
         finally:
             # Enable Event handling after updating
@@ -825,6 +916,11 @@ class ReadoutRunPanel(RunPanel):
         
             if type(observable) == RunEditor and event == 'run':
                 self.UpdateRun()
+
+                self.runner_number.SetLabel(self.editor.runner_number)
+                self.runner_name.SetLabel(self.editor.runner_name)
+                self.runner_team.SetLabel(self.editor.runner_team)
+
                 self.start_time.SetLabel(self.editor.run_start_time[11:])
                 self.finish_time.SetLabel(self.editor.run_finish_time[11:])
                 self.course.SetLabel(self.editor.run_course)

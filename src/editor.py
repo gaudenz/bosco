@@ -66,7 +66,7 @@ class RunSelector(Observable):
 
     def get_teams(self):
         teams = [(None, '')]
-        for t in self._store.find(Team):
+        for t in self._store.find(Team).order_by('number'):
             teams.append((t.id, '%3s: %s' % (t.number, t.name)))
 
         return teams
@@ -92,6 +92,9 @@ class RunSelector(Observable):
                           r.sicard.id, r.readout_time or 'unknown')))
 
         return runs
+
+class RunEditorException(Exception):
+    pass
 
 class RunEditor(Observable):
     """High level run editor. This class is intended as a model for a
@@ -171,6 +174,13 @@ class RunEditor(Observable):
             return ''
     runner_name = property(_get_runner_name)
 
+    runner_given_name = property(lambda obj: obj._run and obj._run.sicard.runner and
+                                 obj._run.sicard.runner.given_name or '')
+    runner_surname = property(lambda obj: obj._run and obj._run.sicard.runner and
+                              obj._run.sicard.runner.surname or '')
+    runner_dateofbirth = property(lambda obj: obj._run and obj._run.sicard.runner and
+                                  str(obj._run.sicard.runner.dateofbirth) or '')
+    
     def _get_runner_number(self):
         try:
             return self._run.sicard.runner.number or ''
@@ -180,7 +190,7 @@ class RunEditor(Observable):
 
     def _get_runner_team(self):
         try:
-            return self._run.sicard.runner.team.name
+            return u'%3s: %s' % (self._run.sicard.runner.team.number, self._run.sicard.runner.team.name)
         except AttributeError:
             return ''
     runner_team = property(_get_runner_team)
@@ -340,8 +350,14 @@ class RunEditor(Observable):
     def get_runnerlist(self):
         runners = [(None, '')]
         for r in self._store.find(Runner).order_by('number'):
-            runners.append((r.id, '%s: %s' % (r.number, r)))
+            runners.append((r.id, u'%s: %s' % (r.number, r)))
         return runners
+
+    def get_teamlist(self):
+        teams = [(None, '')]
+        for t in self._store.find(Team).order_by('number'):
+            teams.append((t.id, u'%3s: %s' % (t.number, t.name)))
+        return teams
 
     def _create_virtual_sicard(self):
         """
@@ -382,7 +398,77 @@ class RunEditor(Observable):
             runner.sicards.add(si)
             
         self.changed = True
+
+    def set_runner_number(self, n, force = False):
+
+        # unset number?
+        if n == '':
+            if self._run.sicard.runner is not None:
+                self._run.sicard.runner.number = None
+                self.changed = True
+            return
         
+        # numbers must be unique. See if there is already another runner
+        # with this number
+        prev_runner = self._store.find(Runner, Runner.number == n).one()
+
+        if prev_runner is self._run.sicard.runner:
+            return
+        
+        if prev_runner is not None and force is False:
+            raise RunEditorException(u'Runner %s (%s) already has this number.' % (unicode(prev_runner), prev_runner.number))
+
+        if self._run.sicard.runner is None:
+            self._run.sicard.runner = Runner()
+            
+        if prev_runner is not None:
+            prev_runner.number = None
+            
+        self._run.sicard.runner.number = n
+        self.changed = True
+        
+    def set_runner_given_name(self, n):
+        try:
+            self._run.sicard.runner.given_name = n
+        except AttributeError:
+            self._run.sicard.runner = Runner(gname = n)
+
+        self.changed = True
+
+    def set_runner_surname(self, n):
+        try:
+            self._run.sicard.runner.surname = n
+        except AttributeError:
+            self._run.sicard.runner = Runner(sname = n)
+
+        self.changed = True
+
+    def set_runner_dateofbirth(self, d):
+
+        # First convert date string to a date object. If this fails
+        # it raises an Exception which should be handeld  by the caller.
+        if d == '':
+            d = None
+        else:
+            d = datetime.strptime(d, '%Y-%m-%d').date()
+
+        if self._run.sicard.runner is None:
+            self._run.sicard.runner = Runner()
+
+        self._run.sicard.runner.dateofbirth = d    
+        self.changed = True
+
+    def set_runner_team(self, team):
+
+        if team is not None:
+            team = self._store.get(Team, team)
+
+        if self._run.sicard.runner is None:
+            self._run.sicard.runner = Runner()
+            
+        self._run.sicard.runner.team = team
+        self.changed = True
+    
     def set_course(self, course):
         if course == '':
             course = None
@@ -704,7 +790,7 @@ class TeamEditor(Observable):
 
     def get_teamlist(self):
         teams = []
-        for t in self._store.find(Team):
+        for t in self._store.find(Team).order_by('number'):
             teams.append((t.id, '%3s: %s' % (t.number, t.name)))
 
         return teams

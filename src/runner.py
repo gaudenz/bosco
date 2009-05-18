@@ -59,7 +59,7 @@ class Runner(AbstractRunner, MyStorm):
     team = Reference(_team_id, 'Team.id')
     sicards = ReferenceSet(id, 'SICard._runner_id')
 
-    def __init__(self, sname, gname, sicard = None, category = None, number = None,
+    def __init__(self, sname=u'', gname=u'', sicard = None, category = None, number = None,
                  store = None):
         self.surname = sname
         self.given_name = gname
