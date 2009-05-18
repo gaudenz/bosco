@@ -107,13 +107,30 @@ class RunEditor(Observable):
                       SIStation.CLEAR:  'clear'}
     max_progress = 7
     
+    # singleton instance
+    __single = None
+    __initialized = False
+    
+    def __new__(classtype, *args, **kwargs):
+        """
+        Override class creation to ensure that only one RunEditor is instantiated.
+        """
+       
+        if classtype != type(classtype.__single):
+            classtype.__single = object.__new__(classtype, *args, **kwargs)
+        return classtype.__single
+    
     def __init__(self, store, event, sireader_port = None):
         """
         @param store: Storm store of the runs
         @param event: object of class (or subclass of) Event. This is used for
                       run and team validation
         @param sireader_port: Serial port name of the SI Reader. None means autodetect.
+        @note:        Later "instantiations" of this singleton discard all arguments.
         """
+        if self.__initialized == True:
+            return 
+        
         Observable.__init__(self)
         self._store = store
         self._event = event
@@ -125,6 +142,18 @@ class RunEditor(Observable):
 
         self.connect_reader(sireader_port)
         
+        self.__initialized = True
+
+    run_readout_time = property(lambda obj: obj._run and obj._run.readout_time and str(obj._run.readout_time) or 'unknown')
+    run_clear_time = property(lambda obj: obj._run and obj._run.clear_time and str(obj._run.clear_time) or 'unknown')
+    run_check_time = property(lambda obj: obj._run and obj._run.check_time and str(obj._run.check_time) or 'unknown')
+    run_card_start_time = property(lambda obj: obj._run and obj._run.card_start_time and str(obj._run.card_start_time) or 'unknown')
+    run_manual_start_time = property(lambda obj: obj._run and obj._run.manual_start_time and str(obj._run.manual_start_time) or '')
+    run_start_time = property(lambda obj: obj._run and obj._run.start_time and str(obj._run.start_time) or 'unknown')
+    run_card_finish_time = property(lambda obj: obj._run and obj._run.card_finish_time and str(obj._run.card_finish_time) or 'unknown')
+    run_manual_finish_time = property(lambda obj: obj._run and obj._run.manual_finish_time and str(obj._run.manual_finish_time) or '')
+    run_finish_time = property(lambda obj: obj._run and obj._run.finish_time and str(obj._run.finish_time) or 'unknown')
+
     def _get_has_runner(self):
         if self._run is None:
             return False
@@ -202,13 +231,6 @@ class RunEditor(Observable):
         else:
             return override
     run_override = property(_get_run_override)
-
-    def _get_run_readout_time(self):
-        try:
-            return self._run.readout_time.strftime('%c')
-        except AttributeError:
-            return 'unknown'
-    run_readout_time = property(_get_run_readout_time)
 
     def _get_run_complete(self):
         try:
@@ -386,6 +408,14 @@ class RunEditor(Observable):
             return None
         else:
             return datetime.strptime(time, '%Y-%m-%d %H:%M:%S')
+
+    def set_manual_start_time(self, time):
+        self._run.manual_start_time = self.parse_time(time)
+        self.changed = True
+
+    def set_manual_finish_time(self, time):
+        self._run.manual_finish_time = self.parse_time(time)
+        self.changed = True
     
     def set_punchtime(self, punch, time):
 
