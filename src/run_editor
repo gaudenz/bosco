@@ -752,6 +752,18 @@ class EditRunPanel(RunPanel):
                 self.runner_dateofbirth.SetValue(self.editor.runner_dateofbirth)
                 self.runner_team.SetValue(self.editor.runner_team)
 
+                ctrl_list = (self.run_runner_combo, self.runner_number, self.runner_given_name,
+                             self.runner_surname, self.runner_dateofbirth, self.runner_team, self.course,
+                             self.manual_start_time, self.manual_finish_time, self.override, self.complete,
+                             self.punches_grid)
+                if not self.editor.has_run():
+                    # Disable all controls if there is no run in the editor
+                    for ctrl in ctrl_list:
+                        ctrl.Disable()
+                else:
+                    for ctrl in ctrl_list:
+                        ctrl.Enable()
+
         finally:
             # Enable Event handling after updating
             self.SetEvtHandlerEnabled(True)

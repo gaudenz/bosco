@@ -165,6 +165,9 @@ class RunEditor(Observable):
     def has_course(self):
         return self._run.course is not None
 
+    def has_run(self):
+        return self._run is not None
+    
     def _get_runner_name(self):
         try:
             return unicode(self._run.sicard.runner or '')
