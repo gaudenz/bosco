@@ -157,16 +157,14 @@ class RunEditor(Observable):
     run_manual_finish_time = property(lambda obj: obj._run and obj._run.manual_finish_time and str(obj._run.manual_finish_time) or '')
     run_finish_time = property(lambda obj: obj._run and obj._run.finish_time and str(obj._run.finish_time) or 'unknown')
 
-    def _get_has_runner(self):
+    def has_runner(self):
         if self._run is None:
             return False
         return self._run.sicard.runner is not None
-    has_runner = property(_get_has_runner)
 
-    def _get_has_course(self):
+    def has_course(self):
         return self._run.course is not None
-    has_course = property(_get_has_course)
-    
+
     def _get_runner_name(self):
         try:
             return unicode(self._run.sicard.runner or '')

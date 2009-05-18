@@ -751,7 +751,7 @@ class EditRunPanel(RunPanel):
                 self.runner_surname.SetValue(self.editor.runner_surname)
                 self.runner_dateofbirth.SetValue(self.editor.runner_dateofbirth)
                 self.runner_team.SetValue(self.editor.runner_team)
-                                
+
         finally:
             # Enable Event handling after updating
             self.SetEvtHandlerEnabled(True)
@@ -925,8 +925,8 @@ class ReadoutRunPanel(RunPanel):
                 self.finish_time.SetLabel(self.editor.run_finish_time[11:])
                 self.course.SetLabel(self.editor.run_course)
                 
-                if (self.editor.has_runner == False
-                    or self.editor.has_course == False):
+                if (self.editor.has_runner() == False
+                    or self.editor.has_course() == False):
                     # stop reader
                     self.editor.stop_reader()
                     # change to edit run page
