@@ -41,10 +41,19 @@ cache = Cache()
 # create an Event Observer
 observer = TriggerEventObserver(store)
 
-event = RelayEvent(legs = [(u'0', datetime(2008,5,1,11,50)),
-                           (u'1', datetime(2008,5,1,11,55)),
-                           (u'2', datetime(2008,5,1,13,10)),
-                           (u'3', datetime(2008,5,1,14,10))],
+event = RelayEvent(legs = [{'variants':    (u'0', ), 
+                            'starttime':   datetime(2008,5,1,11,50), 
+                            'defaulttime': timedelta(minutes=5)},
+                           {'variants':    (u'1', ), 
+                            'starttime':   datetime(2008,5,1,11,55), 
+                            'defaulttime': None},
+                           {'variants':    (u'2', ), 
+                            'starttime':   datetime(2008,5,1,13,10), 
+                            'defaulttime': None},
+                           {'variants':    (u'3', ), 
+                            'starttime':   datetime(2008,5,1,14,10), 
+                            'defaulttime': None}
+                           ],
                    header = {'event'     : u'Jura 3er-Staffel 2008',
                              'map'       : u'Tete Plumée',
                              'place'     : u'Les Trois Chênes',

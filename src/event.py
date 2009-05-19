@@ -26,7 +26,7 @@ from runner import (Category, RunnerException)
 from ranking import (SequenceCourseValidator, TimeScoreing, SelfstartStarttime,
                      RelayStarttime, RelayMassstartStarttime,
                      Ranking, CourseValidator, OpenRuns,
-                     ControlPunchtimeScoreing,
+                     ControlPunchtimeScoreing, RelayScoreing,
                      Relay24hScoreing, Relay12hScoreing, RelayValidator,
                      ValidationError, UnscoreableException)
 
@@ -71,15 +71,19 @@ class Event(object):
         self._store = store
 
     @staticmethod
+    def _var_key(var):
+        """recursively make a hashable key out of a variable"""
+        if type(var) == list:
+            return tuple([Event._var_key(v) for v in var])
+        elif type(var) == dict:
+            return tuple([(k, Event._var_key(v)) for k,v in var.items()])
+        else:
+            return var
+    
+    @staticmethod
     def _key(cls, args):
         """make a hashable key out of cls and args"""
-        
-        arg_list = []
-        for k,v in args.items():
-            if type(v) == list:
-                v = tuple(v)
-            arg_list.append((k, v))
-        return (cls, tuple(arg_list))
+        return (cls, Event._var_key(args))
 
     def remove_cache(self):
         """Removes the cache. No caching occurs anymore."""
@@ -242,14 +246,30 @@ class RelayEvent(Event):
                  html_template = 'relay.html',
                  cache = None, store = None):
         """
-        @param legs: list of (legcode, startime) tuples
+        @param legs: list of dicts with the following keys:
+                     * 'variants': tuple of course codes that are valid variants for this leg.
+                     * 'starttime': start time for all non replaced runners, type datetime
+                     * 'defaulttime': time scored if no runner of the team successfully
+                       completes this leg, type timedelta or None if there is no defaulttime
+        @param legs: list of dicts with the following keys:
+                     * 'variants': tuple of course codes that are valid variants for this leg.
+                     * 'starttime': start time for all non replaced runners, type datetime
+                     * 'defaulttime': time scored if no runner of the team successfully
+                       completes this leg, type timedelta or None if there is no defaulttime
         @see:        Event for other arguments
         """
 
         Event.__init__(self, header, extra_rankings, template_dir, print_template,
                        html_template, cache, store)
 
-        self._starttimes = dict(legs)
+        self._legs = legs
+
+        # create dict of starttimes with course codes as key
+        # used for easier access to the starttimes
+        self._starttimes = {}
+        for l in legs:
+            for c in l['variants']:
+                self._starttimes[c] = l['starttime']
         
     def validate(self, obj, validator_class = None, args = None):
 
@@ -258,6 +278,7 @@ class RelayEvent(Event):
         if type(obj) == Team and validator_class is None:
             validator_class = RelayValidator
 
+        # defer validation to the superclass
         return Event.validate(self, obj, validator_class, args)
 
     def score(self, obj, scoreing_class = None, args = None):
@@ -282,23 +303,21 @@ class RelayEvent(Event):
             scoreing_class = TimeScoreing
             args['starttime_strategy'] = RelayMassstartStarttime(self._starttimes[obj.course.code], args['cache'])
         elif type(obj) == Team and scoreing_class is None:
-            if not 'legs' in args:
-                args['legs'] = len(self._starttimes)
-            time = timedelta(0)
-            # compute sum of individual run times
-            # this automatically takes mass starts into account
-            for i, r in enumerate(obj.members.order_by('number')):
-                if i >= args['legs']:
-                    break
-                try:
-                    time += self.score(r.run)['score']
-                except RunnerException, e:
-                    raise UnscoreableException(e.message)
-                
-            return {'score':time}
-            
-        return Event.score(self, obj, scoreing_class, args)
+            scoreing_class = RelayScoreing
 
+            # build arguments for the RelayScoreing object
+            if not 'legs' in args:
+                # score all legs if no leg parameter is specified
+                args['legs'] = len(self._legs)
+            # build args parameter for RelayScoreing
+            args['legs'] = self._legs[:args['legs']]
+
+            args['run_validator'] = self
+            args['run_scoreing'] = self
+
+        # if scoreing_class is not None use specified scoreing_class
+        return Event.score(self, obj, scoreing_class, args)
+    
 #    def ranking(self, obj):
 #        pass
     

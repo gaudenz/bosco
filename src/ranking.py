@@ -648,6 +648,81 @@ class RelayValidator(Validator):
     def validate(self, obj):
         return Validator.validate(self, obj)
     
+class RelayScoreing(AbstractScoreing):
+    """Scoreing class for relay teams. This class scores teams in a classical relay with different
+    legs and a fixed order of the legs. It supports optional legs with a default time if the leg is
+    not run successfully or if a runner runs longer than the default time. It also supports multiple
+    course variants for a leg. This class does not do any validation. Use RelayValidator for this."""
+
+    def __init__(self, legs, run_validator, run_scoreing, cache=None):
+        """
+        @param legs: list of dicts with the following keys:
+                     * 'variants': tuple of course codes that are valid variants for this leg.
+                     * 'starttime': start time for all non replaced runners, type datetime
+                     * 'defaulttime': time scored if no runner of the team successfully
+                       completes this leg or if the runner on this legs needs more time than
+                       the defaulttime, type timedelta or None if there is no defaulttime
+        @type legs:  dict
+        @param run_validator: Validator object used to validate runs. This object must implement the
+                              validate method. It's not neccessary that it is derived from Validator.
+                              It may also be an Event object.
+        @type run_validator:  instance of a class derived from Validator or Event
+        @param run_scoreing:  Scoreing object used to score runs. This object must implement the
+                              score method.
+        @type run_scoreing:   instance of a class derived from AbstractScoreing or Event
+        """
+        super(RelayScoreing, self).__init__(cache)
+        self._legs = legs
+        self._run_validator = run_validator
+        self._run_scoreing = run_scoreing
+
+    def score(self, team):
+        """Score a relay team.
+        @see: AbstractScoreing
+        """
+        
+        try:
+            return self._from_cache(self.score, team)
+        except KeyError:
+            pass
+
+        time = timedelta(0)
+        
+        # compute sum of individual run times
+        # this automatically takes mass starts into account
+
+        # create dict of all completed and valid courses with course code as key
+        # this does not take anomalies like running the same course two times or
+        # running two variants of the same leg into account. Those are checked by
+        # the validator as needed.
+        runs = dict([(r.course.code, r) for r in team.runs
+                     if r.course is not None and r.complete and self._run_validator.validate(r)['status'] == Validator.OK])
+
+        for i in range(len(self._legs)):
+            found = False
+            for v in self._legs[i]['variants']:
+                try:
+                    legscore = self._run_scoreing.score(runs[v])['score']
+                except (KeyError, UnscoreableException):
+                    continue
+                found = True
+                default = self._legs[i]['defaulttime']
+                if default is None or  legscore < default:
+                    time += legscore
+                else:
+                    time += default
+                break
+            
+            if not found:
+                if self._legs[i]['defaulttime'] is not None:
+                    time += self._legs[i]['defaulttime']
+                else:
+                    raise UnscoreableException(u'Unable to score team %s (%s): missing run for leg %i' % (team.name, team.number, i+1))
+
+        result = {'score':time}
+        self._to_cache(self.score, team, result)
+        return result
+    
 class Relay24hScoreing(AbstractScoreing, Validator):
     """This class is both a validation strategy and a scoreing strategy. The strategies
     are combined because they use some common private functions. This class validates
