@@ -27,10 +27,13 @@ from ranking import (SequenceCourseValidator, TimeScoreing, SelfstartStarttime,
                      RelayStarttime, RelayMassstartStarttime,
                      Ranking, CourseValidator, OpenRuns,
                      ControlPunchtimeScoreing, RelayScoreing,
-                     Relay24hScoreing, Relay12hScoreing, RelayValidator,
+                     Relay24hScoreing, Relay12hScoreing,
                      ValidationError, UnscoreableException)
 
 from formatter import MakoRankingFormatter
+
+class EventException(Exception):
+    pass
 
 class Event(object):
     """Model of all event specific ranking information. The default
@@ -269,14 +272,26 @@ class RelayEvent(Event):
         self._starttimes = {}
         for l in legs:
             for c in l['variants']:
+                if c in self._starttimes:
+                    raise EventException('Multiple legs with the same course are not supported in RelayEvent!')
                 self._starttimes[c] = l['starttime']
         
     def validate(self, obj, validator_class = None, args = None):
 
         from runner import Team
-        
+
+        if args is None:
+            args = {}
+            
         if type(obj) == Team and validator_class is None:
-            validator_class = RelayValidator
+            validator_class = RelayScoreing
+            # build arguments for the RelayScoreing object
+            if not 'legs' in args:
+                # score all legs if no leg parameter is specified
+                args['legs'] = len(self._legs)
+            # build args parameter for RelayScoreing
+            args['legs'] = self._legs[:args['legs']]
+            args['event'] = self
 
         # defer validation to the superclass
         return Event.validate(self, obj, validator_class, args)
@@ -301,7 +316,7 @@ class RelayEvent(Event):
             if obj.course is None:
                 raise UnscoreableException("Can't score a relay leg without a course.")
             scoreing_class = TimeScoreing
-            args['starttime_strategy'] = RelayMassstartStarttime(self._starttimes[obj.course.code], args['cache'])
+            args['starttime_strategy'] = RelayMassstartStarttime(self._starttimes[obj.course.code], cache = args['cache'])
         elif type(obj) == Team and scoreing_class is None:
             scoreing_class = RelayScoreing
 
@@ -312,8 +327,7 @@ class RelayEvent(Event):
             # build args parameter for RelayScoreing
             args['legs'] = self._legs[:args['legs']]
 
-            args['run_validator'] = self
-            args['run_scoreing'] = self
+            args['event'] = self
 
         # if scoreing_class is not None use specified scoreing_class
         return Event.score(self, obj, scoreing_class, args)
@@ -352,7 +366,7 @@ class Relay24hEvent(Event):
         
     def _get_team_strategy(self, team, args):
         cat =  team.category.name
-        args['event_ranking'] = self
+        args['event'] = self
         if 'starttime' not in args:
             args['starttime'] = self._starttime[cat]
         if 'speed' not in args:

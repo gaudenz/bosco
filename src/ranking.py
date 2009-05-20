@@ -93,19 +93,19 @@ class Ranking(object):
         ranking_list = []
         for m in self.rankable.members:
             try:
-                ranking_list.append({'scoreing':self._event.score(m,
-                                                                  self._scoreing_class,
-                                                                  self.scoreing_args),
-                                     'validation':self._event.validate(m,
-                                                                       self._validator_class,
-                                                                       self.validator_args),
-                                     'item':m})
-            except UnscoreableException, ValidationError:
+                score = self._event.score(m, self._scoreing_class, self.scoreing_args)
+            except UnscoreableException:
+                score = {'score': timedelta(0)}
+                
+            try:
+                valid = self._event.validate(m, self._validator_class, self.validator_args)
+            except ValidationError:
                 print_exc(file=sys.stderr)
-                pass
-            except:
-                print_exc(file=sys.stderr)
-                pass
+                continue
+                
+            ranking_list.append({'scoreing':score,
+                                 'validation': valid,
+                                 'item':m})
 
         ranking_list.sort(key = lambda x: x['scoreing']['score'], reverse = self._reverse)
         ranking_list.sort(key = lambda x: x['validation']['status'])
@@ -287,8 +287,8 @@ class TimeScoreing(AbstractScoreing):
             result['score'] = timedelta(0)
 
         if result['score'] < timedelta(0):
-            raise UnscoreableException('Scoreing Error, negative runtime: %s'
-                                       % result['score'])
+            raise UnscoreableException('Scoreing Error, negative runtime: %(finish)s - %(start)s = %(score)s'
+                                       % result)
         
         self._to_cache(self.score, obj, result)
         return result
@@ -351,7 +351,7 @@ class RelayStarttime(MassstartStarttime):
             runners = list(obj.sicard.runner.team.members.order_by('number'))
         except AttributeError:
             raise UnscoreableException("Runner must be part of a team!")
-            
+
         i = runners.index(obj.sicard.runner)
         if i == 0:
             return None
@@ -477,7 +477,11 @@ class CourseValidator(Validator):
 
         result = {'override':False}
         if run.override is not None:
-            result['status'] = run.override
+            if run.override == Validator.OK and run.complete == False:
+                # return not completed even if override is OK to avoid inconsistencies
+                result['status'] = Validator.NOT_COMPLETED
+            else:
+                result['status'] =  run.override
             result['override'] = True
         elif not run.complete:
             result['status'] = Validator.NOT_COMPLETED
@@ -643,18 +647,61 @@ class SequenceCourseValidator(CourseValidator):
         self._to_cache(self.validate, run, result)
         return result
 
-class RelayValidator(Validator):
+class AbstractRelayScoreing(AbstractScoreing, Validator):
+    """Base class for all relay scoreing classes. This class contains some
+    common mehtods used in relay scoreing.
+    """
 
-    def validate(self, obj):
-        return Validator.validate(self, obj)
-    
-class RelayScoreing(AbstractScoreing):
-    """Scoreing class for relay teams. This class scores teams in a classical relay with different
-    legs and a fixed order of the legs. It supports optional legs with a default time if the leg is
-    not run successfully or if a runner runs longer than the default time. It also supports multiple
-    course variants for a leg. This class does not do any validation. Use RelayValidator for this."""
+    def __init__(self, event, cache = None):
+        AbstractScoreing.__init__(self, cache)
+        self._event = event
+        
+    def _runs(self, team):
+        """
+        Return a sorted list of all completed runs of a team that have a course out of a given set.
+        @return: dict with the following keys:
+                 * finish:        finish time of the run
+                 * runner:        runner id of the run
+                 * course:        course of the run
+                 * validation:    validation code
+                 * lkm:           lkm run on this code
+                 * score:         score of the run
+                 * expected_time: expected time of the run
+        """
+        try:
+            return self._from_cache(self._runs, team)
+        except KeyError:
+            runs = []
+            for r in team.runs:
+                if r.complete is False:
+                    continue
+                if r.course is None:
+                    continue
+                if not r.course.code in self._courses:
+                    continue
+                runs.append( {'finish':r.finish_time,
+                              'runner':r.sicard.runner.id,
+                              'course':r.course.code,
+                              'validation':self._event.validate(r)['status']})
+                if runs[-1]['validation'] == Validator.OK:
+                    runs[-1]['lkm'] = r.course.lkm()
+                else:
+                    runs[-1]['score'] = self._event.score(r)['score']
+                    runs[-1]['expected_time'] = r.course.expected_time(self._speed)
+                
+            runs.sort(key=lambda x:x['finish'] or datetime.max)
+            self._to_cache(self._runs, team, runs)
+            return runs
 
-    def __init__(self, legs, run_validator, run_scoreing, cache=None):
+class RelayScoreing(AbstractRelayScoreing):
+    """Combined validator and scoreing class for relay teams. This
+    class validates and scores teams in a classical relay with
+    different legs and a fixed order of the legs. It supports optional
+    legs with a default time if the leg is not run successfully or if
+    a runner runs longer than the default time. It also supports
+    multiple course variants for a leg."""
+
+    def __init__(self, legs, event, cache=None):
         """
         @param legs: list of dicts with the following keys:
                      * 'variants': tuple of course codes that are valid variants for this leg.
@@ -663,18 +710,95 @@ class RelayScoreing(AbstractScoreing):
                        completes this leg or if the runner on this legs needs more time than
                        the defaulttime, type timedelta or None if there is no defaulttime
         @type legs:  dict
-        @param run_validator: Validator object used to validate runs. This object must implement the
-                              validate method. It's not neccessary that it is derived from Validator.
-                              It may also be an Event object.
-        @type run_validator:  instance of a class derived from Validator or Event
-        @param run_scoreing:  Scoreing object used to score runs. This object must implement the
-                              score method.
-        @type run_scoreing:   instance of a class derived from AbstractScoreing or Event
+        @param event: Event object used to validate and score individual runs.
+        @type event:  instance of a class derived from Event
         """
-        super(RelayScoreing, self).__init__(cache)
+        super(RelayScoreing, self).__init__(event,cache)
         self._legs = legs
-        self._run_validator = run_validator
-        self._run_scoreing = run_scoreing
+        self._speed = 0
+        self._courses = []
+        for l in self._legs:
+            self._courses.extend(l['variants'])
+
+    def _valid_runs(self, team):
+        """
+        Return a list of all valid and completed runs for this team. Ordered by finish time.
+        @type team: instance of Team
+        @return type: list of runs
+        """
+        try:
+            return self._from_cache(self._valid_runs, team)
+        except KeyError:
+            pass
+        
+        runs =  [r for r in team.runs
+                 if r.course is not None and r.complete and self._event.validate(r)['status'] == Validator.OK]
+        runs.sort(key = lambda x: x.finish_time)
+
+        self._to_cache(self._valid_runs, team, runs)
+        return runs
+        
+    def validate(self, team):
+        """Validates a relay team.
+        @see: Validator
+        """
+        try:
+            return self._from_cache(self.validate, team)
+        except KeyError:
+            pass
+
+        from runner import RunnerException
+
+        result = {'override':False}
+        # check for override
+        if team.override is not None:
+            result['status'] = team.override
+            result['override'] = True
+        else:
+            runners = team.members.order_by('number')
+            i = 0
+            for l in self._legs:
+                try:
+                    run = runners[i].run
+                except RunnerException: 
+                    # no run or multiple runs for this runner
+                    if l['defaulttime'] is not None:
+                        i += 1
+                        continue
+                    else:
+                        result['status'] = Validator.DISQUALIFIED
+                        break
+
+                try:
+                    code = run.course.code
+                except AttributeError:
+                    # run does not have a course
+                    result['status'] = Validator.DISQUALIFIED
+                    break
+            
+                valid = self._event.validate(run)['status']
+                if code in l['variants'] and (l['defaulttime'] is not None or valid == Validator.OK):
+                    # everything is OK
+                    i += 1
+                    continue
+                elif l['defaulttime'] is not None:
+                    # perhaps missing runner, just continue without increasing the runner index
+                    continue
+                elif code in l['variants']:
+                    # correct course, but not valid
+                    result['status'] = valid
+                    break
+                else:
+                    # wrong course
+                    result['status'] = Validator.DISQUALIFIED
+                    break
+                
+            if not 'status' in result:
+                # if no status is assigned everything is OK
+                result['status'] = Validator.OK
+
+        self._to_cache(self.validate, team, result)
+        return result
 
     def score(self, team):
         """Score a relay team.
@@ -691,39 +815,45 @@ class RelayScoreing(AbstractScoreing):
         # compute sum of individual run times
         # this automatically takes mass starts into account
 
-        # create dict of all completed and valid courses with course code as key
-        # this does not take anomalies like running the same course two times or
-        # running two variants of the same leg into account. Those are checked by
-        # the validator as needed.
-        runs = dict([(r.course.code, r) for r in team.runs
-                     if r.course is not None and r.complete and self._run_validator.validate(r)['status'] == Validator.OK])
-
-        for i in range(len(self._legs)):
-            found = False
-            for v in self._legs[i]['variants']:
-                try:
-                    legscore = self._run_scoreing.score(runs[v])['score']
-                except (KeyError, UnscoreableException):
-                    continue
-                found = True
-                default = self._legs[i]['defaulttime']
+        runs = self._valid_runs(team)
+        missing = 0 # count of missing legs
+        
+        for i,l in enumerate(self._legs):
+            default = l['defaulttime']
+            try:
+                r = runs[i-missing]
+            except IndexError:
+                # last run is missing
+                # check for incomplete run for this leg
+                incomplete = False
+                for run in [r for r in team.runs if r.complete == False]:
+                    if run.course.code in l['variants']:
+                        incomplete = True
+                        break
+                if default is None or incomplete:
+                    raise UnscoreableException(u'Unable to score team %s (%s): missing or incomplete run for leg %i' % (team.name, team.number, i+1))
+                else:
+                    time += default
+                
+            if r.course.code not in l['variants']:
+                # missing leg
+                missing += 1
+                if default is None:
+                    raise UnscoreableException(u'Unable to score team %s (%s): missing run for leg %i' % (team.name, team.number, i+1))
+                else:
+                    time += default
+            else:
+                legscore = self._event.score(r)['score']
                 if default is None or  legscore < default:
                     time += legscore
                 else:
                     time += default
-                break
-            
-            if not found:
-                if self._legs[i]['defaulttime'] is not None:
-                    time += self._legs[i]['defaulttime']
-                else:
-                    raise UnscoreableException(u'Unable to score team %s (%s): missing run for leg %i' % (team.name, team.number, i+1))
-
+                
         result = {'score':time}
         self._to_cache(self.score, team, result)
         return result
     
-class Relay24hScoreing(AbstractScoreing, Validator):
+class Relay24hScoreing(AbstractRelayScoreing):
     """This class is both a validation strategy and a scoreing strategy. The strategies
     are combined because they use some common private functions. This class validates
     and scores teams for the 24h relay."""
@@ -735,7 +865,7 @@ class Relay24hScoreing(AbstractScoreing, Validator):
 
     POOLNAMES = ['start','night', 'day','finish']
     
-    def __init__(self, starttime, speed, duration, event_ranking, method = 'runcount',
+    def __init__(self, starttime, speed, duration, event, method = 'runcount',
                  blocks = 'finish', cache = None):
         """
         @param starttime:     Start time of the event.
@@ -743,7 +873,7 @@ class Relay24hScoreing(AbstractScoreing, Validator):
         @param speed:         expected speed in minutes per kilometers. Used to compute
                               penalty time for invalid runs
         @type speed:          int
-        @param event_ranking: object of class EventRanking to score and
+        @param event:         object of class Event to score and
                               validate single runs
         @param duration:      Duration of the event
         @param method:        score calculation method, currently implemented:
@@ -753,15 +883,14 @@ class Relay24hScoreing(AbstractScoreing, Validator):
         @param blocks:        score until the end of this block. Possible blocks:
                               'start', 'night', 'day', 'finish' (default)
         """
-        AbstractScoreing.__init__(self, cache)
+        AbstractRelayScoreing.__init__(self, event, cache)
         self._starttime = starttime
         self._speed = speed
         self._duration = duration
-        self._event_ranking = event_ranking
         self._method = method
 
         self._courses = []
-        all_courses = self._event_ranking.list_courses()
+        all_courses = self._event.list_courses()
         if blocks in self.POOLNAMES:
             self._courses.extend([ c.code for c in all_courses
                                    if self.START.match(c.code) ])
@@ -782,31 +911,6 @@ class Relay24hScoreing(AbstractScoreing, Validator):
 
         self._blocks = blocks
 
-    def _runs(self, team):
-        try:
-            return self._from_cache(self._runs, team)
-        except KeyError:
-            runs = []
-            for r in team.runs:
-                if r.complete is False:
-                    continue
-                if r.course is None:
-                    continue
-                if not r.course.code in self._courses:
-                    continue
-                runs.append( {'finish':r.finish_time,
-                              'runner':r.sicard.runner.id,
-                              'course':r.course.code,
-                              'validation':self._event_ranking.validate(r)['status']})
-                if runs[-1]['validation'] == Validator.OK:
-                    runs[-1]['lkm'] = r.course.lkm()
-                else:
-                    runs[-1]['score'] = self._event_ranking.score(r)['score']
-                    runs[-1]['expected_time'] = r.course.expected_time(self._speed)
-                
-            self._to_cache(self._runs, team, runs)
-            return runs
-
     def _loop_over_runs(self, team):
         """This is an utility function to not duplicate code in _check_order and
         _omitted_runners. It loops over all runs, counts the omitted runners and
@@ -822,7 +926,6 @@ class Relay24hScoreing(AbstractScoreing, Validator):
         # collect team members and runs
         members = [ r.id for r in  team.members.order_by('number')]
         runs = self._runs(team)
-        runs.sort(key=lambda x:x['finish'] or datetime.max)
         
         # check runner order
         remaining = copy(members)
@@ -870,7 +973,6 @@ class Relay24hScoreing(AbstractScoreing, Validator):
 
         i = 0
         runs = self._runs(team)
-        runs.sort(key = lambda x:x['finish'] or datetime.max)
         remaining_runs = copy(runs)
         for r in runs:
             while i <= 2 and len(pool[i]) == 0:
@@ -960,7 +1062,6 @@ class Relay24hScoreing(AbstractScoreing, Validator):
             pass
         
         runs = self._runs(team)
-        runs.sort(key = lambda x:x['finish'] or datetime.max)
         
         failed = []
         for r in runs:
