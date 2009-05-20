@@ -487,6 +487,38 @@ class OCADXMLCourseImporter(Importer):
             else:
                 raise CourseTypeException('Course has no variations (at least 1 needed).')
 
+class CSVCourseImporter(CSVImporter):
+    """
+    Import courses from a CSV file. The file format is:
+    code;1;2;...
+    Coursecode1;control1;control2;...
+    Coursecode2;control1;control2;...
+
+    The first line is the header, all following lines are course definitions.
+    """
+
+    def import_data(self, store):
+
+        for c in self.data:
+
+            # create course
+            course = store.add(Course(c['code']))
+
+            # add controls
+            for i in range(len(c)-1):
+                code = c[str(i+1)]
+                
+                if code == u'':
+                    # end of course
+                    break
+
+                control = store.find(Control, Control.code == code).one()
+                if control is None:
+                    # Create new control
+                    control = Control(code, store=store)
+
+                course.append(control)
+    
 class RunImportException(Exception):
     pass
 
