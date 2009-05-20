@@ -21,7 +21,7 @@ event.py - Event configuration. All front-end programs should use
 
 from datetime import timedelta
 
-from course import Course
+from course import Course, CombinedCourse
 from runner import (Category, RunnerException)
 from ranking import (SequenceCourseValidator, TimeScoreing, SelfstartStarttime,
                      RelayStarttime, RelayMassstartStarttime,
@@ -222,9 +222,15 @@ class Event(object):
         """
         @return: list of possible rankings
         """
+        # all courses
         l = [ (c.code, self.ranking(c)) for c in self.list_courses()]
+
+        # all categories
         l.extend([ (c.name, self.ranking(c)) for c in self.list_categories() ])
+
+        # all extra rankings
         l.extend([ (e[0], self.ranking(**e[1])) for e in self._extra_rankings ])
+
         l.sort(key = lambda x: x[0])
         return l
 
@@ -290,7 +296,8 @@ class RelayEvent(Event):
                 # score all legs if no leg parameter is specified
                 args['legs'] = len(self._legs)
             # build args parameter for RelayScoreing
-            args['legs'] = self._legs[:args['legs']]
+            if type(args['legs']) == int:
+                args['legs'] = self._legs[:args['legs']]
             args['event'] = self
 
         # defer validation to the superclass
@@ -323,9 +330,10 @@ class RelayEvent(Event):
             # build arguments for the RelayScoreing object
             if not 'legs' in args:
                 # score all legs if no leg parameter is specified
-                args['legs'] = len(self._legs)
+                args['legs'] = self._legs[:len(self._legs)]
             # build args parameter for RelayScoreing
-            args['legs'] = self._legs[:args['legs']]
+            if type(args['legs']) == int:
+                args['legs'] = self._legs[:args['legs']]
 
             args['event'] = self
 
@@ -336,7 +344,13 @@ class RelayEvent(Event):
 #        pass
     
     def list_rankings(self):
-        l = Event.list_rankings(self)
+        l = []
+        for leg in self._legs:
+            l.append((leg['name'], self.ranking(CombinedCourse(leg['variants'], self._store))))
+        for c in self.list_categories():
+            for i,leg in enumerate(self._legs):
+                l.append(('%s %s' % (c.name, leg['name']), self.ranking(c, scoreing_args = {'legs': i+1},
+                                                                        validation_args = {'legs': i+1}))) 
         return l
     
 class Relay24hEvent(Event):

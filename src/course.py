@@ -22,6 +22,7 @@ course.py - Classes for orienteering courses. Everything here is
 """
 
 from storm.locals import *
+
 from datetime import timedelta
 
 from ranking import Rankable
@@ -218,3 +219,44 @@ class Course(MyStorm, Rankable):
 
     def __unicode__(self):
         return self.code
+
+class CombinedCourse(Rankable):
+    """
+    This class combines several courses to generate a joint ranking of all runns of
+    all the combined courses. This is primarily usefull for rankings of relay legs with
+    different variants. This class is not derived from Course and this is not a Storm object
+    and not stored in the database.
+    """
+
+    def __init__(self, course_list, store=None):
+        """
+        @param course_list: List of courses to combine
+        @type course_list:  list of either instances of Course or unicode course codes
+        @param store:       Storm store which contains the courses referenced by course
+                            codes in the course list. May be None if the course list only
+                            contains Course objects.
+        """
+        self._course_list = []
+        for c in course_list:
+            if type(c) == Course:
+                self._course_list.append(c)
+            else:
+                if store is None:
+                    raise CombinedCourseException("Can't add course '%s' without a store." % c)
+                
+                course = store.find(Course, Course.code == c).one()
+                if course is None:
+                    raise CombinedCourseException("Can't find course with code '%s'." % c)
+                self._course_list.append(course)
+
+    def _get_members(self):
+        """Get all runs of all the courses in self._course_list."""
+
+        runs = []
+        for c in self._course_list:
+            runs.extend([r for r in c.members])
+        return runs
+    members = property(_get_members)
+
+class CombinedCourseException(Exception):
+    pass

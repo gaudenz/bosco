@@ -41,16 +41,20 @@ cache = Cache()
 # create an Event Observer
 observer = TriggerEventObserver(store)
 
-event = RelayEvent(legs = [{'variants':    (u'0', ), 
+event = RelayEvent(legs = [{'name':        u'0',
+                            'variants':    (u'0', ), 
                             'starttime':   datetime(2008,5,1,11,50), 
                             'defaulttime': timedelta(minutes=5)},
-                           {'variants':    (u'1AA', u'1AB', u'1BA', u'1BB'), 
+                           {'name':        u'1',
+                            'variants':    (u'1AA', u'1AB', u'1BA', u'1BB'), 
                             'starttime':   datetime(2008,5,1,11,55), 
                             'defaulttime': None},
-                           {'variants':    (u'2', ), 
+                           {'name':        u'2',
+                            'variants':    (u'2', ), 
                             'starttime':   datetime(2008,5,1,13,10), 
                             'defaulttime': None},
-                           {'variants':    (u'3AAA', u'3AAB', u'3ABA', u'3ABB', u'3BAA', u'3BAB', u'3BBA', u'3BBB'), 
+                           {'name':        u'3',
+                            'variants':    (u'3AAA', u'3AAB', u'3ABA', u'3ABB', u'3BAA', u'3BAB', u'3BBA', u'3BBB'), 
                             'starttime':   datetime(2008,5,1,14,10), 
                             'defaulttime': None}
                            ],
