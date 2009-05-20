@@ -31,10 +31,6 @@ if __name__ == '__main__':
                    help='Encoding of the imported file.')
     opt.add_option('-t', '--team', action='store',
                    help="Team event identifier. Currently supported: 24h, relay")
-    opt.add_option('-f', '--finish', action='store_false', default=True,
-                   help="Don't Connect finish points to the special SI Station for the finish.")
-    opt.add_option('-s', '--start', action='store_true', default=False,
-                   help='Connect all start points to the special SI Station for the start. Only use this option if you use SI Stations for the start.')
     (options, (command, filename)) = opt.parse_args()
 
     if command == 'teams':
@@ -51,7 +47,7 @@ if __name__ == '__main__':
         importer = SIRunImporter(filename, options.encoding)
     elif command == 'courses':
         # Import courses
-        importer = OCADXMLCourseImporter(filename, options.finish, options.start)
+        importer = OCADXMLCourseImporter(filename, False, False)
     else:
         print "Unknown command '%s'" % command
         exit(1)
