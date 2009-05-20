@@ -21,7 +21,7 @@ from optparse import OptionParser
 import sys
 
 import conf
-from importer import Team24hImporter, TeamUBOL3Importer, SIRunImporter, OCADXMLCourseImporter
+from importer import Team24hImporter, TeamRelayImporter, SIRunImporter, OCADXMLCourseImporter
 
 if __name__ == '__main__':
     # Read program options
@@ -30,7 +30,7 @@ if __name__ == '__main__':
     opt.add_option('-e', '--encoding', action='store', default='utf-8',
                    help='Encoding of the imported file.')
     opt.add_option('-t', '--team', action='store',
-                   help="Team event identifier. Currently supported: 24h, UBOL3")
+                   help="Team event identifier. Currently supported: 24h, relay")
     opt.add_option('-f', '--finish', action='store_false', default=True,
                    help="Don't Connect finish points to the special SI Station for the finish.")
     opt.add_option('-s', '--start', action='store_true', default=False,
@@ -41,8 +41,8 @@ if __name__ == '__main__':
         # Import teams
         if options.team == '24h':
             importer = Team24hImporter(filename, options.encoding)
-        elif options.team == 'UBOL3':
-            importer = TeamUBOL3Importer(filename, options.encoding)
+        elif options.team == 'relay':
+            importer = TeamRelayImporter(filename, options.encoding)
         else:
             print 'Unknown Team event identifier!'
             sys.exit(1)

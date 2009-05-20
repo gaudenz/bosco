@@ -60,6 +60,7 @@ class CSVImporter(Importer):
 
         # Read labels
         labels = csv.next()
+        self._fieldcount = len(labels)
 
         # Read values
         for line in csv:
@@ -162,29 +163,31 @@ class Team24hImporter(RunnerImporter):
             # Add team to store
             store.add(team)
 
-class TeamUBOL3Importer(RunnerImporter):
-    """Import participant data for UBOL3 event from CSV file."""
+class TeamRelayImporter(RunnerImporter):
+    """Import participant data for a Relay."""
 
     # 0 leg needs 0 not '' otherwise the numbers do
     # not sort correctly as they are strings!
     RUNNER_NUMBERS       = ['0', '1', '2', '3'] 
-    RUNNER_NUMBER_FORMAT = u'%(runner)s%(team)02i'
+    RUNNER_NUMBER_FORMAT = u'%(runner)i%(team)02i'
     
     def import_data(self, store):
 
-        # Create category
-        cat = Category(u'UBOL3')
-
+        self._categories = {}
         for t in self.data:
 
+            # Create category
+            if t['Kategorie'] not in self._categories:
+                self._categories[t['Kategorie']] = Category(t['Kategorie'])
+                
             # Create the team
             team = Team(t['AnmeldeNummer'],
-                            t['Teamname'], cat)
+                            t['Teamname'], self._categories[t['Kategorie']])
 
             # Create individual runners
             num = 0
             i = 1
-            while num < 4:
+            while num < (self._fieldcount-3)/6:
                 
                 runner = Runner(t['Name%s' % str(i)],
                                 t['Vorname%s' % str(i)], store = store)
@@ -193,9 +196,9 @@ class TeamUBOL3Importer(RunnerImporter):
                 elif t['Geschlecht%s' % str(i)] == 'f':
                     runner.sex = 'female'
                 runner.dateofbirth = RunnerImporter._parse_yob(t['Jahrgang%s' % str(i)]) 
-                runner.number = TeamUBOL3Importer.RUNNER_NUMBER_FORMAT % \
+                runner.number = TeamRelayImporter.RUNNER_NUMBER_FORMAT % \
                                 {'team' : int(team.number),
-                                 'runner' : TeamUBOL3Importer.RUNNER_NUMBERS[num]}
+                                 'runner' : i}
                 print runner.number
 
                 # Add SI Card if valid
@@ -209,7 +212,7 @@ class TeamUBOL3Importer(RunnerImporter):
                 else:
                     if si is not None:
                         r = store.add(Run(si))
-                        r.set_coursecode(unicode(num))
+                        r.set_coursecode(unicode(t['Bahn%s' % i]))
                 
                 # Add runner to team
                 team.members.add(runner)
