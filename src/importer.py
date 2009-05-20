@@ -490,11 +490,12 @@ class OCADXMLCourseImporter(Importer):
 class CSVCourseImporter(CSVImporter):
     """
     Import courses from a CSV file. The file format is:
-    code;1;2;...
-    Coursecode1;control1;control2;...
-    Coursecode2;control1;control2;...
+    code;length;climb;1;2;...
+    Coursecode1;courselength1;courseclimb1;control1;control2;...
+    Coursecode2;courselength2;courseclimb2;control1;control2;...
 
-    The first line is the header, all following lines are course definitions.
+    The first line is the header, all following lines are course definitions. All lengths are
+    in meters.
     """
 
     def import_data(self, store):
@@ -502,10 +503,10 @@ class CSVCourseImporter(CSVImporter):
         for c in self.data:
 
             # create course
-            course = store.add(Course(c['code']))
+            course = store.add(Course(c['code'], int(c['length']), int(c['climb'])))
 
             # add controls
-            for i in range(len(c)-1):
+            for i in range(len(c)-3):
                 code = c[str(i+1)]
                 
                 if code == u'':
