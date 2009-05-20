@@ -50,7 +50,7 @@ class EventTest(unittest.TestCase):
 
     def tearDown(self):
         self.store.rollback()
-        self.import_sql('../docs/empty_db.sql')
+        self.import_sql('../docs/bosco_db.sql')
         
     def doTestRanking(self):
         """Test the correct ranking of all courses and runs."""
