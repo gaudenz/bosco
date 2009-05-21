@@ -155,7 +155,7 @@ class SIReader(object):
     BC_CN         = 3
     BC_TIME       = 8
 
-    def __init__(self, port = None, debug = False):
+    def __init__(self, port = None, debug = False, logfile = None):
         """Initializes communication with si station at port.
         @param port: Serial device for the connection if port is None it
                      scans all available ports and connects to the first
@@ -163,6 +163,11 @@ class SIReader(object):
         """
         self._serial = None
         self._debug = debug
+        if logfile is not None:
+            self._logfile = open(logfile, 'ab')
+        else:
+            self._logfile = None
+            
         errors = ''
         if port is not None:
             self._connect_reader(port)
@@ -182,6 +187,7 @@ class SIReader(object):
                     pass
 
         raise SIReaderException('No SI Reader found. Possible reasons: %s' % errors)
+
 
     def _connect_reader(self, port):
         """Connect to SI Reader.
@@ -435,10 +441,15 @@ class SIReader(object):
                 raise SIReaderException('Input buffer must be empty before sending command. Currently %s bytes in the input buffer.' % self._serial.inWaiting())
             command_string = command + chr(len(parameters)) + parameters
             crc = SIReader._crc(command_string)
-            self._serial.write(SIReader.STX + command_string + crc + SIReader.ETX)
+            cmd = SIReader.STX + command_string + crc + SIReader.ETX
+            self._serial.write(cmd)
         except (SerialException, OSError),  msg:
             raise SIReaderException('Could not send command: %s' % msg)
-        
+
+        if self._logfile:
+            self._logfile.write('s %s %s\n' % (datetime.now(), cmd))
+            self._logfile.flush()
+            os.fsync(self._logfile)
         return self._read_command()
 
     def _read_command(self, timeout = None):
@@ -473,6 +484,11 @@ class SIReader(object):
             if not SIReader._crc_check(cmd + length + station + data, crc):
                 raise SIReaderException('CRC check failed')
 
+            if self._logfile:
+                self._logfile.write('r %s %s\n' % (datetime.now(), char + cmd + length + station + data + crc + etx))
+                self._logfile.flush()
+                os.fsync(self._logfile)
+                
             if self._debug:
                 print "command '%s', data %s" % (hexlify(cmd), [hexlify(c) for c in data])
                 
