@@ -346,7 +346,7 @@ class RelayEvent(Event):
     def list_rankings(self):
         l = []
         for leg in self._legs:
-            l.append((leg['name'], self.ranking(CombinedCourse(leg['variants'], self._store))))
+            l.append((leg['name'], self.ranking(CombinedCourse(leg['variants'], leg['name'], self._store))))
         for c in self.list_categories():
             for i,leg in enumerate(self._legs):
                 l.append(('%s %s' % (c.name, leg['name']), self.ranking(c, scoreing_args = {'legs': i+1},
