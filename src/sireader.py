@@ -427,16 +427,6 @@ class SIReader(object):
             i += card['PL']
             p += 1
             
-        # compatibility hack: add start, finish, clear and check as punches
-        if ret['start'] is not None:
-            ret['punches'].append((SIStation.START, ret['start']))
-        if ret['finish'] is not None:
-            ret['punches'].append((SIStation.FINISH, ret['finish']))
-        if ret['check'] is not None:
-            ret['punches'].append((SIStation.CHECK, ret['check']))
-        if ret['clear'] is not None:
-            ret['punches'].append((SIStation.CLEAR, ret['clear']))
-        
         return ret
 
     def _send_command(self, command, parameters):

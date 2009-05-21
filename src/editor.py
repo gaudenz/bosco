@@ -716,10 +716,18 @@ class RunEditor(Observable):
                 self.progress = 'Creating new run and adding punches...'
                 self._run = Run(card_data['card_number'],
                                 punches = card_data['punches'],
+                                card_start_time = card_data['start'],
+                                check_time = card_data['check'],
+                                clear_time = card_data['clear'],
+                                card_finish_time = card_data['finish'],
                                 readout_time = datetime.now(),
                                 store = self._store)
             else:
                 self.progress = 'Adding punches to existing run...'
+                self._run.card_start_time = card_data['start']
+                self._run.card_finish_time = card_data['finish']
+                self._run.card_check_time = card_data['check']
+                self._run.card_clear_time = card_data['clear']
                 self._run.add_punchlist(card_data['punches'])
 
             # mark run as complete
@@ -742,10 +750,10 @@ class RunEditor(Observable):
                 self.progress = 'Course already set.'
 
             self.progress = 'Updating validation...'
-            self.changed = True
             self.progress = 'Commiting run to database...'
             self.commit()
             self._sireader.ack_sicard()
+            self.changed = True
                 
         finally:
             # roll back and re-raise the exception
