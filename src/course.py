@@ -217,6 +217,9 @@ class Course(MyStorm, Rankable):
         except TypeError:
             return None
 
+    def controlcount(self):
+        return self.controls.count()
+
     def __unicode__(self):
         return self.code
 
@@ -228,14 +231,17 @@ class CombinedCourse(Rankable):
     and not stored in the database.
     """
 
-    def __init__(self, course_list, store=None):
+    def __init__(self, course_list, code, store=None):
         """
         @param course_list: List of courses to combine
         @type course_list:  list of either instances of Course or unicode course codes
+        @param code:        Code of this course. This is only for display purposes.
+        @type code:         Unicode
         @param store:       Storm store which contains the courses referenced by course
                             codes in the course list. May be None if the course list only
                             contains Course objects.
         """
+        self._code = code
         self._course_list = []
         for c in course_list:
             if type(c) == Course:
@@ -249,6 +255,10 @@ class CombinedCourse(Rankable):
                     raise CombinedCourseException("Can't find course with code '%s'." % c)
                 self._course_list.append(course)
 
+        self.length = self._course_list[0].length
+        self.climb = self._course_list[0].climb
+        self._controlcount = self._course_list[0].controls.count()
+
     def _get_members(self):
         """Get all runs of all the courses in self._course_list."""
 
@@ -257,6 +267,12 @@ class CombinedCourse(Rankable):
             runs.extend([r for r in c.members])
         return runs
     members = property(_get_members)
+
+    def controlcount(self):
+        return self._controlcount
+
+    def __unicode__(self):
+        return self._code
 
 class CombinedCourseException(Exception):
     pass
