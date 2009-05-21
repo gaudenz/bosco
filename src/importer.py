@@ -188,9 +188,16 @@ class TeamRelayImporter(RunnerImporter):
             num = 0
             i = 1
             while num < (self._fieldcount-3)/6:
+
+                surname = t['Name%s' % str(i)]
+                given_name =  t['Vorname%s' % str(i)]
+                if surname == u'' and given_name == u'':
+                    # don't add runner without any name
+                    i += 1
+                    num += 1
+                    continue
                 
-                runner = Runner(t['Name%s' % str(i)],
-                                t['Vorname%s' % str(i)], store = store)
+                runner = Runner(surname,given_name, store = store)
                 if t['Geschlecht%s' % str(i)] == 'm':
                     runner.sex = 'male'
                 elif t['Geschlecht%s' % str(i)] == 'f':
