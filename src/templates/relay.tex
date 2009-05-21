@@ -1,0 +1,115 @@
+# -*- coding: utf-8 -*-
+<%!
+from runner import Category
+from course import Course, CombinedCourse
+%>
+
+\documentclass[12pt,a4paper]{article}
+\usepackage[ngerman]{babel}
+\usepackage[utf8]{inputenc}
+
+\usepackage[T1]{fontenc}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{fancyhdr}
+
+\fancyhf{} % delete header
+\fancyhead[L]{${header['organiser']}}
+\fancyhead[C]{${header['map']}}
+\fancyhead[R]{${header['place']}, ${header['date']}}
+
+\pagestyle{fancy}
+
+\setlength{\hoffset}{-1cm}
+\setlength{\oddsidemargin}{0cm}
+\setlength{\evensidemargin}{0cm}
+\setlength{\topmargin}{0cm}
+\setlength{\textwidth}{18cm}
+\setlength{\headwidth}{18cm}
+\setlength{\voffset}{-1cm}
+\setlength{\headsep}{0.2cm}
+
+## leave no space at the right and left of the table
+\setlength{\LTleft}{0cm}
+\setlength{\LTright}{0cm}
+
+## don't indent paragraphs
+\setlength{\parindent}{0cm}
+
+\begin{document}
+
+% for r in rankings:
+
+\textbf{${header['event']}}
+
+\vspace{1cm}
+
+\begin{Huge}
+\textbf{${r.rankable} 
+% if type(r.scoreing_args) == dict and 'legs' in r.scoreing_args:
+nach ${r.scoreing_args['legs']} Strecken
+%endif
+}
+\end{Huge}
+
+%if type(r.rankable) == Category:
+  ${category(r)}
+%elif type(r.rankable) == Course or type(r.rankable) == CombinedCourse:
+  ${course(r)}
+%endif
+
+\textit{last update: ${now}}
+
+\newpage
+
+% endfor
+
+\textit{last update: ${now}}
+
+\end{document}
+
+<%def name="course(r)">
+
+(${r.rankable.length/1000.0}km, ${r.rankable.climb}m, ${r.rankable.controlcount()} cont.)
+
+\begin{longtable}{rp{4cm}p{1.5cm}lp{4.5cm}@{\extracolsep{\fill}}l}
+\textbf{Rang} & \textbf{Läufer} & \textbf{Nr.} & \textbf{Jg.} & \textbf{Team} & \textbf{Zeit} \\ 
+\hline
+  % for line in r:
+
+  ${line['rank'] and ('%i.' % line['rank']) or ''} &
+  ${line['item']} & 
+  ${line['item'].sicard.runner.number or ''} & 
+  ${line['item'].sicard.runner.dateofbirth and line['item'].sicard.runner.dateofbirth.strftime('%y') or ''} &
+  ${line['item'].sicard.runner.team.name} & 
+  ${line['rank'] and line['scoreing']['score'] or validation_codes[line['validation']['status']]} \\ 
+
+  % endfor
+
+\end{longtable}
+</%def>
+
+<%def name="category(r)">
+\begin{longtable}{rp{6cm}p{1.5cm}@{\extracolsep{\fill}}lll}
+\textbf{Rang} & \textbf{Team} & \textbf{Nr.} & \textbf{Zeit} \\ 
+\hline
+  % for line in r:
+
+    % if line['rank']:
+    ${'%i.' % line['rank']} & 
+    ${line['item']} &
+    ${line['item'].number or ''} &
+    ${line['scoreing']['score']} \\ 
+
+    % else:
+    & 
+    ${line['item']} &
+    ${line['item'].number or ''} &
+    ${validation_codes[line['validation']['status']]} \\ 
+    % endif
+
+  % endfor
+
+\end{longtable}
+
+</%def>
