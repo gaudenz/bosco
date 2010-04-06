@@ -155,6 +155,9 @@ class Team(AbstractRunner, Storm):
         self.official = official
         self.responsible = responsible
 
+    def __str__(self):
+        return unicode(self).encode('utf-8')
+    
     def __unicode__(self):
         return self.name
 
@@ -191,6 +194,9 @@ class Category(Storm, Rankable):
     def __init__(self, name):
         self.name = name
 
+    def __str__(self):
+        return unicode(self).encode('utf-8')
+    
     def __unicode__(self):
         return self.name
 

@@ -74,19 +74,38 @@ class MakoRankingFormatter(AbstractRankingFormatter):
                                              now = datetime.now().strftime('%c'),
                                              rankings = self.rankings)
 
-class SOLVRankingFormatter(AbstractRankingFormatter):
+class AbstractSOLVRankingFormatter(AbstractRankingFormatter):
     """Formats the Ranking for exporting to the SOLV result site."""
+
+    validation_codes = {Validator.OK               : 'OK',
+                        Validator.NOT_COMPLETED    : '',
+                        Validator.MISSING_CONTROLS : 'fehl',
+                        Validator.DID_NOT_FINISH   : 'aufg',
+                        Validator.DISQUALIFIED     : 'disq',
+                        Validator.DID_NOT_START    : 'gest'}
 
     def __init__(self, ranking, reftime, encoding = 'utf-8',
                  lineterminator = '\n'):
         """
         @reftime: reference time for the event (usually first starttime)
         """
-        super(type(self), self).__init__(ranking)
+        AbstractRankingFormatter.__init__(self, ranking)
         self._reftime = reftime
         self._encoding = encoding
         self._lineterminator = lineterminator
 
+    def _print_score(self, r):
+        if r['validation']['status'] == Validator.OK:
+            return str(r['scoreing']['score'])
+        else:
+            return self.validation_codes[r['validation']['status']]
+        
+    def __str__(self):
+        raise SOLVRankingFormatterException('Use a subclass and overrwrite this method.')
+
+
+class CourseSOLVRankingFormatter(AbstractSOLVRankingFormatter):
+    
     def __str__(self):
 
         encoding = self._encoding
@@ -96,10 +115,10 @@ class SOLVRankingFormatter(AbstractRankingFormatter):
         output = writer(outstr, delimiter=';',
                         lineterminator=self._lineterminator)
         for ranking in self.rankings:
-            output.writerow([ranking.rankable.code,
+            output.writerow([str(ranking.rankable),
                              ranking.rankable.length,
                              ranking.rankable.climb,
-                             ranking.rankable.controls.count()
+                             ranking.rankable.controlcount()
                              ])
             for r in ranking:
                 line = [r['rank'] or '',
@@ -108,7 +127,7 @@ class SOLVRankingFormatter(AbstractRankingFormatter):
                         r['item'].sicard.runner.dateofbirth and r['item'].sicard.runner.dateofbirth.strftime('%y') or '',
                         r['item'].sicard.runner.sex,
                         r['item'].sicard.runner.team.name.encode(encoding),
-                        r['scoreing']['score'],
+                        self._print_score(r),
                         ]
                 try:
                     line.append(r['scoreing']['start'] - self._reftime)
@@ -125,6 +144,29 @@ class SOLVRankingFormatter(AbstractRankingFormatter):
                         line.extend([p.sistation.control.code.encode(encoding),
                                      p.punchtime - r['scoreing']['start']])
 
+                output.writerow(line)
+
+        return outstr.getvalue()
+
+class CategorySOLVRankingFormatter(AbstractSOLVRankingFormatter):
+    
+    def __str__(self):
+
+        encoding = self._encoding
+        
+
+        outstr = StringIO()
+        output = writer(outstr, delimiter=';',
+                        lineterminator=self._lineterminator)
+        for ranking in self.rankings:
+            output.writerow([str(ranking.rankable)])
+            
+            for r in ranking:
+                line = [r['rank'] or '',
+                        str(r['item']),
+                        self._print_score(r),
+                        ]
+                    
                 output.writerow(line)
 
         return outstr.getvalue()

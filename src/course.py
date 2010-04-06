@@ -220,6 +220,9 @@ class Course(MyStorm, Rankable):
     def controlcount(self):
         return self.controls.count()
 
+    def __str__(self):
+        return unicode(self).encode('utf-8')
+    
     def __unicode__(self):
         return self.code
 
@@ -271,6 +274,9 @@ class CombinedCourse(Rankable):
     def controlcount(self):
         return self._controlcount
 
+    def __str__(self):
+        return unicode(self).encode('utf-8')
+    
     def __unicode__(self):
         return self._code
 
