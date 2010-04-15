@@ -309,8 +309,6 @@ class EditRunPanel(RunPanel):
         self.button_4 = wx.Button(self, wx.ID_REVERT_TO_SAVED, "")
         self.run_combo = wx.ComboBox(self, -1, choices=[], style=wx.CB_DROPDOWN|wx.CB_DROPDOWN|wx.CB_READONLY)
         self.add_button = wx.Button(self, wx.ID_ADD, "")
-        self.button_5 = wx.Button(self, wx.ID_EXIT, "")
-        self.connect_button = wx.Button(self, -1, "Connect SI-Reader")
         self.run_runner_combo = wx.ComboBox(self, -1, choices=[], style=wx.CB_DROPDOWN|wx.CB_DROPDOWN|wx.CB_READONLY)
         self.runner_number = wx.TextCtrl(self, -1, "101A")
         self.runner_given_name = wx.TextCtrl(self, -1, "Gaudenz")
@@ -351,8 +349,6 @@ class EditRunPanel(RunPanel):
         self.Bind(wx.EVT_BUTTON, self.Rollback, self.button_4)
         self.Bind(wx.EVT_COMBOBOX, self.SetRun, self.run_combo)
         self.Bind(wx.EVT_BUTTON, self.AddRun, self.add_button)
-        self.Bind(wx.EVT_BUTTON, self.Quit, self.button_5)
-        self.Bind(wx.EVT_BUTTON, self.ConnectReader, self.connect_button)
         self.Bind(wx.EVT_COMBOBOX, self.SetRunRunner, self.run_runner_combo)
         self.Bind(wx.EVT_TEXT, self.FieldChanged, self.runner_number)
         self.Bind(wx.EVT_TEXT, self.FieldChanged, self.runner_given_name)
@@ -449,7 +445,6 @@ class EditRunPanel(RunPanel):
         sizer_29 = wx.BoxSizer(wx.HORIZONTAL)
         sizer_28 = wx.BoxSizer(wx.HORIZONTAL)
         sizer_13 = wx.BoxSizer(wx.HORIZONTAL)
-        sizer_19 = wx.BoxSizer(wx.VERTICAL)
         sizer_7 = wx.StaticBoxSizer(self.sizer_7_staticbox, wx.HORIZONTAL)
         grid_sizer_1 = wx.FlexGridSizer(3, 3, 0, 0)
         label_1 = wx.StaticText(self, -1, "Team:")
@@ -466,11 +461,6 @@ class EditRunPanel(RunPanel):
         grid_sizer_1.Add(self.add_button, 0, wx.ALL|wx.EXPAND|wx.ALIGN_CENTER_VERTICAL, 2)
         sizer_7.Add(grid_sizer_1, 0, wx.EXPAND, 0)
         sizer_13.Add(sizer_7, 0, wx.ALL|wx.EXPAND, 5)
-        sizer_13.Add((10, 0), 1, 0, 0)
-        sizer_19.Add((20, 20), 0, 0, 0)
-        sizer_19.Add(self.button_5, 0, wx.ALL|wx.EXPAND, 2)
-        sizer_19.Add(self.connect_button, 0, wx.ALL, 2)
-        sizer_13.Add(sizer_19, 0, wx.EXPAND, 0)
         sizer_5.Add(sizer_13, 0, 0, 0)
         label_2 = wx.StaticText(self, -1, "Change Runner:")
         sizer_8.Add(label_2, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 2)
@@ -794,14 +784,6 @@ class EditRunPanel(RunPanel):
         for c in choice_list:
             combo.Append(c[1], c[0])
         combo.SetSelection(sel)
-
-    def Quit(self, event): # wxGlade: EditRunPanel.<event_handler>
-        print "Event handler `Quit' not implemented"
-        event.Skip()
-
-    def ConnectReader(self, event): # wxGlade: EditRunPanel.<event_handler>
-        print "Event handler `ConnectReader' not implemented"
-        event.Skip()
 
 # end of class EditRunPanel
 
