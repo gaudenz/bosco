@@ -4,6 +4,7 @@
 
 import wx
 import wx.grid
+from wx.lib.scrolledpanel import ScrolledPanel
 
 from datetime import timedelta, datetime
 
@@ -122,9 +123,10 @@ class RunEditorFrame(wx.Frame):
 
 # end of class RunEditorFrame
 
-class EditingPanel(wx.Panel):
+class EditingPanel(ScrolledPanel):
     def __init__(self, *args, **kwds):
-        wx.Panel.__init__(self, *args, **kwds)
+        ScrolledPanel.__init__(self, *args, **kwds)
+        self.SetupScrolling()
 
     @staticmethod    
     def SetValidationLabel(label, result):
