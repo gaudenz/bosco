@@ -386,8 +386,8 @@ class EditRunPanel(RunPanel):
         self.update(self.selector, None)
         self.update(self.editor, 'run')
         
-        self.UpdateCombo(self.run_runner_combo, self.editor.get_runnerlist())
-        self.UpdateCombo(self.runner_team, self.editor.get_teamlist())
+        self.UpdateCombo(self.run_runner_combo, None, self.editor.get_runnerlist())
+        self.UpdateCombo(self.runner_team, None, self.editor.get_teamlist())
 
     def __set_properties(self):
         # begin wxGlade: EditRunPanel.__set_properties
@@ -737,9 +737,9 @@ class EditRunPanel(RunPanel):
         
             if type(observable) == RunSelector:
 
-                self.UpdateCombo(self.team_combo,   observable.get_teams())
-                self.UpdateCombo(self.runner_combo, observable.get_runners())
-                self.UpdateCombo(self.run_combo,    observable.get_runs())
+                self.UpdateCombo(self.team_combo,   observable.get_team(),   observable.get_teams())
+                self.UpdateCombo(self.runner_combo, observable.get_runner(), observable.get_runners())
+                self.UpdateCombo(self.run_combo,    observable.get_run(),    observable.get_runs())
             
             elif type(observable) == RunEditor and event == 'run':
                 self.UpdateRun()
@@ -778,12 +778,14 @@ class EditRunPanel(RunPanel):
             del busy
 
     @staticmethod
-    def UpdateCombo(combo, choice_list):
-        sel = combo.GetSelection()
+    def UpdateCombo(combo, choice, choice_list):
         combo.Clear()
-        for c in choice_list:
+        choice_index = 0
+        for i,c in enumerate(choice_list):
             combo.Append(c[1], c[0])
-        combo.SetSelection(sel)
+            if c[0] == choice:
+                choice_index = i
+        combo.SetSelection(choice_index)
 
 # end of class EditRunPanel
 

@@ -59,10 +59,19 @@ class RunSelector(Observable):
 
         self._team = None
         self._runner = None
+        self._run = None
         
     def set_team(self, team):
+        if self._team == team:
+            return
+
         self._team = team
+        self._runner = None
+        self._run = None
         self._notify_observers()
+
+    def get_team(self):
+        return self._team
 
     def get_teams(self):
         teams = [(None, '')]
@@ -72,8 +81,15 @@ class RunSelector(Observable):
         return teams
     
     def set_runner(self, runner):
+        if self._runner == runner:
+            return 
+
         self._runner = runner
+        self._run = None
         self._notify_observers()
+
+    def get_runner(self):
+        return self._runner
 
     def get_runners(self):
         runners = [(None, '')]
@@ -81,7 +97,10 @@ class RunSelector(Observable):
             runners.append((r.id, '%4s: %s' % (r.number, r)))
 
         return runners
-        
+
+    def get_run(self):
+        return self._run
+
     def get_runs(self):
         runs = [(None, '')]
         for r in self._store.find(Run,
