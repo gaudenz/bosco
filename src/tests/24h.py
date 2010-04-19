@@ -33,7 +33,7 @@ class Relay24hTest(unittest.TestCase):
 
     # Create store as class variable so that every test uses the same
     # database connection
-    _store = Store(create_database('postgres:24h_test'))
+    _store = Store(create_database('postgres:bosco_test'))
 
     def setUp(self):
 

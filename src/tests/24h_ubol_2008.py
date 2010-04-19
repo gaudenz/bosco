@@ -28,7 +28,7 @@ from ranking import Cache
 from runner import Category
 from event import Relay24hEvent
 
-from tests.eventtest import EventTest
+from tests import EventTest
 
 class Relay24h2008Test(EventTest):
 
@@ -37,7 +37,7 @@ class Relay24h2008Test(EventTest):
         self.import_sql('tests/24h_ubol_2008.sql')
         self.import_refdata('tests/24h_ubol_2008.pck')
         
-        self.store = Store(create_database('postgres:24h_test'))
+        self.store = Store(create_database('postgres:bosco_test'))
         cat24h = self.store.find(Category, Category.name == u'24h').one()
         cat12h = self.store.find(Category, Category.name == u'12h').one()
 
