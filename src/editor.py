@@ -22,7 +22,7 @@ from time import sleep
 from storm.exceptions import NotOneError, LostObjectError
 from storm.locals import *
 
-from runner import Team, Runner, SICard
+from runner import Team, Runner, SICard, Category
 from run import Run, Punch, RunException
 from course import Control, SIStation, Course
 from formatter import AbstractRankingFormatter
@@ -46,71 +46,144 @@ class Observable(object):
     def _notify_observers(self, event = None):
         for o in self._observers:
             o.update(self, event)
-            
-class RunSelector(Observable):
-    """Model for a 3 stage (team, runner, run) run selector."""
+
+class RunFinderException(Exception):
+    pass
+
+class RunFinder(Observable):
+    """Searches for runs and/or runners."""
+
+    _search_config = {'run'      : {'title' : u'Run',
+                                    'joins' : True, # no tables to join, always true 
+                                    'terms' : ((Run.id, 'int'),
+                                               ),
+                                    },
+                      'sicard'   : {'title' : u'SICard',
+                                    'joins' : True, # no tables to join, alway true
+                                    'terms' : ((Run.sicard, 'int'),
+                                               ),
+                                    },
+                      'runner'   : {'title': u'Runner',
+                                    'joins' : And(Run.sicard == SICard.id,
+                                                  SICard.runner == Runner.id),
+                                    'terms' : ((Runner.given_name, 'partial_string'),
+                                               (Runner.surname, 'partial_string'),
+                                               (Runner.number, 'exact_string'),
+                                               (Runner.solvnr, 'exact_string'),
+                                               ),
+                                    },
+                      'team'     : {'title': u'Team',
+                                    'joins' : And(Run.sicard == SICard.id,
+                                               SICard.runner == Runner.id,
+                                               Runner.team == Team.id),
+                                    'terms' : ((Team.name, 'partial_string'),
+                                               (Team.number, 'exact_string'),
+                                               ),
+                                    },
+                      'category' : {'title': u'Category',
+                                    'joins' : And(Run.sicard == SICard.id,
+                                                  SICard.runner == Runner.id,
+                                                  Or(Runner.category == Category.id,
+                                                     And(Runner.team == Team.id,
+                                                         Team.category == Category.id)
+                                                     )
+                                                  ),
+                                    'terms' : ((Category.name, 'exact_string'),
+                                               ),
+                                    },
+                      'course'   : {'title': u'Course',
+                                    'joins' : And(Run.course == Course.id),
+                                    'terms' : ((Course.code, 'exact_string'),
+                                               ),
+                                    },
+                      }
 
     def __init__(self, store):
-        """
-        @param store: Storm store of the runs
-        """
-        Observable.__init__(self)
+        super(RunFinder, self).__init__()
         self._store = store
+        self._term = ''
+        self._query = None
+        self.set_search_domain('runner')
 
-        self._team = None
-        self._runner = None
-        self._run = None
-        
-    def set_team(self, team):
-        if self._team == team:
-            return
+    def get_results(self, limit = False, start = 0):
+        """Returns the results of the current search."""
+        if self._query is None:
+            return []
 
-        self._team = team
-        self._runner = None
-        self._run = None
+        results = []
+        for r in self._query:
+            runner = r.sicard.runner
+            team = runner.team
+            results.append((r.id, 
+                            r.course.code and unicode(r.course.code) or 'unknown', 
+                            r.readout_time and unicode(r.readout_time) or 'unknown', 
+                            runner.number and unicode(runner.number) or 'unknown',
+                            runner and unicode(runner) or 'unknown',
+                            team and unicode(team) or 'unknown',
+                            team and unicode(team.category) or unicode(runner.category)
+                            ))
+
+        return results
+
+    def set_search_term(self, term):
+        """Set the search string"""
+        self._term = unicode(term).split()
+        self._update_query()
+
+    def get_search_domains(self):
+        """
+        @return List of (key, description) pairs of valid search domains.
+        """
+        return [(k, v['title']) for k,v in self._search_config.items() ]
+
+    def set_search_domain(self, domain):
+        """
+        @param domain: set of search domains. Valid search domains are those
+                       defined in _search_config.
+        """
+        if domain in self._search_config.keys():
+            self._domain = domain
+            self._update_query()
+        else:
+            raise RunFinderException("Search domain %s is invalid." % domain)
+
+    def _update_query(self):
+        """Updates the internal search query."""
+        term_condition = []
+        for t in self._term:
+            condition_parts = []
+            for column, col_type in self._search_config[self._domain]['terms']:
+                if col_type == 'int':
+                    try:
+                        condition_parts.append(column == int(t))
+                    except (ValueError, TypeError):
+                        pass
+                elif col_type == 'partial_string':
+                    try:
+                        condition_parts.append(column.lower().like("%%%s%%" % unicode(t).lower()))
+                    except (ValueError, TypeError):
+                        pass
+                elif col_type == 'exact_string':
+                    try:
+                        condition_parts.append(column.lower() == unicode(t).lower())
+                    except (ValueError, TypeError):
+                        pass
+
+            if len(condition_parts) > 0:
+                term_condition.append(Or(*condition_parts))
+
+        if len(term_condition) == 0:
+            # An empty list of conditions should return no results
+            term_condition.append(False)
+
+        self._query = self._store.find(Run,
+                                       And(self._search_config[self._domain]['joins'],
+                                           *term_condition
+                                           )
+                                       )
         self._notify_observers()
 
-    def get_team(self):
-        return self._team
 
-    def get_teams(self):
-        teams = [(None, '')]
-        for t in self._store.find(Team).order_by('number'):
-            teams.append((t.id, '%3s: %s' % (t.number, t.name)))
-
-        return teams
-    
-    def set_runner(self, runner):
-        if self._runner == runner:
-            return 
-
-        self._runner = runner
-        self._run = None
-        self._notify_observers()
-
-    def get_runner(self):
-        return self._runner
-
-    def get_runners(self):
-        runners = [(None, '')]
-        for r in self._store.find(Runner, Runner.team == self._team).order_by('number'):
-            runners.append((r.id, '%4s: %s' % (r.number, r)))
-
-        return runners
-
-    def get_run(self):
-        return self._run
-
-    def get_runs(self):
-        runs = [(None, '')]
-        for r in self._store.find(Run,
-                                  Run.sicard == SICard.id,
-                                  SICard.runner == self._runner).order_by('readout_time'):
-            runs.append((r.id, '%s (SI-Card: %s, Readout Time: %s)' %
-                         (r.course and r.course.code or 'no course',
-                          r.sicard.id, r.readout_time or 'unknown')))
-
-        return runs
 
 class RunEditorException(Exception):
     pass
