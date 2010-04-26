@@ -27,8 +27,7 @@ class RunEditorFrame(wx.Frame):
         # Menu Bar
         self.main_frame_menubar = wx.MenuBar()
         self.file = wx.Menu()
-        self.quit = wx.MenuItem(self.file, wx.NewId(), "&Quit\tCtrl-q", "", wx.ITEM_NORMAL)
-        self.file.AppendItem(self.quit)
+        self.file.Append(wx.ID_EXIT, "", "", wx.ITEM_NORMAL)
         self.main_frame_menubar.Append(self.file, "&File")
         self.settings = wx.Menu()
         self.connect_reader = wx.MenuItem(self.settings, wx.NewId(), "&Connect SI-Reader", "", wx.ITEM_NORMAL)
@@ -44,7 +43,7 @@ class RunEditorFrame(wx.Frame):
         self.__set_properties()
         self.__do_layout()
 
-        self.Bind(wx.EVT_MENU, self.Quit, self.quit)
+        self.Bind(wx.EVT_MENU, self.Quit, id=wx.ID_EXIT)
         self.Bind(wx.EVT_MENU, self.ConnectReader, self.connect_reader)
         self.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGING, self.PageChange, self.notebook_1)
         # end wxGlade
