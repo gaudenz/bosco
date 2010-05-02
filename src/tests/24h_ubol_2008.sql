@@ -2,6 +2,7 @@
 -- PostgreSQL database dump
 --
 
+SET statement_timeout = 0;
 SET client_encoding = 'UTF8';
 SET standard_conforming_strings = off;
 SET check_function_bodies = false;
@@ -15,7 +16,10 @@ ALTER TABLE ONLY public.team DROP CONSTRAINT team_fk_category;
 ALTER TABLE ONLY public.sistation DROP CONSTRAINT sistation_fk_control;
 ALTER TABLE ONLY public.sicard DROP CONSTRAINT sicard_fk_runner;
 ALTER TABLE ONLY public.runner DROP CONSTRAINT runner_fk_team;
+ALTER TABLE ONLY public.runner DROP CONSTRAINT runner_fk_nation;
+ALTER TABLE ONLY public.runner DROP CONSTRAINT runner_fk_club;
 ALTER TABLE ONLY public.runner DROP CONSTRAINT runner_fk_category;
+ALTER TABLE ONLY public.runner DROP CONSTRAINT runner_fk_address_country;
 ALTER TABLE ONLY public.run DROP CONSTRAINT run_fk_sicard;
 ALTER TABLE ONLY public.run DROP CONSTRAINT run_fk_course;
 ALTER TABLE ONLY public.punch DROP CONSTRAINT punch_fk_sistation;
@@ -35,8 +39,11 @@ DROP INDEX public.idx_punchtime_punch;
 DROP INDEX public.idx_number_team;
 DROP INDEX public.idx_number_runner;
 DROP INDEX public.idx_name_team;
+DROP INDEX public.idx_name_club;
 DROP INDEX public.idx_name_category;
 DROP INDEX public.idx_code_course;
+DROP INDEX public.idx_code3_country;
+DROP INDEX public.idx_code2_country;
 ALTER TABLE ONLY public.team DROP CONSTRAINT pk_team;
 ALTER TABLE ONLY public.sistation DROP CONSTRAINT pk_sistation;
 ALTER TABLE ONLY public.sicard DROP CONSTRAINT pk_sicard;
@@ -46,8 +53,10 @@ ALTER TABLE ONLY public.punch DROP CONSTRAINT pk_punch;
 ALTER TABLE ONLY public.override_sistation DROP CONSTRAINT pk_override_sistation;
 ALTER TABLE ONLY public.coursecontrol DROP CONSTRAINT pk_coursecontrol;
 ALTER TABLE ONLY public.course DROP CONSTRAINT pk_course;
+ALTER TABLE ONLY public.country DROP CONSTRAINT pk_country;
 ALTER TABLE ONLY public.controlsequence DROP CONSTRAINT pk_controlsequence;
 ALTER TABLE ONLY public.control DROP CONSTRAINT pk_control;
+ALTER TABLE ONLY public.club DROP CONSTRAINT pk_club;
 ALTER TABLE ONLY public.category DROP CONSTRAINT pk_category;
 ALTER TABLE public.team ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE public.runner ALTER COLUMN id DROP DEFAULT;
@@ -57,40 +66,46 @@ ALTER TABLE public.override_sistation ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE public.coursecontrol ALTER COLUMN controlid DROP DEFAULT;
 ALTER TABLE public.coursecontrol ALTER COLUMN courseid DROP DEFAULT;
 ALTER TABLE public.course ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE public.country ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE public.controlsequence ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE public.control ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE public.club ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE public.category ALTER COLUMN id DROP DEFAULT;
 DROP SEQUENCE public.team_id_seq;
-DROP SEQUENCE public.runner_id_seq;
-DROP SEQUENCE public.run_id_seq;
-DROP SEQUENCE public.punch_id_seq;
-DROP SEQUENCE public.override_sistation_id_seq;
-DROP SEQUENCE public.coursecontrol_courseid_seq;
-DROP SEQUENCE public.coursecontrol_controlid_seq;
-DROP SEQUENCE public.course_id_seq;
-DROP SEQUENCE public.controlsequence_id_seq;
-DROP SEQUENCE public.control_id_seq;
-DROP SEQUENCE public.category_id_seq;
-DROP FUNCTION public.punch_trigger();
-DROP FUNCTION public.change_trigger();
 DROP TABLE public.team;
 DROP TABLE public.sistation;
 DROP TABLE public.sicard;
+DROP SEQUENCE public.runner_id_seq;
 DROP TABLE public.runner;
-DROP TYPE public.sex;
+DROP SEQUENCE public.run_id_seq;
 DROP TABLE public.run;
+DROP SEQUENCE public.punch_id_seq;
 DROP TABLE public.punch;
 DROP TABLE public.override_team;
+DROP SEQUENCE public.override_sistation_id_seq;
 DROP TABLE public.override_sistation;
 DROP TABLE public.override_runner;
 DROP TABLE public.override_run;
 DROP TABLE public.override_punch;
 DROP TABLE public.log;
+DROP SEQUENCE public.coursecontrol_courseid_seq;
+DROP SEQUENCE public.coursecontrol_controlid_seq;
 DROP TABLE public.coursecontrol;
+DROP SEQUENCE public.course_id_seq;
 DROP TABLE public.course;
+DROP SEQUENCE public.country_id_seq;
+DROP TABLE public.country;
+DROP SEQUENCE public.controlsequence_id_seq;
 DROP TABLE public.controlsequence;
+DROP SEQUENCE public.control_id_seq;
 DROP TABLE public.control;
+DROP SEQUENCE public.club_id_seq;
+DROP TABLE public.club;
+DROP SEQUENCE public.category_id_seq;
 DROP TABLE public.category;
+DROP FUNCTION public.punch_trigger();
+DROP FUNCTION public.change_trigger();
+DROP TYPE public.sex;
 DROP PROCEDURAL LANGUAGE plpgsql;
 DROP SCHEMA public;
 --
@@ -120,6 +135,58 @@ ALTER PROCEDURAL LANGUAGE plpgsql OWNER TO gaudenz;
 
 SET search_path = public, pg_catalog;
 
+--
+-- Name: sex; Type: TYPE; Schema: public; Owner: gaudenz
+--
+
+CREATE TYPE sex AS ENUM (
+    'male',
+    'female'
+);
+
+
+ALTER TYPE public.sex OWNER TO gaudenz;
+
+--
+-- Name: change_trigger(); Type: FUNCTION; Schema: public; Owner: gaudenz
+--
+
+CREATE FUNCTION change_trigger() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  IF (TG_OP = 'DELETE') THEN
+    INSERT INTO log VALUES (TG_TABLE_NAME, NOW(), OLD.id);
+  ELSE
+    INSERT INTO log VALUES (TG_TABLE_NAME, NOW(), NEW.id);
+  END IF;
+  RETURN NULL;
+END;
+$$;
+
+
+ALTER FUNCTION public.change_trigger() OWNER TO gaudenz;
+
+--
+-- Name: punch_trigger(); Type: FUNCTION; Schema: public; Owner: gaudenz
+--
+
+CREATE FUNCTION punch_trigger() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+begin
+if (TG_OP = 'DELETE') THEN
+insert into log values(1, now(), OLD.id);
+else
+insert into log values(1, now(), NEW.id);
+end if;
+return null;
+end;
+$$;
+
+
+ALTER FUNCTION public.punch_trigger() OWNER TO gaudenz;
+
 SET default_tablespace = '';
 
 SET default_with_oids = false;
@@ -137,6 +204,74 @@ CREATE TABLE category (
 ALTER TABLE public.category OWNER TO gaudenz;
 
 --
+-- Name: category_id_seq; Type: SEQUENCE; Schema: public; Owner: gaudenz
+--
+
+CREATE SEQUENCE category_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MAXVALUE
+    NO MINVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.category_id_seq OWNER TO gaudenz;
+
+--
+-- Name: category_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: gaudenz
+--
+
+ALTER SEQUENCE category_id_seq OWNED BY category.id;
+
+
+--
+-- Name: category_id_seq; Type: SEQUENCE SET; Schema: public; Owner: gaudenz
+--
+
+SELECT pg_catalog.setval('category_id_seq', 8, true);
+
+
+--
+-- Name: club; Type: TABLE; Schema: public; Owner: gaudenz; Tablespace: 
+--
+
+CREATE TABLE club (
+    id integer NOT NULL,
+    name character varying(255) NOT NULL
+);
+
+
+ALTER TABLE public.club OWNER TO gaudenz;
+
+--
+-- Name: club_id_seq; Type: SEQUENCE; Schema: public; Owner: gaudenz
+--
+
+CREATE SEQUENCE club_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MAXVALUE
+    NO MINVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.club_id_seq OWNER TO gaudenz;
+
+--
+-- Name: club_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: gaudenz
+--
+
+ALTER SEQUENCE club_id_seq OWNED BY club.id;
+
+
+--
+-- Name: club_id_seq; Type: SEQUENCE SET; Schema: public; Owner: gaudenz
+--
+
+SELECT pg_catalog.setval('club_id_seq', 1, false);
+
+
+--
 -- Name: control; Type: TABLE; Schema: public; Owner: gaudenz; Tablespace: 
 --
 
@@ -148,6 +283,34 @@ CREATE TABLE control (
 
 
 ALTER TABLE public.control OWNER TO gaudenz;
+
+--
+-- Name: control_id_seq; Type: SEQUENCE; Schema: public; Owner: gaudenz
+--
+
+CREATE SEQUENCE control_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MAXVALUE
+    NO MINVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.control_id_seq OWNER TO gaudenz;
+
+--
+-- Name: control_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: gaudenz
+--
+
+ALTER SEQUENCE control_id_seq OWNED BY control.id;
+
+
+--
+-- Name: control_id_seq; Type: SEQUENCE SET; Schema: public; Owner: gaudenz
+--
+
+SELECT pg_catalog.setval('control_id_seq', 146, true);
+
 
 --
 -- Name: controlsequence; Type: TABLE; Schema: public; Owner: gaudenz; Tablespace: 
@@ -166,6 +329,76 @@ CREATE TABLE controlsequence (
 ALTER TABLE public.controlsequence OWNER TO gaudenz;
 
 --
+-- Name: controlsequence_id_seq; Type: SEQUENCE; Schema: public; Owner: gaudenz
+--
+
+CREATE SEQUENCE controlsequence_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MAXVALUE
+    NO MINVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.controlsequence_id_seq OWNER TO gaudenz;
+
+--
+-- Name: controlsequence_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: gaudenz
+--
+
+ALTER SEQUENCE controlsequence_id_seq OWNED BY controlsequence.id;
+
+
+--
+-- Name: controlsequence_id_seq; Type: SEQUENCE SET; Schema: public; Owner: gaudenz
+--
+
+SELECT pg_catalog.setval('controlsequence_id_seq', 474, true);
+
+
+--
+-- Name: country; Type: TABLE; Schema: public; Owner: gaudenz; Tablespace: 
+--
+
+CREATE TABLE country (
+    id integer NOT NULL,
+    code3 character varying(3) NOT NULL,
+    code2 character varying(2) NOT NULL,
+    name character varying(255)
+);
+
+
+ALTER TABLE public.country OWNER TO gaudenz;
+
+--
+-- Name: country_id_seq; Type: SEQUENCE; Schema: public; Owner: gaudenz
+--
+
+CREATE SEQUENCE country_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MAXVALUE
+    NO MINVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.country_id_seq OWNER TO gaudenz;
+
+--
+-- Name: country_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: gaudenz
+--
+
+ALTER SEQUENCE country_id_seq OWNED BY country.id;
+
+
+--
+-- Name: country_id_seq; Type: SEQUENCE SET; Schema: public; Owner: gaudenz
+--
+
+SELECT pg_catalog.setval('country_id_seq', 1, false);
+
+
+--
 -- Name: course; Type: TABLE; Schema: public; Owner: gaudenz; Tablespace: 
 --
 
@@ -180,6 +413,34 @@ CREATE TABLE course (
 ALTER TABLE public.course OWNER TO gaudenz;
 
 --
+-- Name: course_id_seq; Type: SEQUENCE; Schema: public; Owner: gaudenz
+--
+
+CREATE SEQUENCE course_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MAXVALUE
+    NO MINVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.course_id_seq OWNER TO gaudenz;
+
+--
+-- Name: course_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: gaudenz
+--
+
+ALTER SEQUENCE course_id_seq OWNED BY course.id;
+
+
+--
+-- Name: course_id_seq; Type: SEQUENCE SET; Schema: public; Owner: gaudenz
+--
+
+SELECT pg_catalog.setval('course_id_seq', 39, true);
+
+
+--
 -- Name: coursecontrol; Type: TABLE; Schema: public; Owner: gaudenz; Tablespace: 
 --
 
@@ -190,6 +451,62 @@ CREATE TABLE coursecontrol (
 
 
 ALTER TABLE public.coursecontrol OWNER TO gaudenz;
+
+--
+-- Name: coursecontrol_controlid_seq; Type: SEQUENCE; Schema: public; Owner: gaudenz
+--
+
+CREATE SEQUENCE coursecontrol_controlid_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MAXVALUE
+    NO MINVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.coursecontrol_controlid_seq OWNER TO gaudenz;
+
+--
+-- Name: coursecontrol_controlid_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: gaudenz
+--
+
+ALTER SEQUENCE coursecontrol_controlid_seq OWNED BY coursecontrol.controlid;
+
+
+--
+-- Name: coursecontrol_controlid_seq; Type: SEQUENCE SET; Schema: public; Owner: gaudenz
+--
+
+SELECT pg_catalog.setval('coursecontrol_controlid_seq', 1, false);
+
+
+--
+-- Name: coursecontrol_courseid_seq; Type: SEQUENCE; Schema: public; Owner: gaudenz
+--
+
+CREATE SEQUENCE coursecontrol_courseid_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MAXVALUE
+    NO MINVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.coursecontrol_courseid_seq OWNER TO gaudenz;
+
+--
+-- Name: coursecontrol_courseid_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: gaudenz
+--
+
+ALTER SEQUENCE coursecontrol_courseid_seq OWNED BY coursecontrol.courseid;
+
+
+--
+-- Name: coursecontrol_courseid_seq; Type: SEQUENCE SET; Schema: public; Owner: gaudenz
+--
+
+SELECT pg_catalog.setval('coursecontrol_courseid_seq', 1, false);
+
 
 --
 -- Name: log; Type: TABLE; Schema: public; Owner: gaudenz; Tablespace: 
@@ -249,6 +566,34 @@ CREATE TABLE override_sistation (
 ALTER TABLE public.override_sistation OWNER TO gaudenz;
 
 --
+-- Name: override_sistation_id_seq; Type: SEQUENCE; Schema: public; Owner: gaudenz
+--
+
+CREATE SEQUENCE override_sistation_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MAXVALUE
+    NO MINVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.override_sistation_id_seq OWNER TO gaudenz;
+
+--
+-- Name: override_sistation_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: gaudenz
+--
+
+ALTER SEQUENCE override_sistation_id_seq OWNED BY override_sistation.id;
+
+
+--
+-- Name: override_sistation_id_seq; Type: SEQUENCE SET; Schema: public; Owner: gaudenz
+--
+
+SELECT pg_catalog.setval('override_sistation_id_seq', 1, false);
+
+
+--
 -- Name: override_team; Type: TABLE; Schema: public; Owner: gaudenz; Tablespace: 
 --
 
@@ -276,6 +621,34 @@ CREATE TABLE punch (
 ALTER TABLE public.punch OWNER TO gaudenz;
 
 --
+-- Name: punch_id_seq; Type: SEQUENCE; Schema: public; Owner: gaudenz
+--
+
+CREATE SEQUENCE punch_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MAXVALUE
+    NO MINVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.punch_id_seq OWNER TO gaudenz;
+
+--
+-- Name: punch_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: gaudenz
+--
+
+ALTER SEQUENCE punch_id_seq OWNED BY punch.id;
+
+
+--
+-- Name: punch_id_seq; Type: SEQUENCE SET; Schema: public; Owner: gaudenz
+--
+
+SELECT pg_catalog.setval('punch_id_seq', 22478, true);
+
+
+--
 -- Name: run; Type: TABLE; Schema: public; Owner: gaudenz; Tablespace: 
 --
 
@@ -300,16 +673,32 @@ CREATE TABLE run (
 ALTER TABLE public.run OWNER TO gaudenz;
 
 --
--- Name: sex; Type: TYPE; Schema: public; Owner: gaudenz
+-- Name: run_id_seq; Type: SEQUENCE; Schema: public; Owner: gaudenz
 --
 
-CREATE TYPE sex AS ENUM (
-    'male',
-    'female'
-);
+CREATE SEQUENCE run_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MAXVALUE
+    NO MINVALUE
+    CACHE 1;
 
 
-ALTER TYPE public.sex OWNER TO gaudenz;
+ALTER TABLE public.run_id_seq OWNER TO gaudenz;
+
+--
+-- Name: run_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: gaudenz
+--
+
+ALTER SEQUENCE run_id_seq OWNED BY run.id;
+
+
+--
+-- Name: run_id_seq; Type: SEQUENCE SET; Schema: public; Owner: gaudenz
+--
+
+SELECT pg_catalog.setval('run_id_seq', 1617, true);
+
 
 --
 -- Name: runner; Type: TABLE; Schema: public; Owner: gaudenz; Tablespace: 
@@ -332,16 +721,46 @@ CREATE TABLE runner (
     address2 character varying(255),
     zipcode character varying(20) DEFAULT NULL::character varying,
     city character varying(255) DEFAULT NULL::character varying,
-    address_country_id integer,
+    address_country integer,
     email character varying(255) DEFAULT NULL::character varying,
     startfee integer,
     paid boolean,
     comment text,
-    team integer
+    team integer,
+    preferred_category character varying(255),
+    doping_declaration boolean
 );
 
 
 ALTER TABLE public.runner OWNER TO gaudenz;
+
+--
+-- Name: runner_id_seq; Type: SEQUENCE; Schema: public; Owner: gaudenz
+--
+
+CREATE SEQUENCE runner_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MAXVALUE
+    NO MINVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.runner_id_seq OWNER TO gaudenz;
+
+--
+-- Name: runner_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: gaudenz
+--
+
+ALTER SEQUENCE runner_id_seq OWNED BY runner.id;
+
+
+--
+-- Name: runner_id_seq; Type: SEQUENCE SET; Schema: public; Owner: gaudenz
+--
+
+SELECT pg_catalog.setval('runner_id_seq', 1271, true);
+
 
 --
 -- Name: sicard; Type: TABLE; Schema: public; Owner: gaudenz; Tablespace: 
@@ -385,323 +804,11 @@ CREATE TABLE team (
 ALTER TABLE public.team OWNER TO gaudenz;
 
 --
--- Name: change_trigger(); Type: FUNCTION; Schema: public; Owner: gaudenz
---
-
-CREATE FUNCTION change_trigger() RETURNS trigger
-    AS $$
-BEGIN
-  IF (TG_OP = 'DELETE') THEN
-    INSERT INTO log VALUES (TG_TABLE_NAME, NOW(), OLD.id);
-  ELSE
-    INSERT INTO log VALUES (TG_TABLE_NAME, NOW(), NEW.id);
-  END IF;
-  RETURN NULL;
-END;
-$$
-    LANGUAGE plpgsql;
-
-
-ALTER FUNCTION public.change_trigger() OWNER TO gaudenz;
-
---
--- Name: punch_trigger(); Type: FUNCTION; Schema: public; Owner: gaudenz
---
-
-CREATE FUNCTION punch_trigger() RETURNS trigger
-    AS $$
-begin
-if (TG_OP = 'DELETE') THEN
-insert into log values(1, now(), OLD.id);
-else
-insert into log values(1, now(), NEW.id);
-end if;
-return null;
-end;
-$$
-    LANGUAGE plpgsql;
-
-
-ALTER FUNCTION public.punch_trigger() OWNER TO gaudenz;
-
---
--- Name: category_id_seq; Type: SEQUENCE; Schema: public; Owner: gaudenz
---
-
-CREATE SEQUENCE category_id_seq
-    INCREMENT BY 1
-    NO MAXVALUE
-    NO MINVALUE
-    CACHE 1;
-
-
-ALTER TABLE public.category_id_seq OWNER TO gaudenz;
-
---
--- Name: category_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: gaudenz
---
-
-ALTER SEQUENCE category_id_seq OWNED BY category.id;
-
-
---
--- Name: category_id_seq; Type: SEQUENCE SET; Schema: public; Owner: gaudenz
---
-
-SELECT pg_catalog.setval('category_id_seq', 8, true);
-
-
---
--- Name: control_id_seq; Type: SEQUENCE; Schema: public; Owner: gaudenz
---
-
-CREATE SEQUENCE control_id_seq
-    INCREMENT BY 1
-    NO MAXVALUE
-    NO MINVALUE
-    CACHE 1;
-
-
-ALTER TABLE public.control_id_seq OWNER TO gaudenz;
-
---
--- Name: control_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: gaudenz
---
-
-ALTER SEQUENCE control_id_seq OWNED BY control.id;
-
-
---
--- Name: control_id_seq; Type: SEQUENCE SET; Schema: public; Owner: gaudenz
---
-
-SELECT pg_catalog.setval('control_id_seq', 146, true);
-
-
---
--- Name: controlsequence_id_seq; Type: SEQUENCE; Schema: public; Owner: gaudenz
---
-
-CREATE SEQUENCE controlsequence_id_seq
-    INCREMENT BY 1
-    NO MAXVALUE
-    NO MINVALUE
-    CACHE 1;
-
-
-ALTER TABLE public.controlsequence_id_seq OWNER TO gaudenz;
-
---
--- Name: controlsequence_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: gaudenz
---
-
-ALTER SEQUENCE controlsequence_id_seq OWNED BY controlsequence.id;
-
-
---
--- Name: controlsequence_id_seq; Type: SEQUENCE SET; Schema: public; Owner: gaudenz
---
-
-SELECT pg_catalog.setval('controlsequence_id_seq', 474, true);
-
-
---
--- Name: course_id_seq; Type: SEQUENCE; Schema: public; Owner: gaudenz
---
-
-CREATE SEQUENCE course_id_seq
-    INCREMENT BY 1
-    NO MAXVALUE
-    NO MINVALUE
-    CACHE 1;
-
-
-ALTER TABLE public.course_id_seq OWNER TO gaudenz;
-
---
--- Name: course_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: gaudenz
---
-
-ALTER SEQUENCE course_id_seq OWNED BY course.id;
-
-
---
--- Name: course_id_seq; Type: SEQUENCE SET; Schema: public; Owner: gaudenz
---
-
-SELECT pg_catalog.setval('course_id_seq', 39, true);
-
-
---
--- Name: coursecontrol_controlid_seq; Type: SEQUENCE; Schema: public; Owner: gaudenz
---
-
-CREATE SEQUENCE coursecontrol_controlid_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MAXVALUE
-    NO MINVALUE
-    CACHE 1;
-
-
-ALTER TABLE public.coursecontrol_controlid_seq OWNER TO gaudenz;
-
---
--- Name: coursecontrol_controlid_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: gaudenz
---
-
-ALTER SEQUENCE coursecontrol_controlid_seq OWNED BY coursecontrol.controlid;
-
-
---
--- Name: coursecontrol_controlid_seq; Type: SEQUENCE SET; Schema: public; Owner: gaudenz
---
-
-SELECT pg_catalog.setval('coursecontrol_controlid_seq', 1, false);
-
-
---
--- Name: coursecontrol_courseid_seq; Type: SEQUENCE; Schema: public; Owner: gaudenz
---
-
-CREATE SEQUENCE coursecontrol_courseid_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MAXVALUE
-    NO MINVALUE
-    CACHE 1;
-
-
-ALTER TABLE public.coursecontrol_courseid_seq OWNER TO gaudenz;
-
---
--- Name: coursecontrol_courseid_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: gaudenz
---
-
-ALTER SEQUENCE coursecontrol_courseid_seq OWNED BY coursecontrol.courseid;
-
-
---
--- Name: coursecontrol_courseid_seq; Type: SEQUENCE SET; Schema: public; Owner: gaudenz
---
-
-SELECT pg_catalog.setval('coursecontrol_courseid_seq', 1, false);
-
-
---
--- Name: override_sistation_id_seq; Type: SEQUENCE; Schema: public; Owner: gaudenz
---
-
-CREATE SEQUENCE override_sistation_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MAXVALUE
-    NO MINVALUE
-    CACHE 1;
-
-
-ALTER TABLE public.override_sistation_id_seq OWNER TO gaudenz;
-
---
--- Name: override_sistation_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: gaudenz
---
-
-ALTER SEQUENCE override_sistation_id_seq OWNED BY override_sistation.id;
-
-
---
--- Name: override_sistation_id_seq; Type: SEQUENCE SET; Schema: public; Owner: gaudenz
---
-
-SELECT pg_catalog.setval('override_sistation_id_seq', 1, false);
-
-
---
--- Name: punch_id_seq; Type: SEQUENCE; Schema: public; Owner: gaudenz
---
-
-CREATE SEQUENCE punch_id_seq
-    INCREMENT BY 1
-    NO MAXVALUE
-    NO MINVALUE
-    CACHE 1;
-
-
-ALTER TABLE public.punch_id_seq OWNER TO gaudenz;
-
---
--- Name: punch_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: gaudenz
---
-
-ALTER SEQUENCE punch_id_seq OWNED BY punch.id;
-
-
---
--- Name: punch_id_seq; Type: SEQUENCE SET; Schema: public; Owner: gaudenz
---
-
-SELECT pg_catalog.setval('punch_id_seq', 22478, true);
-
-
---
--- Name: run_id_seq; Type: SEQUENCE; Schema: public; Owner: gaudenz
---
-
-CREATE SEQUENCE run_id_seq
-    INCREMENT BY 1
-    NO MAXVALUE
-    NO MINVALUE
-    CACHE 1;
-
-
-ALTER TABLE public.run_id_seq OWNER TO gaudenz;
-
---
--- Name: run_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: gaudenz
---
-
-ALTER SEQUENCE run_id_seq OWNED BY run.id;
-
-
---
--- Name: run_id_seq; Type: SEQUENCE SET; Schema: public; Owner: gaudenz
---
-
-SELECT pg_catalog.setval('run_id_seq', 1617, true);
-
-
---
--- Name: runner_id_seq; Type: SEQUENCE; Schema: public; Owner: gaudenz
---
-
-CREATE SEQUENCE runner_id_seq
-    INCREMENT BY 1
-    NO MAXVALUE
-    NO MINVALUE
-    CACHE 1;
-
-
-ALTER TABLE public.runner_id_seq OWNER TO gaudenz;
-
---
--- Name: runner_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: gaudenz
---
-
-ALTER SEQUENCE runner_id_seq OWNED BY runner.id;
-
-
---
--- Name: runner_id_seq; Type: SEQUENCE SET; Schema: public; Owner: gaudenz
---
-
-SELECT pg_catalog.setval('runner_id_seq', 1271, true);
-
-
---
 -- Name: team_id_seq; Type: SEQUENCE; Schema: public; Owner: gaudenz
 --
 
 CREATE SEQUENCE team_id_seq
+    START WITH 1
     INCREMENT BY 1
     NO MAXVALUE
     NO MINVALUE
@@ -735,6 +842,13 @@ ALTER TABLE category ALTER COLUMN id SET DEFAULT nextval('category_id_seq'::regc
 -- Name: id; Type: DEFAULT; Schema: public; Owner: gaudenz
 --
 
+ALTER TABLE club ALTER COLUMN id SET DEFAULT nextval('club_id_seq'::regclass);
+
+
+--
+-- Name: id; Type: DEFAULT; Schema: public; Owner: gaudenz
+--
+
 ALTER TABLE control ALTER COLUMN id SET DEFAULT nextval('control_id_seq'::regclass);
 
 
@@ -743,6 +857,13 @@ ALTER TABLE control ALTER COLUMN id SET DEFAULT nextval('control_id_seq'::regcla
 --
 
 ALTER TABLE controlsequence ALTER COLUMN id SET DEFAULT nextval('controlsequence_id_seq'::regclass);
+
+
+--
+-- Name: id; Type: DEFAULT; Schema: public; Owner: gaudenz
+--
+
+ALTER TABLE country ALTER COLUMN id SET DEFAULT nextval('country_id_seq'::regclass);
 
 
 --
@@ -808,6 +929,14 @@ ALTER TABLE team ALTER COLUMN id SET DEFAULT nextval('team_id_seq'::regclass);
 COPY category (id, name) FROM stdin;
 3	24h
 8	12h
+\.
+
+
+--
+-- Data for Name: club; Type: TABLE DATA; Schema: public; Owner: gaudenz
+--
+
+COPY club (id, name) FROM stdin;
 \.
 
 
@@ -1412,6 +1541,14 @@ COPY controlsequence (id, course, control, sequence_number, length, climb) FROM 
 472	39	63	9	124	0
 473	39	53	10	162	0
 474	39	136	11	135	0
+\.
+
+
+--
+-- Data for Name: country; Type: TABLE DATA; Schema: public; Owner: gaudenz
+--
+
+COPY country (id, code3, code2, name) FROM stdin;
 \.
 
 
@@ -86484,416 +86621,416 @@ COPY run (id, sicard, course, complete, override, readout_time, runtime, validat
 -- Data for Name: runner; Type: TABLE DATA; Schema: public; Owner: gaudenz
 --
 
-COPY runner (id, number, given_name, surname, dateofbirth, sex, nation, solvnr, startblock, starttime, category, club, address1, address2, zipcode, city, address_country_id, email, startfee, paid, comment, team) FROM stdin;
-574	112E	Benjamin	Rindlisbacher	1984-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	65
-312	101A	Roman	Troxler	1985-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	54
-313	101B	Niklaus	Moser	1967-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	54
-576	112F	David	Bürge	1989-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	65
-314	101C	Stephanie	Amrein	1988-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	54
-315	101D	Thomas	Egger	1964-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	54
-1127	201A	Adrian	Schnyder	1971-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	194
-316	101E	Florian	Kunz	1985-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	54
-317	101F	Sandra	Schärer	1985-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	54
-1128	201B	Nathalie	Julmy	1990-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	194
-318	102A	Franz	Doetsch	1985-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	55
-319	102B	Radoslav	Dochev	1963-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	55
-1129	201C	Martin	Jörg	1964-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	194
-320	102C	Joseph	Doetsch	1981-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	55
-321	102D	Ananda	Berger	1987-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	55
-1130	201D	Hanspeter	Zürrer	1979-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	194
-322	102E	Jaana	Eronen	1963-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	55
-323	102F	Claire	Sandevoir	1991-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	55
-1131	201E	Thomas	Fasel	1990-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	194
-324	103A	Thomas	Häne	1980-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	56
-1132	201F	Stefan	Schnyder	1968-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	194
-325	103B	Martin	Widler	1971-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	56
-326	103C	Daniel	Zwiker	1979-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	56
-1133	202A	Christian	Dienemann	1988-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	195
-327	103D	Raphael	Zwiker	1978-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	56
-328	103E	Christine	Rufer	1987-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	56
-1134	202B	Johannes 	Gorecki	1990-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	195
-329	103F	Barbara	Hüsler	1981-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	56
-330	104A	Mario	Gorecki	1963-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	57
-1135	202C	Martin	Friebe	1990-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	195
-331	104B	Mirko	Hoppe	1970-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	57
-332	104C	Anke	Zentgraf	1964-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	57
-1136	202D	Anna	Friebe	1995-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	195
-333	104D	Norbert	Ehms	1985-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	57
-334	104E	Marion	Friebe	1964-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	57
-1137	202E	Thomas	Rüster	1962-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	195
-335	104F	Jürgen	Ehms	1957-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	57
-336	105A	Torsten	Kaufmann	1971-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	58
-1138	203A	Brigitte	Schlatter	1975-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	196
-337	105B	Elke	Hacker	1977-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	58
-338	105C	Andrej	Olunczek	1984-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	58
-1139	203B	Alex	Wenger	1993-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	196
-339	105D	Joachim	Gerhardt	1958-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	58
-340	105E	Jan	Müller	1976-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	58
-1140	203C	Nicolas	Russi	1960-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	196
-341	105F	Fanny	Sembdner	1985-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	58
-342	106A	Karsten	Leideck	1986-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	59
-1141	203D	Lukas	Aggeler	1988-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	196
-343	106B	Wieland	Kundisch	1985-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	59
-344	106C	Thomas	Wuttig	1965-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	59
-345	106D	Sonnhild	Knoblauch	1981-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	59
-1142	203E	Stephan	Rudolf	1961-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	196
-346	106E	Heiko	Gossel	1965-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	59
-347	106F	Cornelia	Eckardt	1969-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	59
-1143	203F	Rosmarie	Rudolf	1962-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	196
-348	107A	Kerstin	Hellmann	1963-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	60
-1144	204A	Ferenc	Ficsor	1975-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	197
-349	107B	Rene	Hellmann	1963-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	60
-350	107C	Norbert	Zenker	1958-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	60
-351	107D	Lutz	Spranger	1967-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	60
-1145	204B	Zoltán	Melkes 	1979-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	197
-352	107E	Anna	Reinhardt	1991-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	60
-353	107F	Frank	Nitzsche	1990-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	60
-1146	204C	Agnes	Gerzsenyi	1975-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	197
-354	108A	Renato	Winteler	1978-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	61
-1147	204D	Monika	Ebinger	1970-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	197
-355	108B	Esther	Meier	1954-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	61
-356	108C	Sven	Rüegg	1990-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	61
-357	108D	Mario	Meier	1957-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	61
-1148	205A	Kurt	Fischer	1951-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	198
-358	108E	Peter	Winteler	1948-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	61
-359	108F	Andrea	Friedrich	1981-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	61
-1149	205B	Andi	Hochuli	1959-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	198
-360	109A	Dirk	Meyer	1982-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	62
-1150	205C	Sven	Klein 	1993-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	198
-361	109B	Janek	Leibiger	1985-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	62
-362	109C	Julia	Neelmeijer	1986-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	62
-1151	205D	Jan	Hochuli	1995-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	198
-363	109D	Andrei	Kraemer	1991-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	62
-364	109E	Anne	Kretzschmar	1984-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	62
-1152	205E	Claudia	Schärer	1957-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	198
-365	109F	Henryk	Dobslaw	1977-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	62
-366	110A	Jörg	Meyer	1983-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	63
-1153	205F	Peter	Clerici	1961-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	198
-367	110B	Anett	Leibiger	1982-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	63
-368	110C	Jan	Von Dalowski	1984-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	63
-1154	206A	Corina	Ringli	1991-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	199
-369	110D	Lisa	Femmer	1987-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	63
-370	110E	Karin	Kraemer	1963-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	63
-371	110F	Freddy	Burghardt	1984-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	63
-372	111A	Harald	Friedl	1959-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	64
-1155	206B	Fabienne	Haas	1993-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	199
-373	111B	Stephan	Frei	1974-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	64
-416	118C	Katja	Stöckli	1978-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	71
-374	111C	Peter	Gierlach	1958-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	64
-414	118E	Marisa	Mengotti	1983-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	71
-375	111D	Galina	Krassowitzkaja	1959-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	64
-376	111E	Matthias	Berse 	1958-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	64
-1156	206C	Ladina	Feucht	1992-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	199
-377	111F	Ute	Van Straaten	1954-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	64
-378	112A	Jonas	Wicky	1989-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	65
-1157	206D	Pascal	Haas	1992-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	199
-379	112B	Daniela	Wehrli	1979-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	65
-380	112C	Esther	Hegglin	1979-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	65
-381	112D	David	Hayoz	1982-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	65
-1158	206E	Dominik	Haas 	1990-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	199
-382	113A	Daniel	Perret	1987-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	66
-1159	206F	Andreas	Herzog	1984-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	199
-383	113B	Christian	Oswald	1981-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	66
-384	113C	Adrian	Elsener	1983-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	66
-385	113D	Angela	Von Deschwanden	1986-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	66
-1160	207A	Daniel	Locher	1990-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	200
-386	113E	Daniel	Pfulg	1971-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	66
-387	113F	Sara	Rapp	1987-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	66
-1161	207B	Lukas	Herren	1991-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	200
-388	114A	Michael	Oswald	1983-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	67
-389	114B	Matthias	Oswald	1986-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	67
-1162	207C	Beat	Berger	1975-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	200
-390	114C	Stefan	Hess	1971-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	67
-1163	207D	Philip	Bürgi	1992-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	200
-391	114D	Monika	Oswald	1978-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	67
-392	114E	Gregor	Heyer	1974-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	67
-1164	207E	Laura	Diener	1995-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	200
-393	114F	Jeanine	Oswald	1980-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	67
-394	115A	Roman	Kammer	1967-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	68
-1165	207F	Sandra	Sutter	1970-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	200
-395	115B	Michael	Frei	1983-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	68
-396	115C	Adriane	Honegger	1984-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	68
-397	115D	Markus	Wettstein	1983-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	68
-1166	208A	Jeremy	Trottmann	1992-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	201
-398	115E	Urs	Wettstein	1986-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	68
-1167	208B	Dominic	Deppeler	1994-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	201
-399	115F	Christine	Erzinger	1982-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	68
-400	116A	Christian	Drews	1965-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	69
-1168	208C	Martin	Gantenbein	1976-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	201
-401	116B	Alexander	Hergert	1985-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	69
-402	116C	Varvara	Guljajeva	1985-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	69
-1169	208D	Adrian	Müller	1995-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	201
-403	116D	Michael	Gutmann	1980-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	69
-404	116E	Thomas	Denzler	1958-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	69
-1170	208E	Janick	Leuenberger	1994-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	201
-405	116F	Brigitte	Drews	1963-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	69
-406	117A	Christian 	Töpfer	1979-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	70
-407	117B	Moritz 	Schumann	1987-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	70
-1171	208F	Peter	Wehrli	1948-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	201
-408	117C	Sebastian 	Bergmann	1987-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	70
-1172	209A	Joël	Borner	1994-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	202
-409	117D	Paul 	Kossack	1991-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	70
-410	117E	Daniela	Brohm	1981-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	70
-411	117F	Jitka	Kraemer	1987-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	70
-1173	209B	Géraldine	Müller	1993-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	202
-412	118A	Markus	Wenk	1980-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	71
-1174	209C	Michael	Nussbaumer	1990-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	202
-413	118B	Stefan	Zwicky	1981-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	71
-1175	209D	Cyrill	Schönenberger	1994-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	202
-415	118D	Alexandra	Altorfer	1982-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	71
-1176	209E	Sandrine	Müller	1995-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	202
-1177	209F	François	Borner	1992-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	202
-417	118F	Stefan	Eberli	1978-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	71
-418	119A	Anders	Axling	1982-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	72
-419	119B	Mikael	Tjernberg	1972-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	72
-1178	210A	Heimz	Haldemann	1941-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	203
-420	119C	Niklas	Henriksson	1972-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	72
-421	119D	Marie	Rönnestrand	1985-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	72
-1179	210B	Daniel	Hadorn	1969-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	203
-422	119E	Daniel	Tjernberg	1975-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	72
-1180	210C	Ueli	Hauswirth	1947-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	203
-423	119F	Jennifer	Warg	1983-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	72
-424	120A	Zoltan	Szlavik	1973-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	73
-425	120B	Aniko	Rostas 	1975-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	73
-1183	210E	Luca	Mini	1984-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	203
-426	120C	Nandor	Borbas	1971-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	73
-1181	210D	Annelies	Moser	1969-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	203
-427	120D	Zoltan	Mitro	1972-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	73
-1182	210F	Markus	Troxler	1949-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	203
-428	120E	Peter	Szakal	1971-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	73
-429	120F	Agnes	Simon	1974-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	73
-430	121A	Marc	Probst	1969-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	74
-431	121B	Reto	Flückiger	1980-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	74
-432	121C	Susann	Baumgartner	1981-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	74
-1184	211A	Daniel	Affolter	1977-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	204
-433	121D	Thomas	Koenig	1967-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	74
-1185	211B	Bruno	Huber	1971-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	204
-434	121E	Christian	Wehrli	1968-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	74
-435	121F	Doris	Keller	1972-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	74
-436	122A	Stefan	Schlatter 	1964-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	75
-1186	211C	Sabine	Vogt	1980-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	204
-437	122B	Brigitte	Grob	1967-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	75
-1187	211D	Claudia	Vogt	1980-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	204
-438	122C	Michael	Cantoni	1987-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	75
-439	122D	Emil	Kimmig	1957-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	75
-440	122E	Christjohannes	Bühler	1965-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	75
-1188	211E	David	Peter	1984-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	204
-441	122F	Karin	Knecht Bühler	1964-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	75
-442	123A	Fabian	Ringli	1989-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	76
-1189	211F	Adrian	Wichert	1994-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	204
-443	123B	Remo	Thoma	1977-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	76
-444	123C	Markus	Bieri	1966-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	76
-1190	212A	Edu	Hatt	1960-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	205
-445	123D	Sabrina	Meister	1966-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	76
-1191	212B	Simon	Hatt	1992-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	205
-446	123E	Erich	Dobler	1968-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	76
-447	123F	Mirjam	Gründler	1964-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	76
-448	124A	Thomas	Dätwyler	1961-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	77
-1192	212C	Serafina	Hatt	1994-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	205
-449	124B	Sergio	Zanelli	1975-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	77
-1193	212D	Elisabeth	Fuchs Hatt	1963-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	205
-450	124C	Markus	Gründler	1964-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	77
-451	124D	Hansjörg	Graf	1953-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	77
-452	124E	Sibylle	Bieri	1968-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	77
-1194	212E	Lena	Mathys	1997-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	205
-453	124F	Ursina	Schärer	1990-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	77
-454	125A	Peter	Klein	1963-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	78
-1195	212F	Nik	Schneider	2000-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	205
-455	125B	Walter	Rahm	1948-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	78
-1196	213A	Christian	Beglinger	1964-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	206
-456	125C	Guido	Gmür	1945-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	78
-457	125D	Fabian	Klein 	1991-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	78
-1197	213B	Yannis	Güdel	1994-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	206
-458	125E	Maria	Hochuli	1963-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	78
-459	125F	Yvonne	Klein	1963-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	78
-460	126A	Lyonel	Ehrl	1978-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	79
-1198	213C	Nicole	Kopp	1990-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	206
-461	126B	Simon	Aigner	1988-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	79
-1199	213D	Annelies	Etter	1989-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	206
-462	126C	Gert	Lexen	1968-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	79
-463	126D	Blandine	Ehrl	1982-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	79
-1200	213E	Narziss	Studer	1991-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	206
-464	126E	Johanna	Lieske	1978-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	79
-465	126F	Sebastian	Cionoiu	1989-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	79
-1201	213F	Peter	Müller	1957-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	206
-466	127A	Hubert	Klauser	1978-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	80
-467	127B	Daniel	Klauser	1981-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	80
-468	127C	Roland	Gyssler	1956-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	80
-1202	214A	Lukas	Rutschmann	1991-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	207
-469	127D	Markus	Hintermann	1985-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	80
-1203	214B	Benno	Neuenschwander	1992-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	207
-470	127E	Lilian	Knechtli	1986-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	80
-471	127F	Andrea	Kaspar 	1980-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	80
-472	128A	Lukas	Schulthess	1979-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	81
-1204	214C	Simone	Flück	1995-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	207
-473	128B	Nadja	Müller	1974-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	81
-1205	214D	Samuel	Moser	1993-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	207
-474	128C	Stephan	Copes	1974-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	81
-475	128D	Peter	Mohn-Lagler	1971-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	81
-476	128E	Benedikt	Funk	1963-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	81
-1206	214E	Deborah	Rentsch	1996-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	207
-477	128F	Maja	Rothweiler	1984-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	81
-1207	214F	Patrick	Müller	1993-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	207
-478	129A	Simon	Sauter	1987-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	82
-479	129B	Matasci	Cecilia	1981-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	82
-1208	215A	Christina	Moser	1965-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	208
-480	129C	Hartmann	Manuel	1978-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	82
-481	129D	Pedrazzi	Giulia	1982-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	82
-1209	215B	Marc	Schädler	1996-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	208
-482	129E	Stucki	Hans	1950-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	82
-483	129F	Arnold	Beat	1987-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	82
-484	130A	Dominic	Studer	1986-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	83
-1210	215C	Rebecca	Hänni	1993-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	208
-485	130B	Michael	Ochsenbein	1976-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	83
-1211	215D	Marianne	Meier	1993-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	208
-486	130C	Bea	Fürholz	1984-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	83
-487	130D	Erich	Herrmann	1972-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	83
-488	130E	Fränzi	Gangi-Fröhlich	1975-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	83
-1212	215E	Meryl	Schädler	1993-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	208
-489	130F	Ueli	Rüegsegger	1966-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	83
-490	131A	Christian	Gigon	1978-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	84
-1214	216A	Stephan	Moser	1962-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	209
-491	131B	Urs	Utzinger	1965-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	84
-492	131C	Peter	Laager	1960-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	84
-1213	215F	Jennifer	Berger	1996-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	208
-493	131D	Michael	Laager	1991-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	84
-494	131E	Marlies	Laager	1960-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	84
-1215	216B	Patrick	Krähenbühl	1995-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	209
-495	131F	Laura	Borner	1990-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	84
-496	132A	Daniel	Rohr	1990-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	85
-497	132B	Raphi	Neukom	1979-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	85
-1216	216C	Kim	Schädler	1994-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	209
-498	132C	Noldi	Schneider 	1948-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	85
-1217	216D	Celine	Jaisli	1992-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	209
-499	132D	Ursina	Mathys	1964-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	85
-500	132E	Susanne	Laager	1989-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	85
-1218	216E	Ellen	Reinhard	1994-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	209
-501	132F	Tiziana	Rigamonti	1990-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	85
-502	133A	Simone	GrassiEuroNight	1974-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	86
-1219	216F	Jonas	Krieger 	1993-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	209
-503	133B	Stefano	GottardiInterCityPlus	1976-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	86
-504	133C	Heike	TorgglerSchnellzug	1983-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	86
-505	133D	Oscar	GalimbertiEspresso	1965-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	86
-1220	217A	Annetta	Schaad	1982-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	210
-506	133E	Alessandra	GariboldiInterregionale	1979-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	86
-507	133F	Remo	MadellaTrenoPiuBici	1971-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	86
-1221	217B	Véronique	Ruppenthal	1993-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	210
-508	134A	Jürg	Schaller	1979-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	87
-509	134B	Patrick	Tschumi	1991-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	87
-1222	217C	Michelle	Ruppenthal	1996-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	210
-510	134C	Fabian	Borner	1972-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	87
-1223	217D	Annick	Attinger	1994-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	210
-511	134D	Roger	Müller	1970-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	87
-512	134E	Karin	Schaller	1977-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	87
-1224	217E	Florian L.	Attinger	1997-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	210
-513	134F	Ursula	Marty	1948-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	87
-514	135A	Robert	Mayrhofer	1953-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	88
-1225	217F	Claudine	Ruppenthal	1995-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	210
-515	135B	Elisabeth	Prettner	1945-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	88
-516	135C	Hans-Georg	Gratzer	1956-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	88
-1226	218A	Marine	Leloup	1989-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	211
-517	135D	Elisabeth	Rass	1945-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	88
-518	135E	Erich	Faulhammer	1945-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	88
-1227	218B	Margaux	Vassy	1990-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	211
-519	135F	Maria	Faulhammer	1943-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	88
-520	136A	Thomas	Widmann	1985-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	89
-521	136B	Jutta	Torggler	1989-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	89
-1228	218C	Mael	Richard	1990-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	211
-522	136C	Markus	Bianchi	1970-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	89
-523	136D	Wolfgang	Gindu-Ferrari	1972-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	89
-1229	218D	Amandine	Monterrat	1991-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	211
-524	136E	Vera	Innerebner	1982-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	89
-1230	218E	Celie-Anne	Abel	1988-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	211
-525	136F	Alexander	Reisenhofer	1985-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	89
-526	137A	Thomas	Gropp	1969-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	90
-1231	218F	Claire	Chabal	1991-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	211
-527	137B	Hermann	Bähr	1980-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	90
-528	137C	Martin	Schwarz	1973-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	90
-529	137D	Zsuzsa	Fekete	1983-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	90
-1232	219A	Susanne	Wydenkeller	1981-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	212
-530	137E	Andreas	Lutz	1980-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	90
-531	137F	Meike	Hartmann	1974-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	90
-1233	219B	Franziska	Meier	1991-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	212
-532	138A	Alexander	Schwab	1988-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	91
-1234	219C	Heinz	Rüegg	1960-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	212
-533	138B	Marcel	Schiess	1963-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	91
-534	138C	Werner	Wehrli	1952-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	91
-1235	219D	Ruedi	Hobi	1962-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	212
-535	138D	Christina	Wehrli	1955-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	91
-536	138E	Georg	Ziltener	1966-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	91
-1236	219E	Lukas	Reichmuth	1985-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	212
-537	138F	Christa	Ebneter	1956-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	91
-538	139A	Marcel	Ruppenthal	1965-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	92
-539	139B	Hans	Welti	1975-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	92
-1237	219F	Beat	Wägeli	1963-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	212
-540	139C	Ursi	Ruppenthal	1971-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	92
-1238	220A	Philipp	Von Arx	1992-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	213
-541	139D	Willi	Streuli	1969-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	92
-542	139E	Annemarie	Welti	1942-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	92
-1239	220B	Patrick	De Gottardi	1972-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	213
-543	139F	Käthi	Attinger-Welti	1969-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	92
-544	140A	Ueli	Stalder	1966-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	93
-545	140B	Simon	Brechbühler	1975-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	93
-1240	220C	Angela	Schwaab	1990-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	213
-546	140C	Christian	Schneebeli	1975-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	93
-547	140D	Klaus	Bütikofer	1958-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	93
-1241	220D	David	Von Arx	1994-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	213
-548	140E	Sabine	Mumprecht	1976-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	93
-1242	220E	Roger	Joss	1962-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	213
-549	140F	Käthi	Räber	1955-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	93
-550	141A	Lukas	Müller	1977-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	94
-551	141B	Thomas	Hofer	1983-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	94
-552	141C	Christoph	Hofer	1981-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	94
-1243	221A	Sandro	Truttmann	1992-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	214
-553	141D	Silvio	Strub	1951-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	94
-554	141E	Anna	Strub	1984-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	94
-555	141F	Christine	Wyss	1980-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	94
-1244	221B	Sven	Aschwanden	1992-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	214
-556	142A	Samuel	Wüthrich	1985-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	95
-557	142B	Res	Wüthrich	1955-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	95
-1245	221C	Lorenz	Pfyl	1992-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	214
-558	142C	Christoph	Boldini	1964-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	95
-1246	221D	Lukas	Schilliger 	1990-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	214
-559	142D	Camille	Eyer	1946-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	95
-560	142E	Robert	Hegi	1965-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	95
-1247	221E	Ueli	Wechsler	1991-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	214
-561	142F	Beatrice	Eyer	1951-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	95
-562	143A	Jakob	Wüthrich	1987-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	96
-563	143B	Peter	Gehriger	1965-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	96
-1248	222A	Alex	Odermatt	1966-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	215
-564	143C	Ueli	Hofstetter	1954-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	96
-565	143D	Michael	Steinauer	1964-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	96
-1249	222B	Theophil	Bucher	1962-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	215
-566	143E	Flavia	Antonietti	1969-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	96
-1250	222C	Ueli	Äschlimann	1959-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	215
-567	143F	Ursula	Spycher	1955-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	96
-568	144A	Toni	Mune	1976-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	97
-1251	222D	Sara	Egger	1992-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	215
-569	144B	Joan	Fernandez	1978-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	97
-570	144C	Ferran	Santoyo	1968-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	97
-571	144D	Fabio	Würmli	1955-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	97
-1252	222E	Jonas	Egger	1994-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	215
-572	144E	Sara	Prat	1978-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	97
-1253	222F	Martin	Egger	1963-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	215
-573	144F	Isabel	Garcia	1973-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	97
-1254	223A	Simon	Harston	1975-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	216
-1255	223B	Magnus	Berger	1961-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	216
-1256	223C	Immanuel	Berger	1990-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	216
-1257	223D	Eija	Schulze	1978-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	216
-1258	223E	Andreas	Kunzendorf	1988-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	216
-1259	223F	Anne	Kunzendorf	1990-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	216
-1260	224A	Claude	Rieder	1968-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	217
-1261	224B	Lukas	Rieder	1996-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	217
-1262	224C	Claudia	Rieder	1968-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	217
-1263	224D	Julian	Rieder	\N	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	217
-1264	224E	Markus	Etter	1964-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	217
-1265	224F	Beatrice	Gehriger	1963-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	217
-1266	225A	Regula	Hodler	\N	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	218
-1267	225B	Marie-Anne	Jungo	1962-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	218
-1268	225C	Nils	Eyer	1999-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	218
-1269	225D	Gabriel-Michael	Mathys	1996-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	218
-1271	225F	Sandra	Gehriger	1999-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	218
-1270	225E	Raffael-Alexander	Mathys	1994-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	218
+COPY runner (id, number, given_name, surname, dateofbirth, sex, nation, solvnr, startblock, starttime, category, club, address1, address2, zipcode, city, address_country, email, startfee, paid, comment, team, preferred_category, doping_declaration) FROM stdin;
+574	112E	Benjamin	Rindlisbacher	1984-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	65	\N	\N
+312	101A	Roman	Troxler	1985-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	54	\N	\N
+313	101B	Niklaus	Moser	1967-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	54	\N	\N
+576	112F	David	Bürge	1989-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	65	\N	\N
+314	101C	Stephanie	Amrein	1988-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	54	\N	\N
+315	101D	Thomas	Egger	1964-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	54	\N	\N
+1127	201A	Adrian	Schnyder	1971-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	194	\N	\N
+316	101E	Florian	Kunz	1985-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	54	\N	\N
+317	101F	Sandra	Schärer	1985-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	54	\N	\N
+1128	201B	Nathalie	Julmy	1990-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	194	\N	\N
+318	102A	Franz	Doetsch	1985-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	55	\N	\N
+319	102B	Radoslav	Dochev	1963-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	55	\N	\N
+1129	201C	Martin	Jörg	1964-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	194	\N	\N
+320	102C	Joseph	Doetsch	1981-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	55	\N	\N
+321	102D	Ananda	Berger	1987-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	55	\N	\N
+1130	201D	Hanspeter	Zürrer	1979-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	194	\N	\N
+322	102E	Jaana	Eronen	1963-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	55	\N	\N
+323	102F	Claire	Sandevoir	1991-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	55	\N	\N
+1131	201E	Thomas	Fasel	1990-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	194	\N	\N
+324	103A	Thomas	Häne	1980-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	56	\N	\N
+1132	201F	Stefan	Schnyder	1968-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	194	\N	\N
+325	103B	Martin	Widler	1971-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	56	\N	\N
+326	103C	Daniel	Zwiker	1979-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	56	\N	\N
+1133	202A	Christian	Dienemann	1988-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	195	\N	\N
+327	103D	Raphael	Zwiker	1978-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	56	\N	\N
+328	103E	Christine	Rufer	1987-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	56	\N	\N
+1134	202B	Johannes 	Gorecki	1990-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	195	\N	\N
+329	103F	Barbara	Hüsler	1981-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	56	\N	\N
+330	104A	Mario	Gorecki	1963-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	57	\N	\N
+1135	202C	Martin	Friebe	1990-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	195	\N	\N
+331	104B	Mirko	Hoppe	1970-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	57	\N	\N
+332	104C	Anke	Zentgraf	1964-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	57	\N	\N
+1136	202D	Anna	Friebe	1995-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	195	\N	\N
+333	104D	Norbert	Ehms	1985-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	57	\N	\N
+334	104E	Marion	Friebe	1964-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	57	\N	\N
+1137	202E	Thomas	Rüster	1962-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	195	\N	\N
+335	104F	Jürgen	Ehms	1957-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	57	\N	\N
+336	105A	Torsten	Kaufmann	1971-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	58	\N	\N
+1138	203A	Brigitte	Schlatter	1975-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	196	\N	\N
+337	105B	Elke	Hacker	1977-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	58	\N	\N
+338	105C	Andrej	Olunczek	1984-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	58	\N	\N
+1139	203B	Alex	Wenger	1993-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	196	\N	\N
+339	105D	Joachim	Gerhardt	1958-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	58	\N	\N
+340	105E	Jan	Müller	1976-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	58	\N	\N
+1140	203C	Nicolas	Russi	1960-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	196	\N	\N
+341	105F	Fanny	Sembdner	1985-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	58	\N	\N
+342	106A	Karsten	Leideck	1986-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	59	\N	\N
+1141	203D	Lukas	Aggeler	1988-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	196	\N	\N
+343	106B	Wieland	Kundisch	1985-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	59	\N	\N
+344	106C	Thomas	Wuttig	1965-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	59	\N	\N
+345	106D	Sonnhild	Knoblauch	1981-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	59	\N	\N
+1142	203E	Stephan	Rudolf	1961-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	196	\N	\N
+346	106E	Heiko	Gossel	1965-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	59	\N	\N
+347	106F	Cornelia	Eckardt	1969-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	59	\N	\N
+1143	203F	Rosmarie	Rudolf	1962-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	196	\N	\N
+348	107A	Kerstin	Hellmann	1963-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	60	\N	\N
+1144	204A	Ferenc	Ficsor	1975-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	197	\N	\N
+349	107B	Rene	Hellmann	1963-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	60	\N	\N
+350	107C	Norbert	Zenker	1958-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	60	\N	\N
+351	107D	Lutz	Spranger	1967-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	60	\N	\N
+1145	204B	Zoltán	Melkes 	1979-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	197	\N	\N
+352	107E	Anna	Reinhardt	1991-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	60	\N	\N
+353	107F	Frank	Nitzsche	1990-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	60	\N	\N
+1146	204C	Agnes	Gerzsenyi	1975-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	197	\N	\N
+354	108A	Renato	Winteler	1978-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	61	\N	\N
+1147	204D	Monika	Ebinger	1970-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	197	\N	\N
+355	108B	Esther	Meier	1954-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	61	\N	\N
+356	108C	Sven	Rüegg	1990-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	61	\N	\N
+357	108D	Mario	Meier	1957-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	61	\N	\N
+1148	205A	Kurt	Fischer	1951-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	198	\N	\N
+358	108E	Peter	Winteler	1948-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	61	\N	\N
+359	108F	Andrea	Friedrich	1981-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	61	\N	\N
+1149	205B	Andi	Hochuli	1959-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	198	\N	\N
+360	109A	Dirk	Meyer	1982-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	62	\N	\N
+1150	205C	Sven	Klein 	1993-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	198	\N	\N
+361	109B	Janek	Leibiger	1985-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	62	\N	\N
+362	109C	Julia	Neelmeijer	1986-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	62	\N	\N
+1151	205D	Jan	Hochuli	1995-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	198	\N	\N
+363	109D	Andrei	Kraemer	1991-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	62	\N	\N
+364	109E	Anne	Kretzschmar	1984-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	62	\N	\N
+1152	205E	Claudia	Schärer	1957-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	198	\N	\N
+365	109F	Henryk	Dobslaw	1977-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	62	\N	\N
+366	110A	Jörg	Meyer	1983-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	63	\N	\N
+1153	205F	Peter	Clerici	1961-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	198	\N	\N
+367	110B	Anett	Leibiger	1982-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	63	\N	\N
+368	110C	Jan	Von Dalowski	1984-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	63	\N	\N
+1154	206A	Corina	Ringli	1991-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	199	\N	\N
+369	110D	Lisa	Femmer	1987-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	63	\N	\N
+370	110E	Karin	Kraemer	1963-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	63	\N	\N
+371	110F	Freddy	Burghardt	1984-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	63	\N	\N
+372	111A	Harald	Friedl	1959-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	64	\N	\N
+1155	206B	Fabienne	Haas	1993-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	199	\N	\N
+373	111B	Stephan	Frei	1974-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	64	\N	\N
+416	118C	Katja	Stöckli	1978-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	71	\N	\N
+374	111C	Peter	Gierlach	1958-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	64	\N	\N
+414	118E	Marisa	Mengotti	1983-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	71	\N	\N
+375	111D	Galina	Krassowitzkaja	1959-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	64	\N	\N
+376	111E	Matthias	Berse 	1958-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	64	\N	\N
+1156	206C	Ladina	Feucht	1992-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	199	\N	\N
+377	111F	Ute	Van Straaten	1954-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	64	\N	\N
+378	112A	Jonas	Wicky	1989-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	65	\N	\N
+1157	206D	Pascal	Haas	1992-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	199	\N	\N
+379	112B	Daniela	Wehrli	1979-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	65	\N	\N
+380	112C	Esther	Hegglin	1979-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	65	\N	\N
+381	112D	David	Hayoz	1982-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	65	\N	\N
+1158	206E	Dominik	Haas 	1990-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	199	\N	\N
+382	113A	Daniel	Perret	1987-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	66	\N	\N
+1159	206F	Andreas	Herzog	1984-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	199	\N	\N
+383	113B	Christian	Oswald	1981-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	66	\N	\N
+384	113C	Adrian	Elsener	1983-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	66	\N	\N
+385	113D	Angela	Von Deschwanden	1986-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	66	\N	\N
+1160	207A	Daniel	Locher	1990-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	200	\N	\N
+386	113E	Daniel	Pfulg	1971-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	66	\N	\N
+387	113F	Sara	Rapp	1987-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	66	\N	\N
+1161	207B	Lukas	Herren	1991-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	200	\N	\N
+388	114A	Michael	Oswald	1983-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	67	\N	\N
+389	114B	Matthias	Oswald	1986-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	67	\N	\N
+1162	207C	Beat	Berger	1975-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	200	\N	\N
+390	114C	Stefan	Hess	1971-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	67	\N	\N
+1163	207D	Philip	Bürgi	1992-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	200	\N	\N
+391	114D	Monika	Oswald	1978-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	67	\N	\N
+392	114E	Gregor	Heyer	1974-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	67	\N	\N
+1164	207E	Laura	Diener	1995-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	200	\N	\N
+393	114F	Jeanine	Oswald	1980-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	67	\N	\N
+394	115A	Roman	Kammer	1967-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	68	\N	\N
+1165	207F	Sandra	Sutter	1970-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	200	\N	\N
+395	115B	Michael	Frei	1983-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	68	\N	\N
+396	115C	Adriane	Honegger	1984-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	68	\N	\N
+397	115D	Markus	Wettstein	1983-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	68	\N	\N
+1166	208A	Jeremy	Trottmann	1992-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	201	\N	\N
+398	115E	Urs	Wettstein	1986-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	68	\N	\N
+1167	208B	Dominic	Deppeler	1994-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	201	\N	\N
+399	115F	Christine	Erzinger	1982-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	68	\N	\N
+400	116A	Christian	Drews	1965-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	69	\N	\N
+1168	208C	Martin	Gantenbein	1976-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	201	\N	\N
+401	116B	Alexander	Hergert	1985-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	69	\N	\N
+402	116C	Varvara	Guljajeva	1985-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	69	\N	\N
+1169	208D	Adrian	Müller	1995-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	201	\N	\N
+403	116D	Michael	Gutmann	1980-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	69	\N	\N
+404	116E	Thomas	Denzler	1958-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	69	\N	\N
+1170	208E	Janick	Leuenberger	1994-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	201	\N	\N
+405	116F	Brigitte	Drews	1963-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	69	\N	\N
+406	117A	Christian 	Töpfer	1979-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	70	\N	\N
+407	117B	Moritz 	Schumann	1987-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	70	\N	\N
+1171	208F	Peter	Wehrli	1948-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	201	\N	\N
+408	117C	Sebastian 	Bergmann	1987-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	70	\N	\N
+1172	209A	Joël	Borner	1994-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	202	\N	\N
+409	117D	Paul 	Kossack	1991-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	70	\N	\N
+410	117E	Daniela	Brohm	1981-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	70	\N	\N
+411	117F	Jitka	Kraemer	1987-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	70	\N	\N
+1173	209B	Géraldine	Müller	1993-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	202	\N	\N
+412	118A	Markus	Wenk	1980-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	71	\N	\N
+1174	209C	Michael	Nussbaumer	1990-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	202	\N	\N
+413	118B	Stefan	Zwicky	1981-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	71	\N	\N
+1175	209D	Cyrill	Schönenberger	1994-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	202	\N	\N
+415	118D	Alexandra	Altorfer	1982-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	71	\N	\N
+1176	209E	Sandrine	Müller	1995-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	202	\N	\N
+1177	209F	François	Borner	1992-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	202	\N	\N
+417	118F	Stefan	Eberli	1978-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	71	\N	\N
+418	119A	Anders	Axling	1982-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	72	\N	\N
+419	119B	Mikael	Tjernberg	1972-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	72	\N	\N
+1178	210A	Heimz	Haldemann	1941-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	203	\N	\N
+420	119C	Niklas	Henriksson	1972-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	72	\N	\N
+421	119D	Marie	Rönnestrand	1985-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	72	\N	\N
+1179	210B	Daniel	Hadorn	1969-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	203	\N	\N
+422	119E	Daniel	Tjernberg	1975-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	72	\N	\N
+1180	210C	Ueli	Hauswirth	1947-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	203	\N	\N
+423	119F	Jennifer	Warg	1983-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	72	\N	\N
+424	120A	Zoltan	Szlavik	1973-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	73	\N	\N
+425	120B	Aniko	Rostas 	1975-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	73	\N	\N
+1183	210E	Luca	Mini	1984-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	203	\N	\N
+426	120C	Nandor	Borbas	1971-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	73	\N	\N
+1181	210D	Annelies	Moser	1969-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	203	\N	\N
+427	120D	Zoltan	Mitro	1972-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	73	\N	\N
+1182	210F	Markus	Troxler	1949-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	203	\N	\N
+428	120E	Peter	Szakal	1971-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	73	\N	\N
+429	120F	Agnes	Simon	1974-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	73	\N	\N
+430	121A	Marc	Probst	1969-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	74	\N	\N
+431	121B	Reto	Flückiger	1980-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	74	\N	\N
+432	121C	Susann	Baumgartner	1981-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	74	\N	\N
+1184	211A	Daniel	Affolter	1977-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	204	\N	\N
+433	121D	Thomas	Koenig	1967-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	74	\N	\N
+1185	211B	Bruno	Huber	1971-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	204	\N	\N
+434	121E	Christian	Wehrli	1968-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	74	\N	\N
+435	121F	Doris	Keller	1972-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	74	\N	\N
+436	122A	Stefan	Schlatter 	1964-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	75	\N	\N
+1186	211C	Sabine	Vogt	1980-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	204	\N	\N
+437	122B	Brigitte	Grob	1967-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	75	\N	\N
+1187	211D	Claudia	Vogt	1980-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	204	\N	\N
+438	122C	Michael	Cantoni	1987-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	75	\N	\N
+439	122D	Emil	Kimmig	1957-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	75	\N	\N
+440	122E	Christjohannes	Bühler	1965-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	75	\N	\N
+1188	211E	David	Peter	1984-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	204	\N	\N
+441	122F	Karin	Knecht Bühler	1964-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	75	\N	\N
+442	123A	Fabian	Ringli	1989-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	76	\N	\N
+1189	211F	Adrian	Wichert	1994-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	204	\N	\N
+443	123B	Remo	Thoma	1977-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	76	\N	\N
+444	123C	Markus	Bieri	1966-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	76	\N	\N
+1190	212A	Edu	Hatt	1960-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	205	\N	\N
+445	123D	Sabrina	Meister	1966-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	76	\N	\N
+1191	212B	Simon	Hatt	1992-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	205	\N	\N
+446	123E	Erich	Dobler	1968-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	76	\N	\N
+447	123F	Mirjam	Gründler	1964-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	76	\N	\N
+448	124A	Thomas	Dätwyler	1961-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	77	\N	\N
+1192	212C	Serafina	Hatt	1994-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	205	\N	\N
+449	124B	Sergio	Zanelli	1975-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	77	\N	\N
+1193	212D	Elisabeth	Fuchs Hatt	1963-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	205	\N	\N
+450	124C	Markus	Gründler	1964-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	77	\N	\N
+451	124D	Hansjörg	Graf	1953-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	77	\N	\N
+452	124E	Sibylle	Bieri	1968-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	77	\N	\N
+1194	212E	Lena	Mathys	1997-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	205	\N	\N
+453	124F	Ursina	Schärer	1990-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	77	\N	\N
+454	125A	Peter	Klein	1963-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	78	\N	\N
+1195	212F	Nik	Schneider	2000-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	205	\N	\N
+455	125B	Walter	Rahm	1948-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	78	\N	\N
+1196	213A	Christian	Beglinger	1964-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	206	\N	\N
+456	125C	Guido	Gmür	1945-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	78	\N	\N
+457	125D	Fabian	Klein 	1991-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	78	\N	\N
+1197	213B	Yannis	Güdel	1994-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	206	\N	\N
+458	125E	Maria	Hochuli	1963-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	78	\N	\N
+459	125F	Yvonne	Klein	1963-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	78	\N	\N
+460	126A	Lyonel	Ehrl	1978-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	79	\N	\N
+1198	213C	Nicole	Kopp	1990-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	206	\N	\N
+461	126B	Simon	Aigner	1988-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	79	\N	\N
+1199	213D	Annelies	Etter	1989-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	206	\N	\N
+462	126C	Gert	Lexen	1968-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	79	\N	\N
+463	126D	Blandine	Ehrl	1982-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	79	\N	\N
+1200	213E	Narziss	Studer	1991-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	206	\N	\N
+464	126E	Johanna	Lieske	1978-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	79	\N	\N
+465	126F	Sebastian	Cionoiu	1989-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	79	\N	\N
+1201	213F	Peter	Müller	1957-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	206	\N	\N
+466	127A	Hubert	Klauser	1978-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	80	\N	\N
+467	127B	Daniel	Klauser	1981-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	80	\N	\N
+468	127C	Roland	Gyssler	1956-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	80	\N	\N
+1202	214A	Lukas	Rutschmann	1991-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	207	\N	\N
+469	127D	Markus	Hintermann	1985-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	80	\N	\N
+1203	214B	Benno	Neuenschwander	1992-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	207	\N	\N
+470	127E	Lilian	Knechtli	1986-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	80	\N	\N
+471	127F	Andrea	Kaspar 	1980-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	80	\N	\N
+472	128A	Lukas	Schulthess	1979-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	81	\N	\N
+1204	214C	Simone	Flück	1995-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	207	\N	\N
+473	128B	Nadja	Müller	1974-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	81	\N	\N
+1205	214D	Samuel	Moser	1993-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	207	\N	\N
+474	128C	Stephan	Copes	1974-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	81	\N	\N
+475	128D	Peter	Mohn-Lagler	1971-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	81	\N	\N
+476	128E	Benedikt	Funk	1963-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	81	\N	\N
+1206	214E	Deborah	Rentsch	1996-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	207	\N	\N
+477	128F	Maja	Rothweiler	1984-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	81	\N	\N
+1207	214F	Patrick	Müller	1993-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	207	\N	\N
+478	129A	Simon	Sauter	1987-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	82	\N	\N
+479	129B	Matasci	Cecilia	1981-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	82	\N	\N
+1208	215A	Christina	Moser	1965-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	208	\N	\N
+480	129C	Hartmann	Manuel	1978-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	82	\N	\N
+481	129D	Pedrazzi	Giulia	1982-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	82	\N	\N
+1209	215B	Marc	Schädler	1996-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	208	\N	\N
+482	129E	Stucki	Hans	1950-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	82	\N	\N
+483	129F	Arnold	Beat	1987-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	82	\N	\N
+484	130A	Dominic	Studer	1986-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	83	\N	\N
+1210	215C	Rebecca	Hänni	1993-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	208	\N	\N
+485	130B	Michael	Ochsenbein	1976-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	83	\N	\N
+1211	215D	Marianne	Meier	1993-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	208	\N	\N
+486	130C	Bea	Fürholz	1984-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	83	\N	\N
+487	130D	Erich	Herrmann	1972-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	83	\N	\N
+488	130E	Fränzi	Gangi-Fröhlich	1975-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	83	\N	\N
+1212	215E	Meryl	Schädler	1993-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	208	\N	\N
+489	130F	Ueli	Rüegsegger	1966-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	83	\N	\N
+490	131A	Christian	Gigon	1978-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	84	\N	\N
+1214	216A	Stephan	Moser	1962-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	209	\N	\N
+491	131B	Urs	Utzinger	1965-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	84	\N	\N
+492	131C	Peter	Laager	1960-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	84	\N	\N
+1213	215F	Jennifer	Berger	1996-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	208	\N	\N
+493	131D	Michael	Laager	1991-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	84	\N	\N
+494	131E	Marlies	Laager	1960-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	84	\N	\N
+1215	216B	Patrick	Krähenbühl	1995-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	209	\N	\N
+495	131F	Laura	Borner	1990-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	84	\N	\N
+496	132A	Daniel	Rohr	1990-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	85	\N	\N
+497	132B	Raphi	Neukom	1979-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	85	\N	\N
+1216	216C	Kim	Schädler	1994-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	209	\N	\N
+498	132C	Noldi	Schneider 	1948-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	85	\N	\N
+1217	216D	Celine	Jaisli	1992-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	209	\N	\N
+499	132D	Ursina	Mathys	1964-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	85	\N	\N
+500	132E	Susanne	Laager	1989-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	85	\N	\N
+1218	216E	Ellen	Reinhard	1994-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	209	\N	\N
+501	132F	Tiziana	Rigamonti	1990-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	85	\N	\N
+502	133A	Simone	GrassiEuroNight	1974-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	86	\N	\N
+1219	216F	Jonas	Krieger 	1993-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	209	\N	\N
+503	133B	Stefano	GottardiInterCityPlus	1976-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	86	\N	\N
+504	133C	Heike	TorgglerSchnellzug	1983-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	86	\N	\N
+505	133D	Oscar	GalimbertiEspresso	1965-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	86	\N	\N
+1220	217A	Annetta	Schaad	1982-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	210	\N	\N
+506	133E	Alessandra	GariboldiInterregionale	1979-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	86	\N	\N
+507	133F	Remo	MadellaTrenoPiuBici	1971-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	86	\N	\N
+1221	217B	Véronique	Ruppenthal	1993-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	210	\N	\N
+508	134A	Jürg	Schaller	1979-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	87	\N	\N
+509	134B	Patrick	Tschumi	1991-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	87	\N	\N
+1222	217C	Michelle	Ruppenthal	1996-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	210	\N	\N
+510	134C	Fabian	Borner	1972-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	87	\N	\N
+1223	217D	Annick	Attinger	1994-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	210	\N	\N
+511	134D	Roger	Müller	1970-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	87	\N	\N
+512	134E	Karin	Schaller	1977-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	87	\N	\N
+1224	217E	Florian L.	Attinger	1997-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	210	\N	\N
+513	134F	Ursula	Marty	1948-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	87	\N	\N
+514	135A	Robert	Mayrhofer	1953-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	88	\N	\N
+1225	217F	Claudine	Ruppenthal	1995-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	210	\N	\N
+515	135B	Elisabeth	Prettner	1945-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	88	\N	\N
+516	135C	Hans-Georg	Gratzer	1956-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	88	\N	\N
+1226	218A	Marine	Leloup	1989-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	211	\N	\N
+517	135D	Elisabeth	Rass	1945-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	88	\N	\N
+518	135E	Erich	Faulhammer	1945-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	88	\N	\N
+1227	218B	Margaux	Vassy	1990-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	211	\N	\N
+519	135F	Maria	Faulhammer	1943-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	88	\N	\N
+520	136A	Thomas	Widmann	1985-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	89	\N	\N
+521	136B	Jutta	Torggler	1989-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	89	\N	\N
+1228	218C	Mael	Richard	1990-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	211	\N	\N
+522	136C	Markus	Bianchi	1970-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	89	\N	\N
+523	136D	Wolfgang	Gindu-Ferrari	1972-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	89	\N	\N
+1229	218D	Amandine	Monterrat	1991-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	211	\N	\N
+524	136E	Vera	Innerebner	1982-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	89	\N	\N
+1230	218E	Celie-Anne	Abel	1988-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	211	\N	\N
+525	136F	Alexander	Reisenhofer	1985-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	89	\N	\N
+526	137A	Thomas	Gropp	1969-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	90	\N	\N
+1231	218F	Claire	Chabal	1991-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	211	\N	\N
+527	137B	Hermann	Bähr	1980-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	90	\N	\N
+528	137C	Martin	Schwarz	1973-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	90	\N	\N
+529	137D	Zsuzsa	Fekete	1983-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	90	\N	\N
+1232	219A	Susanne	Wydenkeller	1981-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	212	\N	\N
+530	137E	Andreas	Lutz	1980-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	90	\N	\N
+531	137F	Meike	Hartmann	1974-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	90	\N	\N
+1233	219B	Franziska	Meier	1991-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	212	\N	\N
+532	138A	Alexander	Schwab	1988-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	91	\N	\N
+1234	219C	Heinz	Rüegg	1960-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	212	\N	\N
+533	138B	Marcel	Schiess	1963-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	91	\N	\N
+534	138C	Werner	Wehrli	1952-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	91	\N	\N
+1235	219D	Ruedi	Hobi	1962-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	212	\N	\N
+535	138D	Christina	Wehrli	1955-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	91	\N	\N
+536	138E	Georg	Ziltener	1966-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	91	\N	\N
+1236	219E	Lukas	Reichmuth	1985-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	212	\N	\N
+537	138F	Christa	Ebneter	1956-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	91	\N	\N
+538	139A	Marcel	Ruppenthal	1965-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	92	\N	\N
+539	139B	Hans	Welti	1975-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	92	\N	\N
+1237	219F	Beat	Wägeli	1963-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	212	\N	\N
+540	139C	Ursi	Ruppenthal	1971-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	92	\N	\N
+1238	220A	Philipp	Von Arx	1992-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	213	\N	\N
+541	139D	Willi	Streuli	1969-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	92	\N	\N
+542	139E	Annemarie	Welti	1942-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	92	\N	\N
+1239	220B	Patrick	De Gottardi	1972-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	213	\N	\N
+543	139F	Käthi	Attinger-Welti	1969-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	92	\N	\N
+544	140A	Ueli	Stalder	1966-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	93	\N	\N
+545	140B	Simon	Brechbühler	1975-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	93	\N	\N
+1240	220C	Angela	Schwaab	1990-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	213	\N	\N
+546	140C	Christian	Schneebeli	1975-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	93	\N	\N
+547	140D	Klaus	Bütikofer	1958-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	93	\N	\N
+1241	220D	David	Von Arx	1994-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	213	\N	\N
+548	140E	Sabine	Mumprecht	1976-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	93	\N	\N
+1242	220E	Roger	Joss	1962-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	213	\N	\N
+549	140F	Käthi	Räber	1955-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	93	\N	\N
+550	141A	Lukas	Müller	1977-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	94	\N	\N
+551	141B	Thomas	Hofer	1983-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	94	\N	\N
+552	141C	Christoph	Hofer	1981-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	94	\N	\N
+1243	221A	Sandro	Truttmann	1992-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	214	\N	\N
+553	141D	Silvio	Strub	1951-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	94	\N	\N
+554	141E	Anna	Strub	1984-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	94	\N	\N
+555	141F	Christine	Wyss	1980-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	94	\N	\N
+1244	221B	Sven	Aschwanden	1992-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	214	\N	\N
+556	142A	Samuel	Wüthrich	1985-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	95	\N	\N
+557	142B	Res	Wüthrich	1955-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	95	\N	\N
+1245	221C	Lorenz	Pfyl	1992-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	214	\N	\N
+558	142C	Christoph	Boldini	1964-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	95	\N	\N
+1246	221D	Lukas	Schilliger 	1990-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	214	\N	\N
+559	142D	Camille	Eyer	1946-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	95	\N	\N
+560	142E	Robert	Hegi	1965-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	95	\N	\N
+1247	221E	Ueli	Wechsler	1991-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	214	\N	\N
+561	142F	Beatrice	Eyer	1951-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	95	\N	\N
+562	143A	Jakob	Wüthrich	1987-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	96	\N	\N
+563	143B	Peter	Gehriger	1965-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	96	\N	\N
+1248	222A	Alex	Odermatt	1966-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	215	\N	\N
+564	143C	Ueli	Hofstetter	1954-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	96	\N	\N
+565	143D	Michael	Steinauer	1964-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	96	\N	\N
+1249	222B	Theophil	Bucher	1962-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	215	\N	\N
+566	143E	Flavia	Antonietti	1969-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	96	\N	\N
+1250	222C	Ueli	Äschlimann	1959-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	215	\N	\N
+567	143F	Ursula	Spycher	1955-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	96	\N	\N
+568	144A	Toni	Mune	1976-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	97	\N	\N
+1251	222D	Sara	Egger	1992-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	215	\N	\N
+569	144B	Joan	Fernandez	1978-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	97	\N	\N
+570	144C	Ferran	Santoyo	1968-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	97	\N	\N
+571	144D	Fabio	Würmli	1955-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	97	\N	\N
+1252	222E	Jonas	Egger	1994-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	215	\N	\N
+572	144E	Sara	Prat	1978-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	97	\N	\N
+1253	222F	Martin	Egger	1963-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	215	\N	\N
+573	144F	Isabel	Garcia	1973-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	97	\N	\N
+1254	223A	Simon	Harston	1975-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	216	\N	\N
+1255	223B	Magnus	Berger	1961-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	216	\N	\N
+1256	223C	Immanuel	Berger	1990-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	216	\N	\N
+1257	223D	Eija	Schulze	1978-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	216	\N	\N
+1258	223E	Andreas	Kunzendorf	1988-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	216	\N	\N
+1259	223F	Anne	Kunzendorf	1990-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	216	\N	\N
+1260	224A	Claude	Rieder	1968-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	217	\N	\N
+1261	224B	Lukas	Rieder	1996-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	217	\N	\N
+1262	224C	Claudia	Rieder	1968-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	217	\N	\N
+1263	224D	Julian	Rieder	\N	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	217	\N	\N
+1264	224E	Markus	Etter	1964-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	217	\N	\N
+1265	224F	Beatrice	Gehriger	1963-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	217	\N	\N
+1266	225A	Regula	Hodler	\N	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	218	\N	\N
+1267	225B	Marie-Anne	Jungo	1962-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	218	\N	\N
+1268	225C	Nils	Eyer	1999-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	218	\N	\N
+1269	225D	Gabriel-Michael	Mathys	1996-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	218	\N	\N
+1271	225F	Sandra	Gehriger	1999-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	218	\N	\N
+1270	225E	Raffael-Alexander	Mathys	1994-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	218	\N	\N
 \.
 
 
@@ -87577,6 +87714,14 @@ ALTER TABLE ONLY category
 
 
 --
+-- Name: pk_club; Type: CONSTRAINT; Schema: public; Owner: gaudenz; Tablespace: 
+--
+
+ALTER TABLE ONLY club
+    ADD CONSTRAINT pk_club PRIMARY KEY (id);
+
+
+--
 -- Name: pk_control; Type: CONSTRAINT; Schema: public; Owner: gaudenz; Tablespace: 
 --
 
@@ -87590,6 +87735,14 @@ ALTER TABLE ONLY control
 
 ALTER TABLE ONLY controlsequence
     ADD CONSTRAINT pk_controlsequence PRIMARY KEY (id);
+
+
+--
+-- Name: pk_country; Type: CONSTRAINT; Schema: public; Owner: gaudenz; Tablespace: 
+--
+
+ALTER TABLE ONLY country
+    ADD CONSTRAINT pk_country PRIMARY KEY (id);
 
 
 --
@@ -87665,6 +87818,20 @@ ALTER TABLE ONLY team
 
 
 --
+-- Name: idx_code2_country; Type: INDEX; Schema: public; Owner: gaudenz; Tablespace: 
+--
+
+CREATE UNIQUE INDEX idx_code2_country ON country USING btree (code2);
+
+
+--
+-- Name: idx_code3_country; Type: INDEX; Schema: public; Owner: gaudenz; Tablespace: 
+--
+
+CREATE UNIQUE INDEX idx_code3_country ON country USING btree (code3);
+
+
+--
 -- Name: idx_code_course; Type: INDEX; Schema: public; Owner: gaudenz; Tablespace: 
 --
 
@@ -87676,6 +87843,13 @@ CREATE UNIQUE INDEX idx_code_course ON course USING btree (code);
 --
 
 CREATE UNIQUE INDEX idx_name_category ON category USING btree (name);
+
+
+--
+-- Name: idx_name_club; Type: INDEX; Schema: public; Owner: gaudenz; Tablespace: 
+--
+
+CREATE UNIQUE INDEX idx_name_club ON club USING btree (name);
 
 
 --
@@ -87830,11 +88004,35 @@ ALTER TABLE ONLY run
 
 
 --
+-- Name: runner_fk_address_country; Type: FK CONSTRAINT; Schema: public; Owner: gaudenz
+--
+
+ALTER TABLE ONLY runner
+    ADD CONSTRAINT runner_fk_address_country FOREIGN KEY (address_country) REFERENCES country(id);
+
+
+--
 -- Name: runner_fk_category; Type: FK CONSTRAINT; Schema: public; Owner: gaudenz
 --
 
 ALTER TABLE ONLY runner
     ADD CONSTRAINT runner_fk_category FOREIGN KEY (category) REFERENCES category(id);
+
+
+--
+-- Name: runner_fk_club; Type: FK CONSTRAINT; Schema: public; Owner: gaudenz
+--
+
+ALTER TABLE ONLY runner
+    ADD CONSTRAINT runner_fk_club FOREIGN KEY (club) REFERENCES club(id);
+
+
+--
+-- Name: runner_fk_nation; Type: FK CONSTRAINT; Schema: public; Owner: gaudenz
+--
+
+ALTER TABLE ONLY runner
+    ADD CONSTRAINT runner_fk_nation FOREIGN KEY (nation) REFERENCES country(id);
 
 
 --
@@ -87894,117 +88092,6 @@ GRANT ALL ON SCHEMA public TO PUBLIC;
 REVOKE ALL ON TABLE category FROM PUBLIC;
 REVOKE ALL ON TABLE category FROM gaudenz;
 GRANT ALL ON TABLE category TO gaudenz;
-GRANT ALL ON TABLE category TO "24h";
-
-
---
--- Name: control; Type: ACL; Schema: public; Owner: gaudenz
---
-
-REVOKE ALL ON TABLE control FROM PUBLIC;
-REVOKE ALL ON TABLE control FROM gaudenz;
-GRANT ALL ON TABLE control TO gaudenz;
-GRANT ALL ON TABLE control TO "24h";
-
-
---
--- Name: controlsequence; Type: ACL; Schema: public; Owner: gaudenz
---
-
-REVOKE ALL ON TABLE controlsequence FROM PUBLIC;
-REVOKE ALL ON TABLE controlsequence FROM gaudenz;
-GRANT ALL ON TABLE controlsequence TO gaudenz;
-GRANT ALL ON TABLE controlsequence TO "24h";
-
-
---
--- Name: course; Type: ACL; Schema: public; Owner: gaudenz
---
-
-REVOKE ALL ON TABLE course FROM PUBLIC;
-REVOKE ALL ON TABLE course FROM gaudenz;
-GRANT ALL ON TABLE course TO gaudenz;
-GRANT ALL ON TABLE course TO "24h";
-
-
---
--- Name: coursecontrol; Type: ACL; Schema: public; Owner: gaudenz
---
-
-REVOKE ALL ON TABLE coursecontrol FROM PUBLIC;
-REVOKE ALL ON TABLE coursecontrol FROM gaudenz;
-GRANT ALL ON TABLE coursecontrol TO gaudenz;
-GRANT ALL ON TABLE coursecontrol TO "24h";
-
-
---
--- Name: log; Type: ACL; Schema: public; Owner: gaudenz
---
-
-REVOKE ALL ON TABLE log FROM PUBLIC;
-REVOKE ALL ON TABLE log FROM gaudenz;
-GRANT ALL ON TABLE log TO gaudenz;
-GRANT ALL ON TABLE log TO "24h";
-
-
---
--- Name: punch; Type: ACL; Schema: public; Owner: gaudenz
---
-
-REVOKE ALL ON TABLE punch FROM PUBLIC;
-REVOKE ALL ON TABLE punch FROM gaudenz;
-GRANT ALL ON TABLE punch TO gaudenz;
-GRANT ALL ON TABLE punch TO "24h";
-
-
---
--- Name: run; Type: ACL; Schema: public; Owner: gaudenz
---
-
-REVOKE ALL ON TABLE run FROM PUBLIC;
-REVOKE ALL ON TABLE run FROM gaudenz;
-GRANT ALL ON TABLE run TO gaudenz;
-GRANT ALL ON TABLE run TO "24h";
-
-
---
--- Name: runner; Type: ACL; Schema: public; Owner: gaudenz
---
-
-REVOKE ALL ON TABLE runner FROM PUBLIC;
-REVOKE ALL ON TABLE runner FROM gaudenz;
-GRANT ALL ON TABLE runner TO gaudenz;
-GRANT ALL ON TABLE runner TO "24h";
-
-
---
--- Name: sicard; Type: ACL; Schema: public; Owner: gaudenz
---
-
-REVOKE ALL ON TABLE sicard FROM PUBLIC;
-REVOKE ALL ON TABLE sicard FROM gaudenz;
-GRANT ALL ON TABLE sicard TO gaudenz;
-GRANT ALL ON TABLE sicard TO "24h";
-
-
---
--- Name: sistation; Type: ACL; Schema: public; Owner: gaudenz
---
-
-REVOKE ALL ON TABLE sistation FROM PUBLIC;
-REVOKE ALL ON TABLE sistation FROM gaudenz;
-GRANT ALL ON TABLE sistation TO gaudenz;
-GRANT ALL ON TABLE sistation TO "24h";
-
-
---
--- Name: team; Type: ACL; Schema: public; Owner: gaudenz
---
-
-REVOKE ALL ON TABLE team FROM PUBLIC;
-REVOKE ALL ON TABLE team FROM gaudenz;
-GRANT ALL ON TABLE team TO gaudenz;
-GRANT ALL ON TABLE team TO "24h";
 
 
 --
@@ -88014,7 +88101,15 @@ GRANT ALL ON TABLE team TO "24h";
 REVOKE ALL ON SEQUENCE category_id_seq FROM PUBLIC;
 REVOKE ALL ON SEQUENCE category_id_seq FROM gaudenz;
 GRANT ALL ON SEQUENCE category_id_seq TO gaudenz;
-GRANT ALL ON SEQUENCE category_id_seq TO "24h";
+
+
+--
+-- Name: control; Type: ACL; Schema: public; Owner: gaudenz
+--
+
+REVOKE ALL ON TABLE control FROM PUBLIC;
+REVOKE ALL ON TABLE control FROM gaudenz;
+GRANT ALL ON TABLE control TO gaudenz;
 
 
 --
@@ -88024,7 +88119,15 @@ GRANT ALL ON SEQUENCE category_id_seq TO "24h";
 REVOKE ALL ON SEQUENCE control_id_seq FROM PUBLIC;
 REVOKE ALL ON SEQUENCE control_id_seq FROM gaudenz;
 GRANT ALL ON SEQUENCE control_id_seq TO gaudenz;
-GRANT ALL ON SEQUENCE control_id_seq TO "24h";
+
+
+--
+-- Name: controlsequence; Type: ACL; Schema: public; Owner: gaudenz
+--
+
+REVOKE ALL ON TABLE controlsequence FROM PUBLIC;
+REVOKE ALL ON TABLE controlsequence FROM gaudenz;
+GRANT ALL ON TABLE controlsequence TO gaudenz;
 
 
 --
@@ -88034,7 +88137,15 @@ GRANT ALL ON SEQUENCE control_id_seq TO "24h";
 REVOKE ALL ON SEQUENCE controlsequence_id_seq FROM PUBLIC;
 REVOKE ALL ON SEQUENCE controlsequence_id_seq FROM gaudenz;
 GRANT ALL ON SEQUENCE controlsequence_id_seq TO gaudenz;
-GRANT ALL ON SEQUENCE controlsequence_id_seq TO "24h";
+
+
+--
+-- Name: course; Type: ACL; Schema: public; Owner: gaudenz
+--
+
+REVOKE ALL ON TABLE course FROM PUBLIC;
+REVOKE ALL ON TABLE course FROM gaudenz;
+GRANT ALL ON TABLE course TO gaudenz;
 
 
 --
@@ -88044,7 +88155,33 @@ GRANT ALL ON SEQUENCE controlsequence_id_seq TO "24h";
 REVOKE ALL ON SEQUENCE course_id_seq FROM PUBLIC;
 REVOKE ALL ON SEQUENCE course_id_seq FROM gaudenz;
 GRANT ALL ON SEQUENCE course_id_seq TO gaudenz;
-GRANT ALL ON SEQUENCE course_id_seq TO "24h";
+
+
+--
+-- Name: coursecontrol; Type: ACL; Schema: public; Owner: gaudenz
+--
+
+REVOKE ALL ON TABLE coursecontrol FROM PUBLIC;
+REVOKE ALL ON TABLE coursecontrol FROM gaudenz;
+GRANT ALL ON TABLE coursecontrol TO gaudenz;
+
+
+--
+-- Name: log; Type: ACL; Schema: public; Owner: gaudenz
+--
+
+REVOKE ALL ON TABLE log FROM PUBLIC;
+REVOKE ALL ON TABLE log FROM gaudenz;
+GRANT ALL ON TABLE log TO gaudenz;
+
+
+--
+-- Name: punch; Type: ACL; Schema: public; Owner: gaudenz
+--
+
+REVOKE ALL ON TABLE punch FROM PUBLIC;
+REVOKE ALL ON TABLE punch FROM gaudenz;
+GRANT ALL ON TABLE punch TO gaudenz;
 
 
 --
@@ -88054,7 +88191,15 @@ GRANT ALL ON SEQUENCE course_id_seq TO "24h";
 REVOKE ALL ON SEQUENCE punch_id_seq FROM PUBLIC;
 REVOKE ALL ON SEQUENCE punch_id_seq FROM gaudenz;
 GRANT ALL ON SEQUENCE punch_id_seq TO gaudenz;
-GRANT ALL ON SEQUENCE punch_id_seq TO "24h";
+
+
+--
+-- Name: run; Type: ACL; Schema: public; Owner: gaudenz
+--
+
+REVOKE ALL ON TABLE run FROM PUBLIC;
+REVOKE ALL ON TABLE run FROM gaudenz;
+GRANT ALL ON TABLE run TO gaudenz;
 
 
 --
@@ -88064,7 +88209,15 @@ GRANT ALL ON SEQUENCE punch_id_seq TO "24h";
 REVOKE ALL ON SEQUENCE run_id_seq FROM PUBLIC;
 REVOKE ALL ON SEQUENCE run_id_seq FROM gaudenz;
 GRANT ALL ON SEQUENCE run_id_seq TO gaudenz;
-GRANT ALL ON SEQUENCE run_id_seq TO "24h";
+
+
+--
+-- Name: runner; Type: ACL; Schema: public; Owner: gaudenz
+--
+
+REVOKE ALL ON TABLE runner FROM PUBLIC;
+REVOKE ALL ON TABLE runner FROM gaudenz;
+GRANT ALL ON TABLE runner TO gaudenz;
 
 
 --
@@ -88074,7 +88227,33 @@ GRANT ALL ON SEQUENCE run_id_seq TO "24h";
 REVOKE ALL ON SEQUENCE runner_id_seq FROM PUBLIC;
 REVOKE ALL ON SEQUENCE runner_id_seq FROM gaudenz;
 GRANT ALL ON SEQUENCE runner_id_seq TO gaudenz;
-GRANT ALL ON SEQUENCE runner_id_seq TO "24h";
+
+
+--
+-- Name: sicard; Type: ACL; Schema: public; Owner: gaudenz
+--
+
+REVOKE ALL ON TABLE sicard FROM PUBLIC;
+REVOKE ALL ON TABLE sicard FROM gaudenz;
+GRANT ALL ON TABLE sicard TO gaudenz;
+
+
+--
+-- Name: sistation; Type: ACL; Schema: public; Owner: gaudenz
+--
+
+REVOKE ALL ON TABLE sistation FROM PUBLIC;
+REVOKE ALL ON TABLE sistation FROM gaudenz;
+GRANT ALL ON TABLE sistation TO gaudenz;
+
+
+--
+-- Name: team; Type: ACL; Schema: public; Owner: gaudenz
+--
+
+REVOKE ALL ON TABLE team FROM PUBLIC;
+REVOKE ALL ON TABLE team FROM gaudenz;
+GRANT ALL ON TABLE team TO gaudenz;
 
 
 --
@@ -88084,7 +88263,6 @@ GRANT ALL ON SEQUENCE runner_id_seq TO "24h";
 REVOKE ALL ON SEQUENCE team_id_seq FROM PUBLIC;
 REVOKE ALL ON SEQUENCE team_id_seq FROM gaudenz;
 GRANT ALL ON SEQUENCE team_id_seq TO gaudenz;
-GRANT ALL ON SEQUENCE team_id_seq TO "24h";
 
 
 --

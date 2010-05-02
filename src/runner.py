@@ -41,35 +41,64 @@ class Runner(AbstractRunner, MyStorm):
     surname = Unicode()
     dateofbirth = Date()
     sex = RawStr()
+    _nation_id = Int(name='nation')
+    nation = Reference(_nation_id, 'Country.id')
+    solvnr = Unicode()
     startblock = Int()
     starttime = Date()
     _category_id = Int(name='category')
     category = Reference(_category_id, 'Category.id')
-    club = Int()
+    _club_id = Int(name='club')
+    club = Reference(_club_id, 'Club.id')
     address1 = Unicode()
     address2 = Unicode()
     zipcode = Unicode()
     city = Unicode()
+    _address_country_id = Int(name='address_country')
+    address_country = Reference(_address_country_id, 'Country.id')
     email = Unicode()
-    solvnr = Unicode()
     startfee = Int()
     paid = Bool()
+    preferred_category = Unicode()
+    doping_declaration = Bool()
     comment = Unicode()
     _team_id = Int(name='team')
     team = Reference(_team_id, 'Team.id')
     sicards = ReferenceSet(id, 'SICard._runner_id')
 
     def __init__(self, sname=u'', gname=u'', sicard = None, category = None, number = None,
+                 dateofbirth=None, sex=None, nation=None, solvnr=None, startblock=None, 
+                 starttime=None, club=None, address1=None, address2=None, zipcode=None, 
+                 city=None, address_country=None, email=None, startfee=None, paid=None, 
+                 preferred_category=None, doping_declaration=None, comment=None,
                  store = None):
         self.surname = sname
         self.given_name = gname
-        self.number = number
         if store is not None:
             self._store = store
         if sicard is not None:
             self.add_sicard(sicard)
         if category is not None:
             self.set_category(category)
+        self.number = number
+        self.dateofbirth = dateofbirth
+        self.sex = sex
+        self.nation = nation
+        self.solvnr = solvnr
+        self.startblock = startblock
+        self.starttime = starttime
+        self.club = club
+        self.address1 = address1
+        self.address2 = address2
+        self.zipcode = zipcode
+        self.city = city
+        self.address_country = address_country
+        self.email = email
+        self.startfee = startfee
+        self.paid = paid
+        self.preferred_category = preferred_category
+        self.doping_declaration = doping_declaration
+        self.comment = comment
         
     def __str__(self):
         return unicode(self).encode('utf-8')
@@ -205,6 +234,44 @@ class Category(Storm, Rankable):
         l.extend(list(self.teams))
         return l
     members = property(_get_members)
+
+class Country(Storm):
+    __storm_table__ = 'country'
+
+    id = Int(primary=True)
+    name = Unicode()
+    code2 = Unicode()
+    code3 = Unicode()
+    runners = ReferenceSet(id, 'Runner._nation_id')
+
+    def __init__(self, code3, code2, name=None):
+        self.name = name
+        self.code3 = code3
+        self.code2 = code2
+
+    def __str__(self):
+        return unicode(self).encode('utf-8')
     
+    def __unicode__(self):
+        return self.code3
+
+
+class Club(Storm):
+    __storm_table__ = 'club'
+
+    id = Int(primary=True)
+    name = Unicode()
+    runners = ReferenceSet(id, 'Runner._club_id')
+
+    def __init__(self, name):
+        self.name = name
+
+    def __str__(self):
+        return unicode(self).encode('utf-8')
+    
+    def __unicode__(self):
+        return self.name
+
+
 class RunnerException(Exception):
     pass

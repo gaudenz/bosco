@@ -2,6 +2,7 @@
 -- PostgreSQL database dump
 --
 
+SET statement_timeout = 0;
 SET client_encoding = 'UTF8';
 SET standard_conforming_strings = off;
 SET check_function_bodies = false;
@@ -15,7 +16,10 @@ ALTER TABLE ONLY public.team DROP CONSTRAINT team_fk_category;
 ALTER TABLE ONLY public.sistation DROP CONSTRAINT sistation_fk_control;
 ALTER TABLE ONLY public.sicard DROP CONSTRAINT sicard_fk_runner;
 ALTER TABLE ONLY public.runner DROP CONSTRAINT runner_fk_team;
+ALTER TABLE ONLY public.runner DROP CONSTRAINT runner_fk_nation;
+ALTER TABLE ONLY public.runner DROP CONSTRAINT runner_fk_club;
 ALTER TABLE ONLY public.runner DROP CONSTRAINT runner_fk_category;
+ALTER TABLE ONLY public.runner DROP CONSTRAINT runner_fk_address_country;
 ALTER TABLE ONLY public.run DROP CONSTRAINT run_fk_sicard;
 ALTER TABLE ONLY public.run DROP CONSTRAINT run_fk_course;
 ALTER TABLE ONLY public.punch DROP CONSTRAINT punch_fk_sistation;
@@ -30,8 +34,11 @@ DROP INDEX public.idx_run_sistation_punchtime_punch;
 DROP INDEX public.idx_number_team;
 DROP INDEX public.idx_number_runner;
 DROP INDEX public.idx_name_team;
+DROP INDEX public.idx_name_club;
 DROP INDEX public.idx_name_category;
 DROP INDEX public.idx_code_course;
+DROP INDEX public.idx_code3_country;
+DROP INDEX public.idx_code2_country;
 ALTER TABLE ONLY public.team DROP CONSTRAINT pk_team;
 ALTER TABLE ONLY public.sistation DROP CONSTRAINT pk_sistation;
 ALTER TABLE ONLY public.sicard DROP CONSTRAINT pk_sicard;
@@ -41,8 +48,10 @@ ALTER TABLE ONLY public.punch DROP CONSTRAINT pk_punch;
 ALTER TABLE ONLY public.override_sistation DROP CONSTRAINT pk_override_sistation;
 ALTER TABLE ONLY public.coursecontrol DROP CONSTRAINT pk_coursecontrol;
 ALTER TABLE ONLY public.course DROP CONSTRAINT pk_course;
+ALTER TABLE ONLY public.country DROP CONSTRAINT pk_country;
 ALTER TABLE ONLY public.controlsequence DROP CONSTRAINT pk_controlsequence;
 ALTER TABLE ONLY public.control DROP CONSTRAINT pk_control;
+ALTER TABLE ONLY public.club DROP CONSTRAINT pk_club;
 ALTER TABLE ONLY public.category DROP CONSTRAINT pk_category;
 ALTER TABLE public.team ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE public.runner ALTER COLUMN id DROP DEFAULT;
@@ -52,40 +61,46 @@ ALTER TABLE public.override_sistation ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE public.coursecontrol ALTER COLUMN controlid DROP DEFAULT;
 ALTER TABLE public.coursecontrol ALTER COLUMN courseid DROP DEFAULT;
 ALTER TABLE public.course ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE public.country ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE public.controlsequence ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE public.control ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE public.club ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE public.category ALTER COLUMN id DROP DEFAULT;
 DROP SEQUENCE public.team_id_seq;
-DROP SEQUENCE public.runner_id_seq;
-DROP SEQUENCE public.run_id_seq;
-DROP SEQUENCE public.punch_id_seq;
-DROP SEQUENCE public.override_sistation_id_seq;
-DROP SEQUENCE public.coursecontrol_courseid_seq;
-DROP SEQUENCE public.coursecontrol_controlid_seq;
-DROP SEQUENCE public.course_id_seq;
-DROP SEQUENCE public.controlsequence_id_seq;
-DROP SEQUENCE public.control_id_seq;
-DROP SEQUENCE public.category_id_seq;
-DROP FUNCTION public.punch_trigger();
-DROP FUNCTION public.change_trigger();
 DROP TABLE public.team;
 DROP TABLE public.sistation;
 DROP TABLE public.sicard;
+DROP SEQUENCE public.runner_id_seq;
 DROP TABLE public.runner;
-DROP TYPE public.sex;
+DROP SEQUENCE public.run_id_seq;
 DROP TABLE public.run;
+DROP SEQUENCE public.punch_id_seq;
 DROP TABLE public.punch;
 DROP TABLE public.override_team;
+DROP SEQUENCE public.override_sistation_id_seq;
 DROP TABLE public.override_sistation;
 DROP TABLE public.override_runner;
 DROP TABLE public.override_run;
 DROP TABLE public.override_punch;
 DROP TABLE public.log;
+DROP SEQUENCE public.coursecontrol_courseid_seq;
+DROP SEQUENCE public.coursecontrol_controlid_seq;
 DROP TABLE public.coursecontrol;
+DROP SEQUENCE public.course_id_seq;
 DROP TABLE public.course;
+DROP SEQUENCE public.country_id_seq;
+DROP TABLE public.country;
+DROP SEQUENCE public.controlsequence_id_seq;
 DROP TABLE public.controlsequence;
+DROP SEQUENCE public.control_id_seq;
 DROP TABLE public.control;
+DROP SEQUENCE public.club_id_seq;
+DROP TABLE public.club;
+DROP SEQUENCE public.category_id_seq;
 DROP TABLE public.category;
+DROP FUNCTION public.punch_trigger();
+DROP FUNCTION public.change_trigger();
+DROP TYPE public.sex;
 DROP PROCEDURAL LANGUAGE plpgsql;
 DROP SCHEMA public;
 --
@@ -115,6 +130,58 @@ ALTER PROCEDURAL LANGUAGE plpgsql OWNER TO gaudenz;
 
 SET search_path = public, pg_catalog;
 
+--
+-- Name: sex; Type: TYPE; Schema: public; Owner: gaudenz
+--
+
+CREATE TYPE sex AS ENUM (
+    'male',
+    'female'
+);
+
+
+ALTER TYPE public.sex OWNER TO gaudenz;
+
+--
+-- Name: change_trigger(); Type: FUNCTION; Schema: public; Owner: gaudenz
+--
+
+CREATE FUNCTION change_trigger() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  IF (TG_OP = 'DELETE') THEN
+    INSERT INTO log VALUES (TG_TABLE_NAME, NOW(), OLD.id);
+  ELSE
+    INSERT INTO log VALUES (TG_TABLE_NAME, NOW(), NEW.id);
+  END IF;
+  RETURN NULL;
+END;
+$$;
+
+
+ALTER FUNCTION public.change_trigger() OWNER TO gaudenz;
+
+--
+-- Name: punch_trigger(); Type: FUNCTION; Schema: public; Owner: gaudenz
+--
+
+CREATE FUNCTION punch_trigger() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+begin
+if (TG_OP = 'DELETE') THEN
+insert into log values(1, now(), OLD.id);
+else
+insert into log values(1, now(), NEW.id);
+end if;
+return null;
+end;
+$$;
+
+
+ALTER FUNCTION public.punch_trigger() OWNER TO gaudenz;
+
 SET default_tablespace = '';
 
 SET default_with_oids = false;
@@ -132,6 +199,74 @@ CREATE TABLE category (
 ALTER TABLE public.category OWNER TO gaudenz;
 
 --
+-- Name: category_id_seq; Type: SEQUENCE; Schema: public; Owner: gaudenz
+--
+
+CREATE SEQUENCE category_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MAXVALUE
+    NO MINVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.category_id_seq OWNER TO gaudenz;
+
+--
+-- Name: category_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: gaudenz
+--
+
+ALTER SEQUENCE category_id_seq OWNED BY category.id;
+
+
+--
+-- Name: category_id_seq; Type: SEQUENCE SET; Schema: public; Owner: gaudenz
+--
+
+SELECT pg_catalog.setval('category_id_seq', 2, true);
+
+
+--
+-- Name: club; Type: TABLE; Schema: public; Owner: gaudenz; Tablespace: 
+--
+
+CREATE TABLE club (
+    id integer NOT NULL,
+    name character varying(255) NOT NULL
+);
+
+
+ALTER TABLE public.club OWNER TO gaudenz;
+
+--
+-- Name: club_id_seq; Type: SEQUENCE; Schema: public; Owner: gaudenz
+--
+
+CREATE SEQUENCE club_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MAXVALUE
+    NO MINVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.club_id_seq OWNER TO gaudenz;
+
+--
+-- Name: club_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: gaudenz
+--
+
+ALTER SEQUENCE club_id_seq OWNED BY club.id;
+
+
+--
+-- Name: club_id_seq; Type: SEQUENCE SET; Schema: public; Owner: gaudenz
+--
+
+SELECT pg_catalog.setval('club_id_seq', 1, false);
+
+
+--
 -- Name: control; Type: TABLE; Schema: public; Owner: gaudenz; Tablespace: 
 --
 
@@ -143,6 +278,34 @@ CREATE TABLE control (
 
 
 ALTER TABLE public.control OWNER TO gaudenz;
+
+--
+-- Name: control_id_seq; Type: SEQUENCE; Schema: public; Owner: gaudenz
+--
+
+CREATE SEQUENCE control_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MAXVALUE
+    NO MINVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.control_id_seq OWNER TO gaudenz;
+
+--
+-- Name: control_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: gaudenz
+--
+
+ALTER SEQUENCE control_id_seq OWNED BY control.id;
+
+
+--
+-- Name: control_id_seq; Type: SEQUENCE SET; Schema: public; Owner: gaudenz
+--
+
+SELECT pg_catalog.setval('control_id_seq', 34, true);
+
 
 --
 -- Name: controlsequence; Type: TABLE; Schema: public; Owner: gaudenz; Tablespace: 
@@ -161,6 +324,76 @@ CREATE TABLE controlsequence (
 ALTER TABLE public.controlsequence OWNER TO gaudenz;
 
 --
+-- Name: controlsequence_id_seq; Type: SEQUENCE; Schema: public; Owner: gaudenz
+--
+
+CREATE SEQUENCE controlsequence_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MAXVALUE
+    NO MINVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.controlsequence_id_seq OWNER TO gaudenz;
+
+--
+-- Name: controlsequence_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: gaudenz
+--
+
+ALTER SEQUENCE controlsequence_id_seq OWNED BY controlsequence.id;
+
+
+--
+-- Name: controlsequence_id_seq; Type: SEQUENCE SET; Schema: public; Owner: gaudenz
+--
+
+SELECT pg_catalog.setval('controlsequence_id_seq', 246, true);
+
+
+--
+-- Name: country; Type: TABLE; Schema: public; Owner: gaudenz; Tablespace: 
+--
+
+CREATE TABLE country (
+    id integer NOT NULL,
+    code3 character varying(3) NOT NULL,
+    code2 character varying(2) NOT NULL,
+    name character varying(255)
+);
+
+
+ALTER TABLE public.country OWNER TO gaudenz;
+
+--
+-- Name: country_id_seq; Type: SEQUENCE; Schema: public; Owner: gaudenz
+--
+
+CREATE SEQUENCE country_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MAXVALUE
+    NO MINVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.country_id_seq OWNER TO gaudenz;
+
+--
+-- Name: country_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: gaudenz
+--
+
+ALTER SEQUENCE country_id_seq OWNED BY country.id;
+
+
+--
+-- Name: country_id_seq; Type: SEQUENCE SET; Schema: public; Owner: gaudenz
+--
+
+SELECT pg_catalog.setval('country_id_seq', 1, false);
+
+
+--
 -- Name: course; Type: TABLE; Schema: public; Owner: gaudenz; Tablespace: 
 --
 
@@ -175,6 +408,34 @@ CREATE TABLE course (
 ALTER TABLE public.course OWNER TO gaudenz;
 
 --
+-- Name: course_id_seq; Type: SEQUENCE; Schema: public; Owner: gaudenz
+--
+
+CREATE SEQUENCE course_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MAXVALUE
+    NO MINVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.course_id_seq OWNER TO gaudenz;
+
+--
+-- Name: course_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: gaudenz
+--
+
+ALTER SEQUENCE course_id_seq OWNED BY course.id;
+
+
+--
+-- Name: course_id_seq; Type: SEQUENCE SET; Schema: public; Owner: gaudenz
+--
+
+SELECT pg_catalog.setval('course_id_seq', 41, true);
+
+
+--
 -- Name: coursecontrol; Type: TABLE; Schema: public; Owner: gaudenz; Tablespace: 
 --
 
@@ -185,6 +446,62 @@ CREATE TABLE coursecontrol (
 
 
 ALTER TABLE public.coursecontrol OWNER TO gaudenz;
+
+--
+-- Name: coursecontrol_controlid_seq; Type: SEQUENCE; Schema: public; Owner: gaudenz
+--
+
+CREATE SEQUENCE coursecontrol_controlid_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MAXVALUE
+    NO MINVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.coursecontrol_controlid_seq OWNER TO gaudenz;
+
+--
+-- Name: coursecontrol_controlid_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: gaudenz
+--
+
+ALTER SEQUENCE coursecontrol_controlid_seq OWNED BY coursecontrol.controlid;
+
+
+--
+-- Name: coursecontrol_controlid_seq; Type: SEQUENCE SET; Schema: public; Owner: gaudenz
+--
+
+SELECT pg_catalog.setval('coursecontrol_controlid_seq', 1, false);
+
+
+--
+-- Name: coursecontrol_courseid_seq; Type: SEQUENCE; Schema: public; Owner: gaudenz
+--
+
+CREATE SEQUENCE coursecontrol_courseid_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MAXVALUE
+    NO MINVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.coursecontrol_courseid_seq OWNER TO gaudenz;
+
+--
+-- Name: coursecontrol_courseid_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: gaudenz
+--
+
+ALTER SEQUENCE coursecontrol_courseid_seq OWNED BY coursecontrol.courseid;
+
+
+--
+-- Name: coursecontrol_courseid_seq; Type: SEQUENCE SET; Schema: public; Owner: gaudenz
+--
+
+SELECT pg_catalog.setval('coursecontrol_courseid_seq', 1, false);
+
 
 --
 -- Name: log; Type: TABLE; Schema: public; Owner: gaudenz; Tablespace: 
@@ -244,6 +561,34 @@ CREATE TABLE override_sistation (
 ALTER TABLE public.override_sistation OWNER TO gaudenz;
 
 --
+-- Name: override_sistation_id_seq; Type: SEQUENCE; Schema: public; Owner: gaudenz
+--
+
+CREATE SEQUENCE override_sistation_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MAXVALUE
+    NO MINVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.override_sistation_id_seq OWNER TO gaudenz;
+
+--
+-- Name: override_sistation_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: gaudenz
+--
+
+ALTER SEQUENCE override_sistation_id_seq OWNED BY override_sistation.id;
+
+
+--
+-- Name: override_sistation_id_seq; Type: SEQUENCE SET; Schema: public; Owner: gaudenz
+--
+
+SELECT pg_catalog.setval('override_sistation_id_seq', 1, false);
+
+
+--
 -- Name: override_team; Type: TABLE; Schema: public; Owner: gaudenz; Tablespace: 
 --
 
@@ -271,6 +616,34 @@ CREATE TABLE punch (
 ALTER TABLE public.punch OWNER TO gaudenz;
 
 --
+-- Name: punch_id_seq; Type: SEQUENCE; Schema: public; Owner: gaudenz
+--
+
+CREATE SEQUENCE punch_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MAXVALUE
+    NO MINVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.punch_id_seq OWNER TO gaudenz;
+
+--
+-- Name: punch_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: gaudenz
+--
+
+ALTER SEQUENCE punch_id_seq OWNED BY punch.id;
+
+
+--
+-- Name: punch_id_seq; Type: SEQUENCE SET; Schema: public; Owner: gaudenz
+--
+
+SELECT pg_catalog.setval('punch_id_seq', 2482, true);
+
+
+--
 -- Name: run; Type: TABLE; Schema: public; Owner: gaudenz; Tablespace: 
 --
 
@@ -293,16 +666,32 @@ CREATE TABLE run (
 ALTER TABLE public.run OWNER TO gaudenz;
 
 --
--- Name: sex; Type: TYPE; Schema: public; Owner: gaudenz
+-- Name: run_id_seq; Type: SEQUENCE; Schema: public; Owner: gaudenz
 --
 
-CREATE TYPE sex AS ENUM (
-    'male',
-    'female'
-);
+CREATE SEQUENCE run_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MAXVALUE
+    NO MINVALUE
+    CACHE 1;
 
 
-ALTER TYPE public.sex OWNER TO gaudenz;
+ALTER TABLE public.run_id_seq OWNER TO gaudenz;
+
+--
+-- Name: run_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: gaudenz
+--
+
+ALTER SEQUENCE run_id_seq OWNED BY run.id;
+
+
+--
+-- Name: run_id_seq; Type: SEQUENCE SET; Schema: public; Owner: gaudenz
+--
+
+SELECT pg_catalog.setval('run_id_seq', 327, true);
+
 
 --
 -- Name: runner; Type: TABLE; Schema: public; Owner: gaudenz; Tablespace: 
@@ -325,16 +714,46 @@ CREATE TABLE runner (
     address2 character varying(255),
     zipcode character varying(20) DEFAULT NULL::character varying,
     city character varying(255) DEFAULT NULL::character varying,
-    address_country_id integer,
+    address_country integer,
     email character varying(255) DEFAULT NULL::character varying,
     startfee integer,
     paid boolean,
     comment text,
-    team integer
+    team integer,
+    preferred_category character varying(255),
+    doping_declaration boolean
 );
 
 
 ALTER TABLE public.runner OWNER TO gaudenz;
+
+--
+-- Name: runner_id_seq; Type: SEQUENCE; Schema: public; Owner: gaudenz
+--
+
+CREATE SEQUENCE runner_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MAXVALUE
+    NO MINVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.runner_id_seq OWNER TO gaudenz;
+
+--
+-- Name: runner_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: gaudenz
+--
+
+ALTER SEQUENCE runner_id_seq OWNED BY runner.id;
+
+
+--
+-- Name: runner_id_seq; Type: SEQUENCE SET; Schema: public; Owner: gaudenz
+--
+
+SELECT pg_catalog.setval('runner_id_seq', 49, true);
+
 
 --
 -- Name: sicard; Type: TABLE; Schema: public; Owner: gaudenz; Tablespace: 
@@ -378,323 +797,11 @@ CREATE TABLE team (
 ALTER TABLE public.team OWNER TO gaudenz;
 
 --
--- Name: change_trigger(); Type: FUNCTION; Schema: public; Owner: gaudenz
---
-
-CREATE FUNCTION change_trigger() RETURNS trigger
-    AS $$
-BEGIN
-  IF (TG_OP = 'DELETE') THEN
-    INSERT INTO log VALUES (TG_TABLE_NAME, NOW(), OLD.id);
-  ELSE
-    INSERT INTO log VALUES (TG_TABLE_NAME, NOW(), NEW.id);
-  END IF;
-  RETURN NULL;
-END;
-$$
-    LANGUAGE plpgsql;
-
-
-ALTER FUNCTION public.change_trigger() OWNER TO gaudenz;
-
---
--- Name: punch_trigger(); Type: FUNCTION; Schema: public; Owner: gaudenz
---
-
-CREATE FUNCTION punch_trigger() RETURNS trigger
-    AS $$
-begin
-if (TG_OP = 'DELETE') THEN
-insert into log values(1, now(), OLD.id);
-else
-insert into log values(1, now(), NEW.id);
-end if;
-return null;
-end;
-$$
-    LANGUAGE plpgsql;
-
-
-ALTER FUNCTION public.punch_trigger() OWNER TO gaudenz;
-
---
--- Name: category_id_seq; Type: SEQUENCE; Schema: public; Owner: gaudenz
---
-
-CREATE SEQUENCE category_id_seq
-    INCREMENT BY 1
-    NO MAXVALUE
-    NO MINVALUE
-    CACHE 1;
-
-
-ALTER TABLE public.category_id_seq OWNER TO gaudenz;
-
---
--- Name: category_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: gaudenz
---
-
-ALTER SEQUENCE category_id_seq OWNED BY category.id;
-
-
---
--- Name: category_id_seq; Type: SEQUENCE SET; Schema: public; Owner: gaudenz
---
-
-SELECT pg_catalog.setval('category_id_seq', 2, true);
-
-
---
--- Name: control_id_seq; Type: SEQUENCE; Schema: public; Owner: gaudenz
---
-
-CREATE SEQUENCE control_id_seq
-    INCREMENT BY 1
-    NO MAXVALUE
-    NO MINVALUE
-    CACHE 1;
-
-
-ALTER TABLE public.control_id_seq OWNER TO gaudenz;
-
---
--- Name: control_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: gaudenz
---
-
-ALTER SEQUENCE control_id_seq OWNED BY control.id;
-
-
---
--- Name: control_id_seq; Type: SEQUENCE SET; Schema: public; Owner: gaudenz
---
-
-SELECT pg_catalog.setval('control_id_seq', 34, true);
-
-
---
--- Name: controlsequence_id_seq; Type: SEQUENCE; Schema: public; Owner: gaudenz
---
-
-CREATE SEQUENCE controlsequence_id_seq
-    INCREMENT BY 1
-    NO MAXVALUE
-    NO MINVALUE
-    CACHE 1;
-
-
-ALTER TABLE public.controlsequence_id_seq OWNER TO gaudenz;
-
---
--- Name: controlsequence_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: gaudenz
---
-
-ALTER SEQUENCE controlsequence_id_seq OWNED BY controlsequence.id;
-
-
---
--- Name: controlsequence_id_seq; Type: SEQUENCE SET; Schema: public; Owner: gaudenz
---
-
-SELECT pg_catalog.setval('controlsequence_id_seq', 246, true);
-
-
---
--- Name: course_id_seq; Type: SEQUENCE; Schema: public; Owner: gaudenz
---
-
-CREATE SEQUENCE course_id_seq
-    INCREMENT BY 1
-    NO MAXVALUE
-    NO MINVALUE
-    CACHE 1;
-
-
-ALTER TABLE public.course_id_seq OWNER TO gaudenz;
-
---
--- Name: course_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: gaudenz
---
-
-ALTER SEQUENCE course_id_seq OWNED BY course.id;
-
-
---
--- Name: course_id_seq; Type: SEQUENCE SET; Schema: public; Owner: gaudenz
---
-
-SELECT pg_catalog.setval('course_id_seq', 41, true);
-
-
---
--- Name: coursecontrol_controlid_seq; Type: SEQUENCE; Schema: public; Owner: gaudenz
---
-
-CREATE SEQUENCE coursecontrol_controlid_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MAXVALUE
-    NO MINVALUE
-    CACHE 1;
-
-
-ALTER TABLE public.coursecontrol_controlid_seq OWNER TO gaudenz;
-
---
--- Name: coursecontrol_controlid_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: gaudenz
---
-
-ALTER SEQUENCE coursecontrol_controlid_seq OWNED BY coursecontrol.controlid;
-
-
---
--- Name: coursecontrol_controlid_seq; Type: SEQUENCE SET; Schema: public; Owner: gaudenz
---
-
-SELECT pg_catalog.setval('coursecontrol_controlid_seq', 1, false);
-
-
---
--- Name: coursecontrol_courseid_seq; Type: SEQUENCE; Schema: public; Owner: gaudenz
---
-
-CREATE SEQUENCE coursecontrol_courseid_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MAXVALUE
-    NO MINVALUE
-    CACHE 1;
-
-
-ALTER TABLE public.coursecontrol_courseid_seq OWNER TO gaudenz;
-
---
--- Name: coursecontrol_courseid_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: gaudenz
---
-
-ALTER SEQUENCE coursecontrol_courseid_seq OWNED BY coursecontrol.courseid;
-
-
---
--- Name: coursecontrol_courseid_seq; Type: SEQUENCE SET; Schema: public; Owner: gaudenz
---
-
-SELECT pg_catalog.setval('coursecontrol_courseid_seq', 1, false);
-
-
---
--- Name: override_sistation_id_seq; Type: SEQUENCE; Schema: public; Owner: gaudenz
---
-
-CREATE SEQUENCE override_sistation_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MAXVALUE
-    NO MINVALUE
-    CACHE 1;
-
-
-ALTER TABLE public.override_sistation_id_seq OWNER TO gaudenz;
-
---
--- Name: override_sistation_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: gaudenz
---
-
-ALTER SEQUENCE override_sistation_id_seq OWNED BY override_sistation.id;
-
-
---
--- Name: override_sistation_id_seq; Type: SEQUENCE SET; Schema: public; Owner: gaudenz
---
-
-SELECT pg_catalog.setval('override_sistation_id_seq', 1, false);
-
-
---
--- Name: punch_id_seq; Type: SEQUENCE; Schema: public; Owner: gaudenz
---
-
-CREATE SEQUENCE punch_id_seq
-    INCREMENT BY 1
-    NO MAXVALUE
-    NO MINVALUE
-    CACHE 1;
-
-
-ALTER TABLE public.punch_id_seq OWNER TO gaudenz;
-
---
--- Name: punch_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: gaudenz
---
-
-ALTER SEQUENCE punch_id_seq OWNED BY punch.id;
-
-
---
--- Name: punch_id_seq; Type: SEQUENCE SET; Schema: public; Owner: gaudenz
---
-
-SELECT pg_catalog.setval('punch_id_seq', 2482, true);
-
-
---
--- Name: run_id_seq; Type: SEQUENCE; Schema: public; Owner: gaudenz
---
-
-CREATE SEQUENCE run_id_seq
-    INCREMENT BY 1
-    NO MAXVALUE
-    NO MINVALUE
-    CACHE 1;
-
-
-ALTER TABLE public.run_id_seq OWNER TO gaudenz;
-
---
--- Name: run_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: gaudenz
---
-
-ALTER SEQUENCE run_id_seq OWNED BY run.id;
-
-
---
--- Name: run_id_seq; Type: SEQUENCE SET; Schema: public; Owner: gaudenz
---
-
-SELECT pg_catalog.setval('run_id_seq', 327, true);
-
-
---
--- Name: runner_id_seq; Type: SEQUENCE; Schema: public; Owner: gaudenz
---
-
-CREATE SEQUENCE runner_id_seq
-    INCREMENT BY 1
-    NO MAXVALUE
-    NO MINVALUE
-    CACHE 1;
-
-
-ALTER TABLE public.runner_id_seq OWNER TO gaudenz;
-
---
--- Name: runner_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: gaudenz
---
-
-ALTER SEQUENCE runner_id_seq OWNED BY runner.id;
-
-
---
--- Name: runner_id_seq; Type: SEQUENCE SET; Schema: public; Owner: gaudenz
---
-
-SELECT pg_catalog.setval('runner_id_seq', 49, true);
-
-
---
 -- Name: team_id_seq; Type: SEQUENCE; Schema: public; Owner: gaudenz
 --
 
 CREATE SEQUENCE team_id_seq
+    START WITH 1
     INCREMENT BY 1
     NO MAXVALUE
     NO MINVALUE
@@ -728,6 +835,13 @@ ALTER TABLE category ALTER COLUMN id SET DEFAULT nextval('category_id_seq'::regc
 -- Name: id; Type: DEFAULT; Schema: public; Owner: gaudenz
 --
 
+ALTER TABLE club ALTER COLUMN id SET DEFAULT nextval('club_id_seq'::regclass);
+
+
+--
+-- Name: id; Type: DEFAULT; Schema: public; Owner: gaudenz
+--
+
 ALTER TABLE control ALTER COLUMN id SET DEFAULT nextval('control_id_seq'::regclass);
 
 
@@ -736,6 +850,13 @@ ALTER TABLE control ALTER COLUMN id SET DEFAULT nextval('control_id_seq'::regcla
 --
 
 ALTER TABLE controlsequence ALTER COLUMN id SET DEFAULT nextval('controlsequence_id_seq'::regclass);
+
+
+--
+-- Name: id; Type: DEFAULT; Schema: public; Owner: gaudenz
+--
+
+ALTER TABLE country ALTER COLUMN id SET DEFAULT nextval('country_id_seq'::regclass);
 
 
 --
@@ -801,6 +922,14 @@ ALTER TABLE team ALTER COLUMN id SET DEFAULT nextval('team_id_seq'::regclass);
 COPY category (id, name) FROM stdin;
 1	24h
 2	12h
+\.
+
+
+--
+-- Data for Name: club; Type: TABLE DATA; Schema: public; Owner: gaudenz
+--
+
+COPY club (id, name) FROM stdin;
 \.
 
 
@@ -1091,6 +1220,14 @@ COPY controlsequence (id, course, control, sequence_number, length, climb) FROM 
 244	41	22	4	1322	0
 245	41	30	5	1317	0
 246	41	33	6	922	0
+\.
+
+
+--
+-- Data for Name: country; Type: TABLE DATA; Schema: public; Owner: gaudenz
+--
+
+COPY country (id, code3, code2, name) FROM stdin;
 \.
 
 
@@ -2917,55 +3054,55 @@ COPY run (id, sicard, course, complete, override, readout_time, clear_time, chec
 -- Data for Name: runner; Type: TABLE DATA; Schema: public; Owner: gaudenz
 --
 
-COPY runner (id, number, given_name, surname, dateofbirth, sex, nation, solvnr, startblock, starttime, category, club, address1, address2, zipcode, city, address_country_id, email, startfee, paid, comment, team) FROM stdin;
-2	001A	Hans	Muster	1975-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	1
-3	001B	Baster	Buster	2010-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	1
-4	001C	Troxler	Roman	1985-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	1
-5	001D	Marc	Eyer	1976-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	1
-6	001E	Doris	Grüniger	1945-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	1
-7	001F	Laurent	Baumgartner	1945-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	1
-8	002A	Joseph	Doetsch	1981-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	2
-9	002B	Franz	Doetsch	1985-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	2
-10	002C	Radoslav	Dotchev	1963-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	2
-11	002D	Esther	Doetsch	1988-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	2
-12	002E	Jakob	Doetsch	1983-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	2
-13	002F	Marie-Christine	Böhm	1989-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	2
-14	003A	Christine	Rufer	1987-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	3
-15	003B	Barbara	Hüsler	1981-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	3
-16	003C	Martin	Widler	1971-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	3
-17	003D	Daniel	Zwiker	1979-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	3
-18	003E	Thomas	Häne	1980-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	3
-19	003F	Raphael	Zwiker	1978-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	3
-20	004A	Peter	Vitzthum	1964-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	4
-21	004B	Mario	Gorecki	1963-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	4
-22	004C	Anke	Zentgraf	1964-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	4
-23	004D	Jürgen	Ehms	1957-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	4
-24	004E	Marion	Friebe	1964-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	4
-25	004F	Mirko	Hoppe	1970-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	4
-26	005A	Torsten	Kaufmann	1971-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	5
-27	005B	Fanny	Sembdner	1985-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	5
-28	005C	Jan	Müller	1976-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	5
-29	005D	Annegret	Fromke	1986-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	5
-30	005E	Joachim	Gerhardt	1958-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	5
-31	005F	Andrej	Olunczek	1984-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	5
-32	101A	Heiko	Gossel	1965-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	6
-33	101B	Wieland	Kundisch	1985-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	6
-34	101C	Karsten	Leideck	1986-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	6
-35	101D	Sonnhild	Knoblauch	1981-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	6
-36	101E	Thomas	Wuttig	1965-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	6
-37	101F	Cornelia	Eckardt	1969-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	6
-38	102A	Kerstin	Hellmann	1963-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	7
-39	102B	Rene	Hellmann	1963-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	7
-40	102C	Norbert	Zenker	1958-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	7
-41	102D	Lutz	Spranger	1967-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	7
-42	102E	Nils	Eyer	1965-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	7
-43	102F	Diethard	Kundisch	1954-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	7
-44	103A	Peter	Winteler	1948-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	8
-45	103B	Mister	Minit	1965-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	8
-46	103C	Guggislav	Mandislav	1907-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	8
-47	103D	Christian	Roggenmoser	1975-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	8
-48	103E	Koni	Ehrbar	1981-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	8
-49	103F	Lorenz	Eugster	1965-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	8
+COPY runner (id, number, given_name, surname, dateofbirth, sex, nation, solvnr, startblock, starttime, category, club, address1, address2, zipcode, city, address_country, email, startfee, paid, comment, team, preferred_category, doping_declaration) FROM stdin;
+2	001A	Hans	Muster	1975-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	1	\N	\N
+3	001B	Baster	Buster	2010-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	1	\N	\N
+4	001C	Troxler	Roman	1985-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	1	\N	\N
+5	001D	Marc	Eyer	1976-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	1	\N	\N
+6	001E	Doris	Grüniger	1945-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	1	\N	\N
+7	001F	Laurent	Baumgartner	1945-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	1	\N	\N
+8	002A	Joseph	Doetsch	1981-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	2	\N	\N
+9	002B	Franz	Doetsch	1985-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	2	\N	\N
+10	002C	Radoslav	Dotchev	1963-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	2	\N	\N
+11	002D	Esther	Doetsch	1988-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	2	\N	\N
+12	002E	Jakob	Doetsch	1983-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	2	\N	\N
+13	002F	Marie-Christine	Böhm	1989-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	2	\N	\N
+14	003A	Christine	Rufer	1987-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	3	\N	\N
+15	003B	Barbara	Hüsler	1981-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	3	\N	\N
+16	003C	Martin	Widler	1971-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	3	\N	\N
+17	003D	Daniel	Zwiker	1979-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	3	\N	\N
+18	003E	Thomas	Häne	1980-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	3	\N	\N
+19	003F	Raphael	Zwiker	1978-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	3	\N	\N
+20	004A	Peter	Vitzthum	1964-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	4	\N	\N
+21	004B	Mario	Gorecki	1963-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	4	\N	\N
+22	004C	Anke	Zentgraf	1964-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	4	\N	\N
+23	004D	Jürgen	Ehms	1957-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	4	\N	\N
+24	004E	Marion	Friebe	1964-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	4	\N	\N
+25	004F	Mirko	Hoppe	1970-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	4	\N	\N
+26	005A	Torsten	Kaufmann	1971-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	5	\N	\N
+27	005B	Fanny	Sembdner	1985-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	5	\N	\N
+28	005C	Jan	Müller	1976-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	5	\N	\N
+29	005D	Annegret	Fromke	1986-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	5	\N	\N
+30	005E	Joachim	Gerhardt	1958-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	5	\N	\N
+31	005F	Andrej	Olunczek	1984-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	5	\N	\N
+32	101A	Heiko	Gossel	1965-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	6	\N	\N
+33	101B	Wieland	Kundisch	1985-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	6	\N	\N
+34	101C	Karsten	Leideck	1986-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	6	\N	\N
+35	101D	Sonnhild	Knoblauch	1981-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	6	\N	\N
+36	101E	Thomas	Wuttig	1965-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	6	\N	\N
+37	101F	Cornelia	Eckardt	1969-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	6	\N	\N
+38	102A	Kerstin	Hellmann	1963-01-01	female	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	7	\N	\N
+39	102B	Rene	Hellmann	1963-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	7	\N	\N
+40	102C	Norbert	Zenker	1958-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	7	\N	\N
+41	102D	Lutz	Spranger	1967-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	7	\N	\N
+42	102E	Nils	Eyer	1965-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	7	\N	\N
+43	102F	Diethard	Kundisch	1954-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	7	\N	\N
+44	103A	Peter	Winteler	1948-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	8	\N	\N
+45	103B	Mister	Minit	1965-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	8	\N	\N
+46	103C	Guggislav	Mandislav	1907-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	8	\N	\N
+47	103D	Christian	Roggenmoser	1975-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	8	\N	\N
+48	103E	Koni	Ehrbar	1981-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	8	\N	\N
+49	103F	Lorenz	Eugster	1965-01-01	male	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	8	\N	\N
 \.
 
 
@@ -3100,6 +3237,14 @@ ALTER TABLE ONLY category
 
 
 --
+-- Name: pk_club; Type: CONSTRAINT; Schema: public; Owner: gaudenz; Tablespace: 
+--
+
+ALTER TABLE ONLY club
+    ADD CONSTRAINT pk_club PRIMARY KEY (id);
+
+
+--
 -- Name: pk_control; Type: CONSTRAINT; Schema: public; Owner: gaudenz; Tablespace: 
 --
 
@@ -3113,6 +3258,14 @@ ALTER TABLE ONLY control
 
 ALTER TABLE ONLY controlsequence
     ADD CONSTRAINT pk_controlsequence PRIMARY KEY (id);
+
+
+--
+-- Name: pk_country; Type: CONSTRAINT; Schema: public; Owner: gaudenz; Tablespace: 
+--
+
+ALTER TABLE ONLY country
+    ADD CONSTRAINT pk_country PRIMARY KEY (id);
 
 
 --
@@ -3188,6 +3341,20 @@ ALTER TABLE ONLY team
 
 
 --
+-- Name: idx_code2_country; Type: INDEX; Schema: public; Owner: gaudenz; Tablespace: 
+--
+
+CREATE UNIQUE INDEX idx_code2_country ON country USING btree (code2);
+
+
+--
+-- Name: idx_code3_country; Type: INDEX; Schema: public; Owner: gaudenz; Tablespace: 
+--
+
+CREATE UNIQUE INDEX idx_code3_country ON country USING btree (code3);
+
+
+--
 -- Name: idx_code_course; Type: INDEX; Schema: public; Owner: gaudenz; Tablespace: 
 --
 
@@ -3199,6 +3366,13 @@ CREATE UNIQUE INDEX idx_code_course ON course USING btree (code);
 --
 
 CREATE UNIQUE INDEX idx_name_category ON category USING btree (name);
+
+
+--
+-- Name: idx_name_club; Type: INDEX; Schema: public; Owner: gaudenz; Tablespace: 
+--
+
+CREATE UNIQUE INDEX idx_name_club ON club USING btree (name);
 
 
 --
@@ -3306,11 +3480,35 @@ ALTER TABLE ONLY run
 
 
 --
+-- Name: runner_fk_address_country; Type: FK CONSTRAINT; Schema: public; Owner: gaudenz
+--
+
+ALTER TABLE ONLY runner
+    ADD CONSTRAINT runner_fk_address_country FOREIGN KEY (address_country) REFERENCES country(id);
+
+
+--
 -- Name: runner_fk_category; Type: FK CONSTRAINT; Schema: public; Owner: gaudenz
 --
 
 ALTER TABLE ONLY runner
     ADD CONSTRAINT runner_fk_category FOREIGN KEY (category) REFERENCES category(id);
+
+
+--
+-- Name: runner_fk_club; Type: FK CONSTRAINT; Schema: public; Owner: gaudenz
+--
+
+ALTER TABLE ONLY runner
+    ADD CONSTRAINT runner_fk_club FOREIGN KEY (club) REFERENCES club(id);
+
+
+--
+-- Name: runner_fk_nation; Type: FK CONSTRAINT; Schema: public; Owner: gaudenz
+--
+
+ALTER TABLE ONLY runner
+    ADD CONSTRAINT runner_fk_nation FOREIGN KEY (nation) REFERENCES country(id);
 
 
 --
@@ -3370,107 +3568,6 @@ GRANT ALL ON SCHEMA public TO PUBLIC;
 REVOKE ALL ON TABLE category FROM PUBLIC;
 REVOKE ALL ON TABLE category FROM gaudenz;
 GRANT ALL ON TABLE category TO gaudenz;
-GRANT ALL ON TABLE category TO "24h";
-
-
---
--- Name: control; Type: ACL; Schema: public; Owner: gaudenz
---
-
-REVOKE ALL ON TABLE control FROM PUBLIC;
-REVOKE ALL ON TABLE control FROM gaudenz;
-GRANT ALL ON TABLE control TO gaudenz;
-GRANT ALL ON TABLE control TO "24h";
-
-
---
--- Name: controlsequence; Type: ACL; Schema: public; Owner: gaudenz
---
-
-REVOKE ALL ON TABLE controlsequence FROM PUBLIC;
-REVOKE ALL ON TABLE controlsequence FROM gaudenz;
-GRANT ALL ON TABLE controlsequence TO gaudenz;
-GRANT ALL ON TABLE controlsequence TO "24h";
-
-
---
--- Name: course; Type: ACL; Schema: public; Owner: gaudenz
---
-
-REVOKE ALL ON TABLE course FROM PUBLIC;
-REVOKE ALL ON TABLE course FROM gaudenz;
-GRANT ALL ON TABLE course TO gaudenz;
-GRANT ALL ON TABLE course TO "24h";
-
-
---
--- Name: coursecontrol; Type: ACL; Schema: public; Owner: gaudenz
---
-
-REVOKE ALL ON TABLE coursecontrol FROM PUBLIC;
-REVOKE ALL ON TABLE coursecontrol FROM gaudenz;
-GRANT ALL ON TABLE coursecontrol TO gaudenz;
-GRANT ALL ON TABLE coursecontrol TO "24h";
-
-
---
--- Name: punch; Type: ACL; Schema: public; Owner: gaudenz
---
-
-REVOKE ALL ON TABLE punch FROM PUBLIC;
-REVOKE ALL ON TABLE punch FROM gaudenz;
-GRANT ALL ON TABLE punch TO gaudenz;
-GRANT ALL ON TABLE punch TO "24h";
-
-
---
--- Name: run; Type: ACL; Schema: public; Owner: gaudenz
---
-
-REVOKE ALL ON TABLE run FROM PUBLIC;
-REVOKE ALL ON TABLE run FROM gaudenz;
-GRANT ALL ON TABLE run TO gaudenz;
-GRANT ALL ON TABLE run TO "24h";
-
-
---
--- Name: runner; Type: ACL; Schema: public; Owner: gaudenz
---
-
-REVOKE ALL ON TABLE runner FROM PUBLIC;
-REVOKE ALL ON TABLE runner FROM gaudenz;
-GRANT ALL ON TABLE runner TO gaudenz;
-GRANT ALL ON TABLE runner TO "24h";
-
-
---
--- Name: sicard; Type: ACL; Schema: public; Owner: gaudenz
---
-
-REVOKE ALL ON TABLE sicard FROM PUBLIC;
-REVOKE ALL ON TABLE sicard FROM gaudenz;
-GRANT ALL ON TABLE sicard TO gaudenz;
-GRANT ALL ON TABLE sicard TO "24h";
-
-
---
--- Name: sistation; Type: ACL; Schema: public; Owner: gaudenz
---
-
-REVOKE ALL ON TABLE sistation FROM PUBLIC;
-REVOKE ALL ON TABLE sistation FROM gaudenz;
-GRANT ALL ON TABLE sistation TO gaudenz;
-GRANT ALL ON TABLE sistation TO "24h";
-
-
---
--- Name: team; Type: ACL; Schema: public; Owner: gaudenz
---
-
-REVOKE ALL ON TABLE team FROM PUBLIC;
-REVOKE ALL ON TABLE team FROM gaudenz;
-GRANT ALL ON TABLE team TO gaudenz;
-GRANT ALL ON TABLE team TO "24h";
 
 
 --
@@ -3480,7 +3577,15 @@ GRANT ALL ON TABLE team TO "24h";
 REVOKE ALL ON SEQUENCE category_id_seq FROM PUBLIC;
 REVOKE ALL ON SEQUENCE category_id_seq FROM gaudenz;
 GRANT ALL ON SEQUENCE category_id_seq TO gaudenz;
-GRANT ALL ON SEQUENCE category_id_seq TO "24h";
+
+
+--
+-- Name: control; Type: ACL; Schema: public; Owner: gaudenz
+--
+
+REVOKE ALL ON TABLE control FROM PUBLIC;
+REVOKE ALL ON TABLE control FROM gaudenz;
+GRANT ALL ON TABLE control TO gaudenz;
 
 
 --
@@ -3490,7 +3595,15 @@ GRANT ALL ON SEQUENCE category_id_seq TO "24h";
 REVOKE ALL ON SEQUENCE control_id_seq FROM PUBLIC;
 REVOKE ALL ON SEQUENCE control_id_seq FROM gaudenz;
 GRANT ALL ON SEQUENCE control_id_seq TO gaudenz;
-GRANT ALL ON SEQUENCE control_id_seq TO "24h";
+
+
+--
+-- Name: controlsequence; Type: ACL; Schema: public; Owner: gaudenz
+--
+
+REVOKE ALL ON TABLE controlsequence FROM PUBLIC;
+REVOKE ALL ON TABLE controlsequence FROM gaudenz;
+GRANT ALL ON TABLE controlsequence TO gaudenz;
 
 
 --
@@ -3500,7 +3613,15 @@ GRANT ALL ON SEQUENCE control_id_seq TO "24h";
 REVOKE ALL ON SEQUENCE controlsequence_id_seq FROM PUBLIC;
 REVOKE ALL ON SEQUENCE controlsequence_id_seq FROM gaudenz;
 GRANT ALL ON SEQUENCE controlsequence_id_seq TO gaudenz;
-GRANT ALL ON SEQUENCE controlsequence_id_seq TO "24h";
+
+
+--
+-- Name: course; Type: ACL; Schema: public; Owner: gaudenz
+--
+
+REVOKE ALL ON TABLE course FROM PUBLIC;
+REVOKE ALL ON TABLE course FROM gaudenz;
+GRANT ALL ON TABLE course TO gaudenz;
 
 
 --
@@ -3510,7 +3631,24 @@ GRANT ALL ON SEQUENCE controlsequence_id_seq TO "24h";
 REVOKE ALL ON SEQUENCE course_id_seq FROM PUBLIC;
 REVOKE ALL ON SEQUENCE course_id_seq FROM gaudenz;
 GRANT ALL ON SEQUENCE course_id_seq TO gaudenz;
-GRANT ALL ON SEQUENCE course_id_seq TO "24h";
+
+
+--
+-- Name: coursecontrol; Type: ACL; Schema: public; Owner: gaudenz
+--
+
+REVOKE ALL ON TABLE coursecontrol FROM PUBLIC;
+REVOKE ALL ON TABLE coursecontrol FROM gaudenz;
+GRANT ALL ON TABLE coursecontrol TO gaudenz;
+
+
+--
+-- Name: punch; Type: ACL; Schema: public; Owner: gaudenz
+--
+
+REVOKE ALL ON TABLE punch FROM PUBLIC;
+REVOKE ALL ON TABLE punch FROM gaudenz;
+GRANT ALL ON TABLE punch TO gaudenz;
 
 
 --
@@ -3520,7 +3658,15 @@ GRANT ALL ON SEQUENCE course_id_seq TO "24h";
 REVOKE ALL ON SEQUENCE punch_id_seq FROM PUBLIC;
 REVOKE ALL ON SEQUENCE punch_id_seq FROM gaudenz;
 GRANT ALL ON SEQUENCE punch_id_seq TO gaudenz;
-GRANT ALL ON SEQUENCE punch_id_seq TO "24h";
+
+
+--
+-- Name: run; Type: ACL; Schema: public; Owner: gaudenz
+--
+
+REVOKE ALL ON TABLE run FROM PUBLIC;
+REVOKE ALL ON TABLE run FROM gaudenz;
+GRANT ALL ON TABLE run TO gaudenz;
 
 
 --
@@ -3530,7 +3676,15 @@ GRANT ALL ON SEQUENCE punch_id_seq TO "24h";
 REVOKE ALL ON SEQUENCE run_id_seq FROM PUBLIC;
 REVOKE ALL ON SEQUENCE run_id_seq FROM gaudenz;
 GRANT ALL ON SEQUENCE run_id_seq TO gaudenz;
-GRANT ALL ON SEQUENCE run_id_seq TO "24h";
+
+
+--
+-- Name: runner; Type: ACL; Schema: public; Owner: gaudenz
+--
+
+REVOKE ALL ON TABLE runner FROM PUBLIC;
+REVOKE ALL ON TABLE runner FROM gaudenz;
+GRANT ALL ON TABLE runner TO gaudenz;
 
 
 --
@@ -3540,7 +3694,33 @@ GRANT ALL ON SEQUENCE run_id_seq TO "24h";
 REVOKE ALL ON SEQUENCE runner_id_seq FROM PUBLIC;
 REVOKE ALL ON SEQUENCE runner_id_seq FROM gaudenz;
 GRANT ALL ON SEQUENCE runner_id_seq TO gaudenz;
-GRANT ALL ON SEQUENCE runner_id_seq TO "24h";
+
+
+--
+-- Name: sicard; Type: ACL; Schema: public; Owner: gaudenz
+--
+
+REVOKE ALL ON TABLE sicard FROM PUBLIC;
+REVOKE ALL ON TABLE sicard FROM gaudenz;
+GRANT ALL ON TABLE sicard TO gaudenz;
+
+
+--
+-- Name: sistation; Type: ACL; Schema: public; Owner: gaudenz
+--
+
+REVOKE ALL ON TABLE sistation FROM PUBLIC;
+REVOKE ALL ON TABLE sistation FROM gaudenz;
+GRANT ALL ON TABLE sistation TO gaudenz;
+
+
+--
+-- Name: team; Type: ACL; Schema: public; Owner: gaudenz
+--
+
+REVOKE ALL ON TABLE team FROM PUBLIC;
+REVOKE ALL ON TABLE team FROM gaudenz;
+GRANT ALL ON TABLE team TO gaudenz;
 
 
 --
@@ -3550,7 +3730,6 @@ GRANT ALL ON SEQUENCE runner_id_seq TO "24h";
 REVOKE ALL ON SEQUENCE team_id_seq FROM PUBLIC;
 REVOKE ALL ON SEQUENCE team_id_seq FROM gaudenz;
 GRANT ALL ON SEQUENCE team_id_seq TO gaudenz;
-GRANT ALL ON SEQUENCE team_id_seq TO "24h";
 
 
 --
