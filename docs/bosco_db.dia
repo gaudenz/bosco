@@ -4528,7 +4528,7 @@ CREATE TRIGGER control_trigger AFTER INSERT OR UPDATE OR DELETE ON control FOR E
             <dia:string>#varchar(3)#</dia:string>
           </dia:attribute>
           <dia:attribute name="value">
-            <dia:string>#not null#</dia:string>
+            <dia:string>#null#</dia:string>
           </dia:attribute>
           <dia:attribute name="comment">
             <dia:string>##</dia:string>
@@ -4551,7 +4551,7 @@ CREATE TRIGGER control_trigger AFTER INSERT OR UPDATE OR DELETE ON control FOR E
             <dia:string>#varchar(2)#</dia:string>
           </dia:attribute>
           <dia:attribute name="value">
-            <dia:string>#not null#</dia:string>
+            <dia:string>#null#</dia:string>
           </dia:attribute>
           <dia:attribute name="comment">
             <dia:string>##</dia:string>
@@ -5111,6 +5111,303 @@ CREATE TRIGGER control_trigger AFTER INSERT OR UPDATE OR DELETE ON control FOR E
         <dia:connection handle="0" to="O26" connection="8"/>
         <dia:connection handle="1" to="O1" connection="30"/>
       </dia:connections>
+    </dia:object>
+    <dia:object type="UML - Component" version="0" id="O30">
+      <dia:attribute name="obj_pos">
+        <dia:point val="5,66.3"/>
+      </dia:attribute>
+      <dia:attribute name="obj_bb">
+        <dia:rectangle val="4.95,66.25;25.2175,245.603"/>
+      </dia:attribute>
+      <dia:attribute name="meta">
+        <dia:composite type="dict"/>
+      </dia:attribute>
+      <dia:attribute name="elem_corner">
+        <dia:point val="5,66.3"/>
+      </dia:attribute>
+      <dia:attribute name="elem_width">
+        <dia:real val="20.1675"/>
+      </dia:attribute>
+      <dia:attribute name="elem_height">
+        <dia:real val="179.25250000000003"/>
+      </dia:attribute>
+      <dia:attribute name="line_colour">
+        <dia:color val="#00ff00"/>
+      </dia:attribute>
+      <dia:attribute name="fill_colour">
+        <dia:color val="#ffffff"/>
+      </dia:attribute>
+      <dia:attribute name="stereotype">
+        <dia:string>#country (name, code2, code3)#</dia:string>
+      </dia:attribute>
+      <dia:attribute name="text">
+        <dia:composite type="text">
+          <dia:attribute name="string">
+            <dia:string>#'Bangladesh','BD','BAN'
+'Belgium','BE','BEL'
+'Burkina Faso','BF','BUR'
+'Bulgaria','BG','BUL'
+'Bosnia and Herzegovina','BA','BIH'
+'Barbados','BB','BAR'
+'Wallis and Futuna','WF',NULL
+'Saint Barthélemy','BL',NULL
+'Bermuda','BM','BER'
+'Brunei Darussalam','BN','BRU'
+'Bolivia, Plurinational State of','BO','BOL'
+'Bahrain','BH','BRN'
+'Burundi','BI','BDI'
+'Benin','BJ','BEN'
+'Bhutan','BT','BHU'
+'Jamaica','JM','JAM'
+'Bouvet Island','BV',NULL
+'Botswana','BW','BOT'
+'Samoa','WS','SAM'
+'Brazil','BR','BRA'
+'Bahamas','BS','BAH'
+'Jersey','JE',NULL
+'Belarus','BY','BLR'
+'Belize','BZ','BIZ'
+'Russian Federation','RU','RUS'
+'Rwanda','RW','RWA'
+'Serbia','RS','SRB'
+'Timor-Leste','TL','TLS'
+'Reunion','RE',NULL
+'Turkmenistan','TM','TKM'
+'Tajikistan','TJ','TJK'
+'Romania','RO','ROU'
+'Tokelau','TK',NULL
+'Guinea-Bissau','GW','GBS'
+'Guam','GU','GUM'
+'Guatemala','GT','GUA'
+'South Georgia and the South Sandwich Islands','GS',NULL
+'Greece','GR','GRE'
+'Equatorial Guinea','GQ','GEQ'
+'Guadeloupe','GP',NULL
+'Japan','JP','JPN'
+'Guyana','GY','GUY'
+'Guernsey','GG',NULL
+'French Guiana','GF',NULL
+'Georgia','GE','GEO'
+'Grenada','GD','GRN'
+'United Kingdom','GB','GBR'
+'Gabon','GA','GAB'
+'El Salvador','SV','ESA'
+'Guinea','GN','GUI'
+'Gambia','GM','GAM'
+'Greenland','GL',NULL
+'Gibraltar','GI',NULL
+'Ghana','GH','GHA'
+'Oman','OM','OMA'
+'Tunisia','TN','TUN'
+'Jordan','JO','JOR'
+'Croatia','HR','CRO'
+'Haiti','HT','HAI'
+'Hungary','HU','HUN'
+'Hong Kong','HK','HKG'
+'Honduras','HN','HON'
+'Heard Island and McDonald Islands','HM',NULL
+'Venezuela, Bolivarian republic of','VE','VEN'
+'Puerto Rico','PR','PUR'
+'Palestinian Territory, Occupied','PS','PLE'
+'Palau','PW','PLW'
+'Portugal','PT','POR'
+'Svalbard and Jan Mayen','SJ',NULL
+'Paraguay','PY','PAR'
+'Iraq','IQ','IRQ'
+'Panama','PA','PAN'
+'French Polynesia','PF',NULL
+'Papua New Guinea','PG','PNG'
+'Peru','PE','PER'
+'Pakistan','PK','PAK'
+'Philippines','PH','PHI'
+'Pitcairn','PN',NULL
+'Poland','PL','POL'
+'Saint Pierre and Miquelon','PM',NULL
+'Zambia','ZM','ZAM'
+'Western Sahara','EH',NULL
+'Estonia','EE','EST'
+'Egypt','EG','EGY'
+'South Africa','ZA','RSA'
+'Ecuador','EC','ECU'
+'Italy','IT','ITA'
+'Viet Nam','VN','VIE'
+'Solomon Islands','SB','SOL'
+'Ethiopia','ET','ETH'
+'Somalia','SO','SOM'
+'Zimbabwe','ZW','ZIM'
+'Saudi Arabia','SA','KSA'
+'Spain','ES','ESP'
+'Eritrea','ER','ERI'
+'Montenegro','ME','MNE'
+'Moldova, Republic of','MD','MDA'
+'Madagascar','MG','MAD'
+'Saint Martin (French part)','MF',NULL
+'Morocco','MA','MAR'
+'Monaco','MC','MON'
+'Uzbekistan','UZ','UZB'
+'Myanmar','MM','MYA'
+'Mali','ML','MLI'
+'Macao','MO',NULL
+'Mongolia','MN','MGL'
+'Marshall Islands','MH','MHL'
+'Macedonia, Republic of','MK','MKD'
+'Mauritius','MU','MRI'
+'Malta','MT','MLT'
+'Malawi','MW','MAW'
+'Maldives','MV','MDV'
+'Martinique','MQ',NULL
+'Northern Mariana Islands','MP',NULL
+'Montserrat','MS',NULL
+'Mauritania','MR','MTN'
+'Isle of Man','IM',NULL
+'Uganda','UG','UGA'
+'Tanzania, United Republic of','TZ','TAN'
+'Malaysia','MY','MAS'
+'Mexico','MX','MEX'
+'Israel','IL','ISR'
+'France','FR','FRA'
+'British Indian Ocean Territory','IO',NULL
+'Saint Helena, Ascension and Tristan da Cunha','SH',NULL
+'Finland','FI','FIN'
+'Fiji','FJ','FIJ'
+'Falkland Islands (Malvinas)','FK',NULL
+'Micronesia, Federated States of','FM','FSM'
+'Faroe Islands','FO',NULL
+'Nicaragua','NI','NCA'
+'Netherlands','NL','NED'
+'Norway','NO','NOR'
+'Namibia','NA','NAM'
+'Vanuatu','VU','VAN'
+'New Caledonia','NC',NULL
+'Niger','NE','NIG'
+'Norfolk Island','NF',NULL
+'Nigeria','NG','NGR'
+'New Zealand','NZ','NZL'
+'Nepal','NP','NEP'
+'Nauru','NR','NRU'
+'Niue','NU',NULL
+'Cook Islands','CK','COK'
+'Côte dNULLIvoire','CI','CIV'
+'Switzerland','CH','SUI'
+'Colombia','CO','COL'
+'China','CN','CHN'
+'Cameroon','CM','CMR'
+'Chile','CL','CHI'
+'Cocos (Keeling) Islands','CC',NULL
+'Canada','CA','CAN'
+'Congo','CG','CGO'
+'Central African Republic','CF','CAF'
+'Congo, The Democratic Republic of the','CD','COD'
+'Czech Republic','CZ','CZE'
+'Cyprus','CY','CYP'
+'Christmas Island','CX',NULL
+'Costa Rica','CR','CRC'
+'Cape Verde','CV','CPV'
+'Cuba','CU','CUB'
+'Swaziland','SZ','SWZ'
+'Syrian Arab Republic','SY','SYR'
+'Kyrgyzstan','KG','KGZ'
+'Kenya','KE','KEN'
+'Suriname','SR','SUR'
+'Kiribati','KI','KIR'
+'Cambodia','KH','CAM'
+'Saint Kitts and Nevis','KN','SKN'
+'Comoros','KM','COM'
+'Sao Tome and Principe','ST','STP'
+'Slovakia','SK','SVK'
+'Korea, Republic of','KR','KOR'
+'Slovenia','SI','SLO'
+'Korea, Democratic PeopleNULLs Republic of','KP','PRK'
+'Kuwait','KW','KUW'
+'Senegal','SN','SEN'
+'San Marino','SM','SMR'
+'Sierra Leone','SL','SLE'
+'Seychelles','SC','SEY'
+'Kazakhstan','KZ','KAZ'
+'Cayman Islands','KY','CAY'
+'Singapore','SG','SIN'
+'Sweden','SE','SWE'
+'Sudan','SD','SUD'
+'Dominican Republic','DO','DOM'
+'Dominica','DM','DMA'
+'Djibouti','DJ','DJI'
+'Denmark','DK','DEN'
+'Virgin Islands, British','VG','IVB'
+'Germany','DE','GER'
+'Yemen','YE','YEM'
+'Algeria','DZ','ALG'
+'United States','US','USA'
+'Uruguay','UY','URU'
+'Mayotte','YT',NULL
+'United States Minor Outlying Islands','UM',NULL
+'Lebanon','LB','LIB'
+'Saint Lucia','LC','LCA'
+'Lao PeopleNULLs Democratic Republic','LA','LAO'
+'Tuvalu','TV','TUV'
+'Taiwan, Province of China','TW','TPE'
+'Trinidad and Tobago','TT','TRI'
+'Turkey','TR','TUR'
+'Sri Lanka','LK','SRI'
+'Liechtenstein','LI','LIE'
+'Latvia','LV','LAT'
+'Tonga','TO','TGA'
+'Lithuania','LT','LTU'
+'Luxembourg','LU','LUX'
+'Liberia','LR','LBR'
+'Lesotho','LS','LES'
+'Thailand','TH','THA'
+'French Southern Territories','TF',NULL
+'Togo','TG','TOG'
+'Chad','TD','CHA'
+'Turks and Caicos Islands','TC',NULL
+'Libyan Arab Jamahiriya','LY','LBA'
+'Holy See (Vatican City State)','VA','VAT'
+'Saint Vincent and the Grenadines','VC','VIN'
+'United Arab Emirates','AE','UAE'
+'Andorra','AD','AND'
+'Antigua and Barbuda','AG','ANT'
+'Afghanistan','AF','AFG'
+'Anguilla','AI',NULL
+'Virgin Islands, U.S.','VI','ISV'
+'Iceland','IS','ISL'
+'Iran, Islamic Republic of','IR','IRI'
+'Armenia','AM','ARM'
+'Albania','AL','ALB'
+'Angola','AO','ANG'
+'Netherlands Antilles','AN','AHO'
+'Antarctica','AQ',NULL
+'American Samoa','AS','ASA'
+'Argentina','AR','ARG'
+'Australia','AU','AUS'
+'Austria','AT','AUT'
+'Aruba','AW','ARU'
+'India','IN','IND'
+'Åland Islands','AX',NULL
+'Azerbaijan','AZ','AZE'
+'Ireland','IE','IRL'
+'Indonesia','ID','INA'
+'Ukraine','UA','UKR'
+'Qatar','QA','QAT'
+'Mozambique','MZ','MOZ'
+#</dia:string>
+          </dia:attribute>
+          <dia:attribute name="font">
+            <dia:font family="sans" style="0" name="Helvetica"/>
+          </dia:attribute>
+          <dia:attribute name="height">
+            <dia:real val="0.80000000000000004"/>
+          </dia:attribute>
+          <dia:attribute name="pos">
+            <dia:point val="7.4,68.48"/>
+          </dia:attribute>
+          <dia:attribute name="color">
+            <dia:color val="#000000"/>
+          </dia:attribute>
+          <dia:attribute name="alignment">
+            <dia:enum val="0"/>
+          </dia:attribute>
+        </dia:composite>
+      </dia:attribute>
     </dia:object>
   </dia:layer>
 </dia:diagram>
