@@ -32,7 +32,7 @@ class AbstractRunner(object, RankableItem):
     official = None
     sicards = None
 
-class Runner(AbstractRunner, MyStorm):
+class Runner(AbstractRunner, Storm):
     __storm_table__ = 'runner'
 
     id = Int(primary=True)
@@ -71,15 +71,12 @@ class Runner(AbstractRunner, MyStorm):
                  starttime=None, club=None, address1=None, address2=None, zipcode=None, 
                  city=None, address_country=None, email=None, startfee=None, paid=None, 
                  preferred_category=None, doping_declaration=None, comment=None,
-                 store = None):
+                 ):
         self.surname = sname
         self.given_name = gname
-        if store is not None:
-            self._store = store
         if sicard is not None:
-            self.add_sicard(sicard)
-        if category is not None:
-            self.set_category(category)
+            self.sicards.add(sicard)
+        self.category = category
         self.number = number
         self.dateofbirth = dateofbirth
         self.sex = sex
@@ -125,43 +122,6 @@ class Runner(AbstractRunner, MyStorm):
         else:
             raise RunnerException(u'No run found for runner %s (%s)' % (self, self.number))
     run = property(_get_run)
-
-
-    def add_sicard(self, cardnr):
-        """Adds an SI-Card by it's id. If the card does not exist it is created on the fly.
-        If the card is already assigned to another runner an exception is raised.
-        
-        @param cardnr: sicard id
-        @type cardnr:  int or sicard object
-        """
-        if type(cardnr) == int:
-            sicard = self._store.get(SICard, cardnr)
-            if sicard is None:
-                sicard = SICard(cardnr)
-        else:
-            sicard = cardnr
-
-        if sicard.runner == self or sicard.runner == None:
-            return self.sicards.add(sicard)
-        
-        raise RunnerException("SI-Card %s already assigned to runner %s" %
-                              (cardnr, "%s %s (%s)" %
-                                       (sicard.runner.given_name,
-                                        sicard.runner.surname,
-                                        sicard.runner.number)
-                               )
-                              )
-
-    def set_category(self, category_name):
-        """Sets the category for this runner. Categories are NOT created on the fly!"""
-        if type(category_name) == unicode:
-            category = self._store.find(Category, Category.name == category_name).one()
-            if category is None:
-                raise RunnerException("Category '%s' not found." % category_name)
-        else:
-            category = category_name
-        self.category = category
-        
         
 class Team(AbstractRunner, Storm):
     __storm_table__ = 'team'
@@ -201,11 +161,28 @@ class Team(AbstractRunner, Storm):
     runs = property(_get_runs)
 
 
+def sicard_runner_validator(sicard, attribute, value):
+    """This validator avoids that SI-cards are reassigned from one
+    runner to another. If you really want to reassign an SI-card, first
+    remove it from the first runner and then assign it to the other."""
+
+    if sicard._runner_id is None or sicard._runner_id == value or value is None:
+        return value
+
+    raise RunnerException("SI-Card %s is already assigned to runner %s" %
+                          (sicard.id, "%s %s (%s)" %
+                           (sicard.runner.given_name,
+                            sicard.runner.surname,
+                            sicard.runner.number)
+                           )
+                          )
+
 class SICard(Storm):
     __storm_table__ = 'sicard'
 
     id = Int(primary=True)
-    _runner_id = Int(name='runner')
+    _runner_id = Int(name='runner',
+                     validator = sicard_runner_validator)
     runner = Reference(_runner_id, 'Runner.id')
     runs = ReferenceSet(id, 'Run._sicard_id')
 

@@ -104,8 +104,8 @@ class RunnerImporter(CSVImporter):
                 print "Invalid SI Card number '%s' for runner %s" % (si_str, str(runner))
             return 
         if not si_int == 0:
-            runner.add_sicard(int(si_str))
-    
+            runner.sicards.add(SICard(si_int))
+
 class Team24hImporter(RunnerImporter):
     """Import participant data for 24h event from CSV file."""
 
@@ -144,7 +144,7 @@ class Team24hImporter(RunnerImporter):
                     continue
                 
                 runner = Runner(t['Memfamilyname%s' % str(i)],
-                                t['Memfirstname%s' % str(i)], store = store)
+                                t['Memfirstname%s' % str(i)])
                 if t['Memsex%s' % str(i)] == 'M':
                     runner.sex = 'male'
                 elif t['Memsex%s' % str(i)] == 'F':
@@ -200,7 +200,7 @@ class TeamRelayImporter(RunnerImporter):
                     num += 1
                     continue
                 
-                runner = Runner(surname,given_name, store = store)
+                runner = Runner(surname,given_name)
                 if t['Geschlecht%s' % str(i)] == 'm':
                     runner.sex = 'male'
                 elif t['Geschlecht%s' % str(i)] == 'f':

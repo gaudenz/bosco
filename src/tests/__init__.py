@@ -26,7 +26,7 @@ import sys
 from storm.locals import *
 
 from course import Course, Control, SIStation
-from runner import Runner, Category, Team
+from runner import Runner, Category, Team, SICard
 from run import Run, Punch
 
 
@@ -66,18 +66,18 @@ class BoscoTest(unittest.TestCase):
         # Create Runners
         self._runners = []
         
-        self._runners.append(Runner(u'Muster', u'Hans', 655465, u'HAM', u'101',
-                                    store = self._store))
-        self._runners.append(Runner(u'Gerster', u'Trudi', 765477, u'HAM', u'102',
-                                    store = self._store))
-        self._runners.append(Runner(u'Mueller', u'Hans', 768765, u'HAM', u'103',
-                                    store = self._store))
-        self._runners.append(Runner(u'Missing', u'The', 113456, u'HAM',
-                                    store = self._store))
-        self._runners.append(Runner(u'Gugus', u'Dada', 56789, u'HAM',
-                                    store = self._store))
-        self._runners.append(Runner(u'Al', u'Missing', 12345, u'HAM',
-                                    store = self._store))
+        self._runners.append(Runner(u'Muster', u'Hans', SICard(655465), 
+                                    self._cat_ind, u'101'))
+        self._runners.append(Runner(u'Gerster', u'Trudi', SICard(765477), 
+                                    self._cat_ind, u'102'))
+        self._runners.append(Runner(u'Mueller', u'Hans', SICard(768765), 
+                                    self._cat_ind, u'103'))
+        self._runners.append(Runner(u'Missing', u'The', SICard(113456),
+                                    self._cat_ind))
+        self._runners.append(Runner(u'Gugus', u'Dada', SICard(56789), 
+                                    self._cat_ind))
+        self._runners.append(Runner(u'Al', u'Missing', SICard(12345), 
+                                    self._cat_ind))
         
 
         # Create a team

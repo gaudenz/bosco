@@ -23,6 +23,7 @@ Tests for runner classes
 import unittest
 
 from storm.locals import *
+from storm.exceptions import IntegrityError
 
 from runner import Runner, RunnerException, SICard
 
@@ -34,36 +35,79 @@ class RunnerTest(unittest.TestCase):
 
     def tearDown(self):
         # Clean up Database
-        self._store.execute('TRUNCATE course CASCADE')
-        self._store.execute('TRUNCATE sistation CASCADE')
-        self._store.execute('TRUNCATE control CASCADE')
-        self._store.execute('TRUNCATE run CASCADE')
-        self._store.execute('TRUNCATE punch CASCADE')
-        self._store.execute('TRUNCATE sicard CASCADE')
-        self._store.execute('TRUNCATE runner CASCADE')
-        self._store.commit()
+        self._store.rollback()
 
     def testStoreAdd(self):
         """
         Test that a runner is added to the store if a store is given to the
         constructor.
         """
-        r1 = Runner(u'Muster', u'Hans', store = self._store)
-        self.assertEquals(Store.of(r1), self._store)
-
-        r2 = Runner(u'Bernasconi', u'Maria')
-        self.assertEquals(Store.of(r2), None)
-        self._store.add(r2)
-        self.assertEquals(Store.of(r2), self._store)
+        r = Runner(u'Bernasconi', u'Maria')
+        self.assertEquals(Store.of(r), None)
+        self._store.add(r)
+        self.assertEquals(Store.of(r), self._store)
 
     def testDoubleSICard(self):
         """
-        Test that assigning an SI-Card to two runners raises an exception.
+        Test that creating two SICard objects with the same id raises an error.
         """
 
-        r1 = Runner(u'Muster', u'Hans', 987655, store = self._store)
-        self.assertRaises(RunnerException, Runner, u'Bernasconi', u'Maria', 987655, store = self._store)
-        r2 = Runner(u'Bernasconi', u'Maria', 765444, store = self._store)
-        self.assertRaises(RunnerException, r2.add_sicard, 987655)
-        si = self._store.get(SICard, 987655)
-        self.assertRaises(RunnerException, r2.add_sicard, si)
+        r1 = self._store.add(Runner(u'Hans', u'Muster', SICard(987655)))
+        r2 = self._store.add(Runner(u'Bernasconi', u'Maria', SICard(987655)))
+        self.assertRaises(IntegrityError, self._store.flush)
+
+    def testMultipleSICards(self):
+        """
+        Runners can have multiple SI-cards.
+        """
+        
+        s1 = SICard(987655)
+        r = self._store.add(Runner(u'Hans', u'Muster', s1))
+        s2 = SICard(765444)
+        r.sicards.add(s2)
+        self.failUnless(s1 in r.sicards and s2 in r.sicards)
+
+    def testReassignFails(self):
+        """
+        Test that reassign an already assign SICard fails.
+        """
+
+        si = SICard(987655)
+        r1 = self._store.add(Runner(u'Hans', u'Muster', si))
+        r2 = self._store.add(Runner(u'Bernasconi', u'Maria', SICard(765444)))
+        self._store.flush()
+        self.assertRaises(RunnerException, r2.sicards.add, si)
+
+    def testUnassignAssign(self):
+        """
+        First unassigning an SI-card and the assigning to another runner
+        should work.
+        """
+        si = SICard(987655)
+        r1 = self._store.add(Runner(u'Hans', u'Muster', si))
+        r2 = self._store.add(Runner(u'Bernasconi', u'Maria', SICard(765444)))
+        r1.sicards.remove(si)
+        try:
+            r2.sicards.add(si)
+            self._store.flush()
+        except RunnerException:
+            self.fail("RunnerException raised although SI-card reassignment should "
+                      "work.")
+        self.failUnless(si in r2.sicards)
+
+    def testReassigSame(self):
+        """
+        Test that reassigning an SI-card to the same runner it is already assigned
+        works.
+        """
+        si = SICard(987655)
+        r = self._store.add(Runner(u'Hans', u'Muster', si))
+        try:
+            r.sicards.add(si)
+            self._store.flush()
+        except RunnerException:
+            self.fail("RunnerException raised although SI-card reassignment should "
+                      "work.")
+        self.failUnless(si in r.sicards)
+
+        
