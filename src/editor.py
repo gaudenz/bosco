@@ -524,7 +524,7 @@ class RunEditor(Observable):
         try:
             self._run.sicard.runner.given_name = n
         except AttributeError:
-            self._run.sicard.runner = Runner(gname = n)
+            self._run.sicard.runner = Runner(given_name = n)
 
         self.changed = True
 
@@ -532,7 +532,7 @@ class RunEditor(Observable):
         try:
             self._run.sicard.runner.surname = n
         except AttributeError:
-            self._run.sicard.runner = Runner(sname = n)
+            self._run.sicard.runner = Runner(surname = n)
 
         self.changed = True
 

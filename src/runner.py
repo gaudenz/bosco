@@ -66,14 +66,14 @@ class Runner(AbstractRunner, Storm):
     team = Reference(_team_id, 'Team.id')
     sicards = ReferenceSet(id, 'SICard._runner_id')
 
-    def __init__(self, sname=u'', gname=u'', sicard = None, category = None, number = None,
+    def __init__(self, surname=u'', given_name=u'', sicard = None, category = None, number = None,
                  dateofbirth=None, sex=None, nation=None, solvnr=None, startblock=None, 
                  starttime=None, club=None, address1=None, address2=None, zipcode=None, 
                  city=None, address_country=None, email=None, startfee=None, paid=None, 
                  preferred_category=None, doping_declaration=None, comment=None,
                  ):
-        self.surname = sname
-        self.given_name = gname
+        self.surname = surname
+        self.given_name = given_name
         if sicard is not None:
             self.sicards.add(sicard)
         self.category = category
