@@ -21,42 +21,54 @@ from optparse import OptionParser
 import sys
 
 import conf
-from importer import Team24hImporter, TeamRelayImporter, SIRunImporter, OCADXMLCourseImporter, CSVCourseImporter
+from importer import Team24hImporter, TeamRelayImporter, SIRunImporter, OCADXMLCourseImporter, CSVCourseImporter, SOLVDBImporter
 
 if __name__ == '__main__':
     # Read program options
     opt = OptionParser(usage = 'usage: %prog [options] command importfile', 
-                       description = 'Available commands are \'teams\', \'runs\' and \'courses\'.')
+                       description = "Available commands are 'runners', "
+                                     "'teams', 'runs' and 'courses'.")
     opt.add_option('-e', '--encoding', action='store', default='utf-8',
                    help='Encoding of the imported file.')
     opt.add_option('-f', '--format', action='store',
-                   help="Format of the file. Currently supported for team imports: 24h, relay; for courses: xml, csv")
+                   help="Format of the file. Currently supported formats: "
+                        "runner imports: solv; "
+                        "team imports: 24h, relay; "
+                        "course imports: xml, csv")
+    opt.add_option('-v', '--verbose', action='store_true',
+                   help="Turn verbose output on.")
     (options, (command, filename)) = opt.parse_args()
 
-    if command == 'teams':
+    if command == 'runners':
+        if options.format == 'solv':
+            importer = SOLVDBImporter(filename, options.encoding, verbose=options.verbose)
+        else:
+            print 'Unknown runner import format identifier!'
+            sys.exit(1)
+    elif command == 'teams':
         # Import teams
         if options.format == '24h':
-            importer = Team24hImporter(filename, options.encoding)
+            importer = Team24hImporter(filename, options.encoding, verbose=options.verbose)
         elif options.format == 'relay':
-            importer = TeamRelayImporter(filename, options.encoding)
+            importer = TeamRelayImporter(filename, options.encoding, verbose=options.verbose)
         else:
             print 'Unknown Team format identifier!'
             sys.exit(1)
     elif command == 'runs':
         # Import runs
-        importer = SIRunImporter(filename, options.encoding)
+        importer = SIRunImporter(filename, options.encoding, verbose=options.verbose)
     elif command == 'courses':
         # Import courses
         if options.format == 'xml':
-            importer = OCADXMLCourseImporter(filename, False, False)
+            importer = OCADXMLCourseImporter(filename, False, False, verbose=options.verbose)
         elif options.format == 'csv':
-            importer = CSVCourseImporter(filename, options.encoding)
+            importer = CSVCourseImporter(filename, options.encoding, verbose=options.verbose)
         else:
             print 'Unknown Course format identifier!'
             sys.exit(1)
     else:
         print "Unknown command '%s'" % command
-        exit(1)
+        sys.exit(1)
         
     importer.import_data(conf.store)
     conf.store.commit()

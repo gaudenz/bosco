@@ -169,12 +169,9 @@ def sicard_runner_validator(sicard, attribute, value):
     if sicard._runner_id is None or sicard._runner_id == value or value is None:
         return value
 
-    raise RunnerException("SI-Card %s is already assigned to runner %s" %
-                          (sicard.id, "%s %s (%s)" %
-                           (sicard.runner.given_name,
-                            sicard.runner.surname,
-                            sicard.runner.number)
-                           )
+    raise RunnerException("SI-Card %s is already assigned to runner %s %s (%s)" %
+                          (sicard.id, sicard.runner.given_name, sicard.runner.surname,
+                           sicard.runner.number)
                           )
 
 class SICard(Storm):
