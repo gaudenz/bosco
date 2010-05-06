@@ -290,6 +290,10 @@ class Team24hImporter(RunnerImporter):
                 except NoSICardException, e:
                     print ("Runner %s %s of Team %s (%s) has no SI-card." %
                            (runner.given_name, runner.surname, team.name, team.number))
+                except InvalidSICardException, e:
+                    print ("Runner %s %s of Team %s (%s) has an invalid SI-card: %s" %
+                           (runner.given_name, runner.surname, team.name, team.number,
+                            e.message))
                 else:
                     RunnerImporter._add_sicard(runner,sicard, store)
 
@@ -313,7 +317,10 @@ class TeamRelayImporter(RunnerImporter):
     def import_data(self, store):
 
         self._categories = {}
-        for t in self.data:
+        for line,t in enumerate(self.data):
+            if self._verbose:
+                print ("%i: Importing team %s (%s):" %
+                       (line+1, t['Teamname'], t['AnmeldeNummer']))
 
             # Create category
             if t['Kategorie'] not in self._categories:
@@ -327,26 +334,38 @@ class TeamRelayImporter(RunnerImporter):
             num = 0
             i = 1
             while num < (self._fieldcount-3)/6:
-
                 surname = t['Name%s' % str(i)]
                 given_name =  t['Vorname%s' % str(i)]
+                number = TeamRelayImporter.RUNNER_NUMBER_FORMAT % \
+                                {'team' : int(team.number),
+                                 'runner' : i}
                 if surname == u'' and given_name == u'':
                     # don't add runner without any name
                     i += 1
                     num += 1
                     continue
                 
-                runner = Runner(surname,given_name)
+                if self._verbose:
+                    print ("  * Adding runner %s %s (%s)." %
+                           (given_name, surname, number))
+
+                runner = store.add(Runner(surname,given_name))
                 runner.sex = RunnerImporter._parse_sex(t['Geschlecht%s' % str(i)])
                 runner.dateofbirth = RunnerImporter._parse_yob(t['Jahrgang%s' % str(i)]) 
-                runner.number = TeamRelayImporter.RUNNER_NUMBER_FORMAT % \
-                                {'team' : int(team.number),
-                                 'runner' : i}
-                print runner.number
+                runner.number = number
 
                 # Add SI Card if valid
-                sicard = RunnerImporter._get_sicard(t['SI-Card%s' % i], store)
-                RunnerImporter._add_sicard(runner, sicard, store)
+                try:
+                    sicard = RunnerImporter._get_sicard(t['SI-Card%s' % str(i)], store)
+                except NoSICardException, e:
+                    print ("Runner %s %s of Team %s (%s) has no SI-card." %
+                           (runner.given_name, runner.surname, team.name, team.number))
+                except InvalidSICardException, e:
+                    print ("Runner %s %s of Team %s (%s) has an invalid SI-card: %s" %
+                           (runner.given_name, runner.surname, team.name, team.number,
+                            e.message))
+                else:
+                    RunnerImporter._add_sicard(runner,sicard, store)
 
                 # Add open run if SICard
                 try:
