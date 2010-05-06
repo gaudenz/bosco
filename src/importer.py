@@ -69,7 +69,7 @@ class CSVImporter(Importer):
         csv = reader(fh, dialect = dialect)
 
         # Read labels
-        labels = csv.next()
+        labels = [ v.strip() for v in csv.next() ]
         self._fieldcount = len(labels)
 
         # Read values
@@ -82,7 +82,7 @@ class CSVImporter(Importer):
                 pass
             d = {}
             for i,v in enumerate(line):
-                d[labels[i]] = v.decode(encoding)
+                d[labels[i]] = v.decode(encoding).strip()
                 
             self.data.append(d)
 
