@@ -650,7 +650,16 @@ class CSVCourseImporter(CSVImporter):
 
         for c in self.data:
 
+            if self._verbose:
+                print "Importing course %s." % c['code']
+
             # create course
+            course = store.find(Course, Course.code == c['code']).one()
+            if course:
+                print "A course with code %s already exists. Updating course." % c['code']
+                for s in course.sequence:
+                    store.remove(s)
+                store.remove(course)
             course = store.add(Course(c['code'], int(c['length']), int(c['climb'])))
 
             # add controls
