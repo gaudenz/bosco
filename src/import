@@ -37,7 +37,11 @@ if __name__ == '__main__':
                         "course imports: xml, csv")
     opt.add_option('-v', '--verbose', action='store_true',
                    help="Turn verbose output on.")
-    (options, (command, filename)) = opt.parse_args()
+    try:
+        (options, (command, filename)) = opt.parse_args()
+    except ValueError:
+        opt.print_usage()
+        sys.exit(0)
 
     if command == 'runners':
         if options.format == 'solv':
