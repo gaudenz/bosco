@@ -144,19 +144,27 @@ class RunFinderTest(BoscoTest):
         self.assertEquals([self._run_tuple(i) for i in range(6)],
                           self._finder.get_results())
 
+    def test_run_without_runner(self):
+        """Test that runs without a runner and a course"""
+        self._finder.set_search_domain('sicard')
+        self._finder.set_search_term(9999)
+        self.assertEquals([self._run_tuple(6)],
+                          self._finder.get_results())
+
     def _run_tuple(self, run_id):
         """
         @param run_id Index of the run in self._runs
         @return       Tuple formatted like RunFinder.get_results()"""
 
         r = self._runs[run_id]
-        number = r.sicard.runner.number
-        team = r.sicard.runner.team
+        number = r.sicard.runner and r.sicard.runner.number or None
+        team = r.sicard.runner and r.sicard.runner.team or None
         runner = r.sicard.runner
         return (r.id,
-                unicode(r.course.code),
+                r.course and unicode(r.course.code) or "unknown",
                 "unknown",
                 number and unicode(number) or "unknown",
-                unicode(runner),
+                runner and unicode(runner) or "unknown",
                 team and unicode(team) or "unknown",
-                team and unicode(team.category) or unicode(runner.category))
+                team and unicode(team.category) or runner and unicode(runner.category) 
+                  or "unkown")

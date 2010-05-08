@@ -167,7 +167,20 @@ class BoscoTest(unittest.TestCase):
         self._runs.append(Run(12345, u'A', [], store = self._store))
         self._runs[5].complete = True
 
-
+        # run without runner and course
+        self._runs.append(Run(SICard(9999), 
+                              None, 
+                              [(131,datetime(2008,3,19,8,22,39)),
+                               (132,datetime(2008,3,19,8,23,35)),
+                               (201,datetime(2008,3,19,8,24,35)),
+                               (132,datetime(2008,3,19,8,25,0)),
+                               ],
+                              card_start_time = datetime(2008,3,19,8,20,32),
+                              card_finish_time = datetime(2008,3,19,8,25,40),
+                              store = self._store
+                              ))
+        self._runs[6].complete = True
+                              
     def tearDown(self):
         # Clean up Database
         self._store.rollback()

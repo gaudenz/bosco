@@ -111,16 +111,19 @@ class RunFinder(Observable):
             return []
 
         results = []
-        for r in self._query:
+        for r in self._query.order_by(Run.id):
             runner = r.sicard.runner
-            team = runner.team
+            team = runner and runner.team or None
             results.append((r.id, 
-                            r.course.code and unicode(r.course.code) or 'unknown', 
+                            r.course and r.course.code and unicode(r.course.code) 
+                              or 'unknown', 
                             r.readout_time and unicode(r.readout_time) or 'unknown', 
-                            runner.number and unicode(runner.number) or 'unknown',
+                            runner and runner.number and unicode(runner.number) 
+                              or 'unknown',
                             runner and unicode(runner) or 'unknown',
                             team and unicode(team) or 'unknown',
-                            team and unicode(team.category) or unicode(runner.category)
+                            team and unicode(team.category) or runner and unicode(runner.category)
+                              or 'unkown'
                             ))
 
         return results
