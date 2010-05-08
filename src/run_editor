@@ -122,6 +122,12 @@ class RunEditorFrame(wx.Frame):
     def ConnectReader(self, event): # wxGlade: RunEditorFrame.<event_handler>
         self.editor.connect_reader()
 
+    def ErrorDialog(self, msg, title):
+        dlg =  wx.MessageDialog(self, msg, title,
+                                wx.OK | wx.ICON_ERROR)
+        dlg.ShowModal()
+        dlg.Destroy()
+
 # end of class RunEditorFrame
 
 class RunSearchWidget(wx.SearchCtrl):
@@ -618,7 +624,7 @@ class EditRunPanel(RunPanel):
         try: 
             self.editor.set_manual_start_time(self.manual_start_time.GetValue().strip())
         except ValueError, msg:
-            self.ErrorDialog(str(msg), 'invalid time format')
+            self.GetGrandParent().ErrorDialog(str(msg), 'invalid time format')
             self.manual_start_time.SetFocus()
 
     def SetManualFinishTime(self, event):
@@ -628,7 +634,7 @@ class EditRunPanel(RunPanel):
         try:
             self.editor.set_manual_finish_time(self.manual_finish_time.GetValue().strip())
         except ValueError, msg:
-            self.ErrorDialog(str(msg), 'invalid time format')
+            self.GetGrandParent().ErrorDialog(str(msg), 'invalid time format')
             self.manual_finish_time.SetFocus()
 
     def SetRunnerNumber(self, event):
@@ -668,7 +674,7 @@ class EditRunPanel(RunPanel):
         try:
             self.editor.set_runner_dateofbirth(self.runner_dateofbirth.GetValue().strip())
         except ValueError, msg:
-            self.ErrorDialog(str(msg), 'invalid date format')
+            self.GetGrandParent().ErrorDialog(str(msg), 'invalid date format')
             self.runner_dateofbirth.SetFocus()
     
     def SetRunnerTeam(self, event): # wxGlade: EditRunPanel.<event_handler>
@@ -685,17 +691,11 @@ class EditRunPanel(RunPanel):
             self.editor.commit()
         except Exception, msg:
             self.editor.rollback()
-            self.ErrorDialog(str(msg), 'Error saving changes')
+            self.GetGrandParent().ErrorDialog(str(msg), 'Error saving changes')
 
     def AddRun(self, event): # wxGlade: EditRunPanel.<event_handler>
         if self.AskApply() != wx.ID_CANCEL:
             self.editor.new()
-
-    def ErrorDialog(self, msg, title):
-        dlg =  wx.MessageDialog(self, msg, title,
-                                wx.OK | wx.ICON_ERROR)
-        dlg.ShowModal()
-        dlg.Destroy()
 
     def EditPunch(self, event): # wxGlade: EditRunPanel.<event_handler>
 
@@ -746,7 +746,7 @@ class EditRunPanel(RunPanel):
                 self.editor.set_punchtime(punch,
                                           self.punches_grid.GetCellValue(punch, col).strip())
             except ValueError, msg:
-                self.ErrorDialog(str(msg), 'invalid time format')
+                self.GetGrandParent().ErrorDialog(str(msg), 'invalid time format')
                 event.Veto()
                 return 
         elif col == 5:
