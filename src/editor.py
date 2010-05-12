@@ -284,6 +284,10 @@ class RunEditor(Observable):
             return ''
     runner_number = property(_get_runner_number)
 
+    runner_category = property(lambda obj: obj._run and obj._run.sicard.runner and
+                               obj._run.sicard.runner.category and 
+                               obj._run.sicard.runner.category.name or '')
+
     def _get_runner_team(self):
         try:
             return u'%3s: %s' % (self._run.sicard.runner.team.number, self._run.sicard.runner.team.name)
@@ -522,7 +526,17 @@ class RunEditor(Observable):
             
         self._run.sicard.runner.number = n
         self.changed = True
+
+    def set_runner_category(self, cat_name):
         
+        if not self.has_runner():
+            self._run.sicard.runner = Runner()
+
+        cat = self._store.find(Category, Category.name == cat_name).one()
+        self._run.sicard.runner.category = cat
+        self.set_course(cat_name)
+        self.changed = True
+            
     def set_runner_given_name(self, n):
         try:
             self._run.sicard.runner.given_name = n

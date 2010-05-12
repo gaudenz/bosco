@@ -334,24 +334,68 @@
                                                 </object>
                                             </object>
                                             <object class="sizeritem">
-                                                <flag>wxALL</flag>
-                                                <border>2</border>
-                                                <option>0</option>
-                                                <object class="wxStaticText" name="label_20_copy" base="EditStaticText">
-                                                    <attribute>0</attribute>
-                                                    <label>Number:</label>
-                                                </object>
-                                            </object>
-                                            <object class="sizeritem">
-                                                <flag>wxALL</flag>
-                                                <border>2</border>
-                                                <option>0</option>
-                                                <object class="wxTextCtrl" name="runner_number" base="EditTextCtrl">
-                                                    <value>101A</value>
-                                                    <events>
-                                                        <handler event="EVT_TEXT">FieldChanged</handler>
-                                                    </events>
-                                                    <size>250, 25</size>
+                                                <flag>wxEXPAND</flag>
+                                                <border>0</border>
+                                                <option>1</option>
+                                                <object class="wxBoxSizer" name="sizer_7" base="EditBoxSizer">
+                                                    <orient>wxHORIZONTAL</orient>
+                                                    <object class="sizeritem">
+                                                        <flag>wxEXPAND</flag>
+                                                        <border>0</border>
+                                                        <option>1</option>
+                                                        <object class="wxBoxSizer" name="sizer_31" base="EditBoxSizer">
+                                                            <orient>wxVERTICAL</orient>
+                                                            <object class="sizeritem">
+                                                                <flag>wxALL</flag>
+                                                                <border>2</border>
+                                                                <option>0</option>
+                                                                <object class="wxStaticText" name="label_20_copy" base="EditStaticText">
+                                                                    <attribute>0</attribute>
+                                                                    <label>Number:</label>
+                                                                </object>
+                                                            </object>
+                                                            <object class="sizeritem">
+                                                                <flag>wxALL</flag>
+                                                                <border>2</border>
+                                                                <option>0</option>
+                                                                <object class="wxTextCtrl" name="runner_number" base="EditTextCtrl">
+                                                                    <value>101A</value>
+                                                                    <events>
+                                                                        <handler event="EVT_TEXT">FieldChanged</handler>
+                                                                    </events>
+                                                                    <size>122, 25</size>
+                                                                </object>
+                                                            </object>
+                                                        </object>
+                                                    </object>
+                                                    <object class="sizeritem">
+                                                        <flag>wxEXPAND</flag>
+                                                        <border>0</border>
+                                                        <option>1</option>
+                                                        <object class="wxBoxSizer" name="sizer_32" base="EditBoxSizer">
+                                                            <orient>wxVERTICAL</orient>
+                                                            <object class="sizeritem">
+                                                                <flag>wxALL</flag>
+                                                                <border>2</border>
+                                                                <option>0</option>
+                                                                <object class="wxStaticText" name="label_1" base="EditStaticText">
+                                                                    <attribute>1</attribute>
+                                                                    <label>Category:</label>
+                                                                </object>
+                                                            </object>
+                                                            <object class="sizeritem">
+                                                                <flag>wxALL</flag>
+                                                                <border>2</border>
+                                                                <option>0</option>
+                                                                <object class="wxTextCtrl" name="runner_category" base="EditTextCtrl">
+                                                                    <events>
+                                                                        <handler event="EVT_TEXT">FieldChanged</handler>
+                                                                    </events>
+                                                                    <size>122, 25</size>
+                                                                </object>
+                                                            </object>
+                                                        </object>
+                                                    </object>
                                                 </object>
                                             </object>
                                             <object class="sizeritem">
@@ -1018,6 +1062,40 @@
                                         <object class="wxStaticText" name="runner_number" base="EditStaticText">
                                             <attribute>1</attribute>
                                             <label>101A</label>
+                                            <font>
+                                                <size>12</size>
+                                                <family>default</family>
+                                                <style>normal</style>
+                                                <weight>bold</weight>
+                                                <underlined>0</underlined>
+                                                <face></face>
+                                            </font>
+                                        </object>
+                                    </object>
+                                    <object class="sizeritem">
+                                        <border>0</border>
+                                        <option>0</option>
+                                        <object class="spacer" name="spacer" base="EditSpacer">
+                                            <height>10</height>
+                                            <width>20</width>
+                                        </object>
+                                    </object>
+                                    <object class="sizeritem">
+                                        <flag>wxALL</flag>
+                                        <border>2</border>
+                                        <option>0</option>
+                                        <object class="wxStaticText" name="label_6" base="EditStaticText">
+                                            <attribute>1</attribute>
+                                            <label>Category:</label>
+                                        </object>
+                                    </object>
+                                    <object class="sizeritem">
+                                        <flag>wxALL</flag>
+                                        <border>2</border>
+                                        <option>0</option>
+                                        <object class="wxStaticText" name="runner_category" base="EditStaticText">
+                                            <attribute>1</attribute>
+                                            <label>HAM</label>
                                             <font>
                                                 <size>12</size>
                                                 <family>default</family>

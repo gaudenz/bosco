@@ -359,6 +359,8 @@ class EditRunPanel(RunPanel):
         self.add_button = wx.Button(self.window_1_pane_1, wx.ID_ADD, "")
         self.run_runner_combo = wx.ComboBox(self.window_1_pane_2, -1, choices=[], style=wx.CB_DROPDOWN|wx.CB_DROPDOWN|wx.CB_READONLY)
         self.runner_number = wx.TextCtrl(self.window_1_pane_2, -1, "101A")
+        self.label_1 = wx.StaticText(self.window_1_pane_2, -1, "Category:")
+        self.runner_category = wx.TextCtrl(self.window_1_pane_2, -1, "")
         self.runner_given_name = wx.TextCtrl(self.window_1_pane_2, -1, "Gaudenz")
         self.runner_surname = wx.TextCtrl(self.window_1_pane_2, -1, "Steinlin")
         self.label_4 = wx.StaticText(self.window_1_pane_2, -1, "Date of birth:")
@@ -398,6 +400,7 @@ class EditRunPanel(RunPanel):
         self.Bind(wx.EVT_BUTTON, self.AddRun, self.add_button)
         self.Bind(wx.EVT_COMBOBOX, self.SetRunRunner, self.run_runner_combo)
         self.Bind(wx.EVT_TEXT, self.FieldChanged, self.runner_number)
+        self.Bind(wx.EVT_TEXT, self.FieldChanged, self.runner_category)
         self.Bind(wx.EVT_TEXT, self.FieldChanged, self.runner_given_name)
         self.Bind(wx.EVT_TEXT, self.FieldChanged, self.runner_surname)
         self.Bind(wx.EVT_TEXT, self.FieldChanged, self.runner_dateofbirth)
@@ -431,6 +434,7 @@ class EditRunPanel(RunPanel):
         self.manual_start_time.Bind(wx.EVT_KILL_FOCUS, self.SetManualStartTime)
         self.manual_finish_time.Bind(wx.EVT_KILL_FOCUS, self.SetManualFinishTime)
         self.runner_number.Bind(wx.EVT_KILL_FOCUS, self.SetRunnerNumber)
+        self.runner_category.Bind(wx.EVT_KILL_FOCUS, self.SetRunnerCategory)
         self.runner_given_name.Bind(wx.EVT_KILL_FOCUS, self.SetRunnerGivenName)
         self.runner_surname.Bind(wx.EVT_KILL_FOCUS, self.SetRunnerSurname)
         self.runner_dateofbirth.Bind(wx.EVT_KILL_FOCUS, self.SetRunnerDateofbirth)
@@ -441,7 +445,8 @@ class EditRunPanel(RunPanel):
         # which is called on any EVT_TEXT event sets it to True. All the callbacks called on EVT_KILL_FOCUS
         # first check this self.field_changed.
         for field in (self.manual_start_time, self.manual_finish_time, self.runner_number,
-                      self.runner_given_name, self.runner_surname, self.runner_dateofbirth):
+                      self.runner_category, self.runner_given_name, self.runner_surname, 
+                      self.runner_dateofbirth):
             field.Bind(wx.EVT_SET_FOCUS, self.ResetFieldChanged)
         
         self.finder = RunFinder(conf.store)
@@ -456,7 +461,8 @@ class EditRunPanel(RunPanel):
     def __set_properties(self):
         # begin wxGlade: EditRunPanel.__set_properties
         self.run_runner_combo.SetMinSize((250, 27))
-        self.runner_number.SetMinSize((250, 25))
+        self.runner_number.SetMinSize((122, 25))
+        self.runner_category.SetMinSize((122, 25))
         self.runner_given_name.SetMinSize((122, 25))
         self.runner_surname.SetMinSize((122, 25))
         self.runner_dateofbirth.SetMinSize((90, 25))
@@ -506,6 +512,9 @@ class EditRunPanel(RunPanel):
         sizer_8 = wx.StaticBoxSizer(self.sizer_8_staticbox, wx.VERTICAL)
         sizer_29 = wx.BoxSizer(wx.HORIZONTAL)
         sizer_28 = wx.BoxSizer(wx.HORIZONTAL)
+        sizer_7 = wx.BoxSizer(wx.HORIZONTAL)
+        sizer_32 = wx.BoxSizer(wx.VERTICAL)
+        sizer_31 = wx.BoxSizer(wx.VERTICAL)
         sizer_13 = wx.BoxSizer(wx.HORIZONTAL)
         sizer_19 = wx.BoxSizer(wx.VERTICAL)
         sizer_30 = wx.StaticBoxSizer(self.sizer_30_staticbox, wx.VERTICAL)
@@ -522,8 +531,13 @@ class EditRunPanel(RunPanel):
         sizer_8.Add(self.run_runner_combo, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 2)
         sizer_8.Add((20, 5), 0, 0, 0)
         label_20_copy = wx.StaticText(self.window_1_pane_2, -1, "Number:")
-        sizer_8.Add(label_20_copy, 0, wx.ALL, 2)
-        sizer_8.Add(self.runner_number, 0, wx.ALL, 2)
+        sizer_31.Add(label_20_copy, 0, wx.ALL, 2)
+        sizer_31.Add(self.runner_number, 0, wx.ALL, 2)
+        sizer_7.Add(sizer_31, 1, wx.EXPAND, 0)
+        sizer_32.Add(self.label_1, 0, wx.ALL, 2)
+        sizer_32.Add(self.runner_category, 0, wx.ALL, 2)
+        sizer_7.Add(sizer_32, 1, wx.EXPAND, 0)
+        sizer_8.Add(sizer_7, 1, wx.EXPAND, 0)
         sizer_8.Add((20, 10), 0, 0, 0)
         label_20 = wx.StaticText(self.window_1_pane_2, -1, "Runner:")
         sizer_8.Add(label_20, 0, wx.ALL, 2)
@@ -654,7 +668,12 @@ class EditRunPanel(RunPanel):
             elif answer == wx.ID_NO:
                 self.runner_number.SetFocus()
             
-    
+    def SetRunnerCategory(self, event):
+        if not self.field_changed:
+            return
+
+        self.editor.set_runner_category(self.runner_category.GetValue().upper().strip())
+            
     def SetRunnerGivenName(self, event):
         if not self.field_changed:
             return
@@ -806,12 +825,14 @@ class EditRunPanel(RunPanel):
                 self.complete.SetValue(self.editor.run_complete)
 
                 self.runner_number.SetValue(self.editor.runner_number)
+                self.runner_category.SetValue(self.editor.runner_category)
                 self.runner_given_name.SetValue(self.editor.runner_given_name)
                 self.runner_surname.SetValue(self.editor.runner_surname)
                 self.runner_dateofbirth.SetValue(self.editor.runner_dateofbirth)
                 self.runner_team.SetValue(self.editor.runner_team)
 
-                ctrl_list = (self.run_runner_combo, self.runner_number, self.runner_given_name,
+                ctrl_list = (self.run_runner_combo, self.runner_number, self.runner_category,
+                             self.runner_given_name,
                              self.runner_surname, self.runner_dateofbirth, self.runner_team, self.course,
                              self.manual_start_time, self.manual_finish_time, self.override, self.complete,
                              self.punches_grid)
@@ -854,6 +875,8 @@ class ReadoutRunPanel(RunPanel):
         self.progress_bar = wx.Gauge(self, -1, 10)
         self.progress_text = wx.StaticText(self, -1, "Reading Card data...")
         self.runner_number = wx.StaticText(self, -1, "101A")
+        self.label_6 = wx.StaticText(self, -1, "Category:")
+        self.runner_category = wx.StaticText(self, -1, "HAM")
         self.runner_name = wx.StaticText(self, -1, "Gaudenz Steinlin")
         self.runner_team = wx.StaticText(self, -1, u"UBOL 3 \"saugrün\"")
         self.runner_sicard = wx.StaticText(self, -1, "654324")
@@ -884,6 +907,7 @@ class ReadoutRunPanel(RunPanel):
     def __set_properties(self):
         # begin wxGlade: ReadoutRunPanel.__set_properties
         self.runner_number.SetFont(wx.Font(12, wx.DEFAULT, wx.NORMAL, wx.BOLD, 0, ""))
+        self.runner_category.SetFont(wx.Font(12, wx.DEFAULT, wx.NORMAL, wx.BOLD, 0, ""))
         self.runner_name.SetFont(wx.Font(12, wx.DEFAULT, wx.NORMAL, wx.BOLD, 0, ""))
         self.runner_team.SetFont(wx.Font(12, wx.DEFAULT, wx.NORMAL, wx.BOLD, 0, ""))
         self.runner_sicard.SetFont(wx.Font(12, wx.DEFAULT, wx.NORMAL, wx.BOLD, 0, ""))
@@ -927,6 +951,9 @@ class ReadoutRunPanel(RunPanel):
         label_20_copy_copy = wx.StaticText(self, -1, "Number:")
         sizer_11.Add(label_20_copy_copy, 0, wx.ALL, 2)
         sizer_11.Add(self.runner_number, 0, wx.ALL, 2)
+        sizer_11.Add((20, 10), 0, 0, 0)
+        sizer_11.Add(self.label_6, 0, wx.ALL, 2)
+        sizer_11.Add(self.runner_category, 0, wx.ALL, 2)
         sizer_11.Add((20, 10), 0, 0, 0)
         label_20_copy_1 = wx.StaticText(self, -1, "Runner:")
         sizer_11.Add(label_20_copy_1, 0, wx.ALL, 2)
@@ -991,6 +1018,7 @@ class ReadoutRunPanel(RunPanel):
                 self.UpdateRun()
 
                 self.runner_number.SetLabel(self.editor.runner_number)
+                self.runner_category.SetLabel(self.editor.runner_category)
                 self.runner_name.SetLabel(self.editor.runner_name)
                 self.runner_team.SetLabel(self.editor.runner_team)
 
