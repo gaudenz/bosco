@@ -105,18 +105,15 @@ class RunEditorFrame(wx.Frame):
             wx.Yield()
 
     def PageChange(self, event): # wxGlade: RunEditorFrame.<event_handler>
-        if self.edit_run_page.AskApply() == wx.ID_CANCEL:
+        if (self.notebook.GetCurrentPage() == self.edit_run_page and
+            not self.edit_run_page.AskApply()):
             event.Veto()
             return
-        if event.GetSelection() == 1:
-            self.edit_run_page.editor.start_reader()
-        else:
-            self.edit_run_page.editor.stop_reader()
 
         event.Skip()
 
     def Quit(self, event): # wxGlade: RunEditorFrame.<event_handler>
-        if self.edit_run_page.AskApply() != wx.ID_CANCEL:
+        if self.edit_run_page.AskApply():
             self.Close(True)
 
     def ConnectReader(self, event): # wxGlade: RunEditorFrame.<event_handler>
@@ -713,7 +710,7 @@ class EditRunPanel(RunPanel):
             self.GetGrandParent().ErrorDialog(str(msg), 'Error saving changes')
 
     def AddRun(self, event): # wxGlade: EditRunPanel.<event_handler>
-        if self.AskApply() != wx.ID_CANCEL:
+        if self.AskApply():
             self.editor.new()
 
     def EditPunch(self, event): # wxGlade: EditRunPanel.<event_handler>
@@ -777,23 +774,30 @@ class EditRunPanel(RunPanel):
 
     def SetRun(self, event): # wxGlade: EditRunPanel.<event_handler>
         index = event.m_itemIndex
-        if self.AskApply() == wx.ID_CANCEL:
+        if not self.AskApply():
             self.searchresults.SetItemState(index, 0, wx.LIST_STATE_SELECTED)
         else:
             self.editor.load(self.searchresults.GetItemData(index))
 
     def AskApply(self):
-        if self.editor.changed:
-            dlg = wx.MessageDialog(self, 'You have made changes to this run. Do you want to apply these changes now? If you answser "No" the changes will be lost!',
-                                   'unapplied changes',
-                                   style = wx.YES_NO|wx.CANCEL|wx.ICON_QUESTION)
-            answer = dlg.ShowModal()
-            dlg.Destroy()
-            if answer == wx.ID_YES:
-                self.editor.commit()
-            elif answer == wx.ID_NO:
-                self.editor.rollback()
-            return answer
+        if not self.editor.changed:
+            return True
+
+        dlg = wx.MessageDialog(self, 'You have made changes to this run. Do you want to apply '
+                               'these changes now? If you answser "No" the changes will be lost!',
+                               'unapplied changes',
+                               style = wx.YES_NO|wx.CANCEL|wx.ICON_QUESTION)
+        answer = dlg.ShowModal()
+        dlg.Destroy()
+        if answer == wx.ID_YES:
+            self.editor.commit()
+            return True
+        elif answer == wx.ID_NO:
+            self.editor.rollback()
+            return True
+        elif answer == wx.ID_CANCEL:
+            return False
+
         
     def update(self, observable, event):
         
