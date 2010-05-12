@@ -38,7 +38,7 @@
                 <flag>wxEXPAND</flag>
                 <border>0</border>
                 <option>1</option>
-                <object class="wxNotebook" name="notebook_1" base="EditNotebook">
+                <object class="wxNotebook" name="notebook" base="EditNotebook">
                     <style>0</style>
                     <tabs>
                         <tab window="edit_run_page">Edit Run</tab>
@@ -248,7 +248,7 @@
                                         <flag>wxALL|wxEXPAND|wxALIGN_CENTER_VERTICAL</flag>
                                         <border>2</border>
                                         <option>0</option>
-                                        <object class="wxButton" name="button_2" base="EditButton">
+                                        <object class="wxButton" name="commit" base="EditButton">
                                             <stockitem>APPLY</stockitem>
                                             <label>&amp;Apply</label>
                                             <events>
@@ -260,7 +260,7 @@
                                         <flag>wxALL|wxEXPAND|wxALIGN_CENTER_VERTICAL</flag>
                                         <border>2</border>
                                         <option>0</option>
-                                        <object class="wxButton" name="button_4" base="EditButton">
+                                        <object class="wxButton" name="rollback" base="EditButton">
                                             <stockitem>REVERT_TO_SAVED</stockitem>
                                             <label>Revert to Saved</label>
                                             <events>
