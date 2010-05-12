@@ -326,70 +326,78 @@ class TeamRelayImporter(RunnerImporter):
                 print ("%i: Importing team %s (%s):" %
                        (line+1, t['Teamname'], t['AnmeldeNummer']))
 
-            # Create category
-            if t['Kategorie'] not in self._categories:
-                self._categories[t['Kategorie']] = Category(t['Kategorie'])
-                
-            # Create the team
-            team = Team(t['AnmeldeNummer'],
-                            t['Teamname'], self._categories[t['Kategorie']])
+            try:
+                # Create category
+                if t['Kategorie'] not in self._categories:
+                    self._categories[t['Kategorie']] = Category(t['Kategorie'])
 
-            # Create individual runners
-            num = 0
-            i = 1
-            while num < (self._fieldcount-3)/6:
-                surname = t['Name%s' % str(i)]
-                given_name =  t['Vorname%s' % str(i)]
-                number = TeamRelayImporter.RUNNER_NUMBER_FORMAT % \
-                                {'team' : int(team.number),
-                                 'runner' : i}
-                if surname == u'' and given_name == u'':
-                    # don't add runner without any name
-                    i += 1
+                # Create the team
+                team = Team(t['AnmeldeNummer'],
+                                t['Teamname'], self._categories[t['Kategorie']])
+
+                # Create individual runners
+                num = 0
+                i = 1
+                while num < (self._fieldcount-3)/6:
+                    surname = t['Name%s' % str(i)]
+                    given_name =  t['Vorname%s' % str(i)]
+                    number = TeamRelayImporter.RUNNER_NUMBER_FORMAT % \
+                                    {'team' : int(team.number),
+                                     'runner' : i}
+                    if surname == u'' and given_name == u'':
+                        # don't add runner without any name
+                        i += 1
+                        num += 1
+                        continue
+
+                    if self._verbose:
+                        print ("  * Adding runner %s %s (%s)." %
+                               (given_name, surname, number))
+
+                    runner = store.add(Runner(surname,given_name))
+                    runner.sex = RunnerImporter._parse_sex(t['Geschlecht%s' % str(i)])
+                    runner.dateofbirth = RunnerImporter._parse_yob(t['Jahrgang%s' % str(i)]) 
+                    runner.number = number
+
+                    # Add SI Card if valid
+                    try:
+                        sicard = RunnerImporter._get_sicard(t['SI-Card%s' % str(i)], store)
+                    except NoSICardException, e:
+                        print ("Runner %s %s of Team %s (%s) has no SI-card." %
+                               (runner.given_name, runner.surname, team.name, team.number))
+                    except InvalidSICardException, e:
+                        print ("Runner %s %s of Team %s (%s) has an invalid SI-card: %s" %
+                               (runner.given_name, runner.surname, team.name, team.number,
+                                e.message))
+                    else:
+                        RunnerImporter._add_sicard(runner,sicard, store)
+
+                    # Add open run if SICard
+                    try:
+                        si = runner.sicards.one()
+                    except NotOneError:
+                        pass
+                    else:
+                        if si is not None:
+                            r = store.add(Run(si))
+                            r.set_coursecode(unicode(t['Bahn%s' % i]))
+
+                    # Add runner to team
+                    team.members.add(runner)
+
                     num += 1
-                    continue
-                
-                if self._verbose:
-                    print ("  * Adding runner %s %s (%s)." %
-                           (given_name, surname, number))
+                    i += 1
 
-                runner = store.add(Runner(surname,given_name))
-                runner.sex = RunnerImporter._parse_sex(t['Geschlecht%s' % str(i)])
-                runner.dateofbirth = RunnerImporter._parse_yob(t['Jahrgang%s' % str(i)]) 
-                runner.number = number
-
-                # Add SI Card if valid
-                try:
-                    sicard = RunnerImporter._get_sicard(t['SI-Card%s' % str(i)], store)
-                except NoSICardException, e:
-                    print ("Runner %s %s of Team %s (%s) has no SI-card." %
-                           (runner.given_name, runner.surname, team.name, team.number))
-                except InvalidSICardException, e:
-                    print ("Runner %s %s of Team %s (%s) has an invalid SI-card: %s" %
-                           (runner.given_name, runner.surname, team.name, team.number,
-                            e.message))
-                else:
-                    RunnerImporter._add_sicard(runner,sicard, store)
-
-                # Add open run if SICard
-                try:
-                    si = runner.sicards.one()
-                except NotOneError:
-                    pass
-                else:
-                    if si is not None:
-                        r = store.add(Run(si))
-                        r.set_coursecode(unicode(t['Bahn%s' % i]))
-                
-                # Add runner to team
-                team.members.add(runner)
-                
-                num += 1
-                i += 1
-
-            # Add team to store
-            store.add(team)
-
+                # Add team to store
+                store.add(team)
+            except (DataError, IntegrityError), e:
+                print (u"Error importing team %s (%s) on line %i: %s\n"
+                       u"Import aborted." %
+                       (t['Teamname'], t['AnmeldeNummer'], line+2, e.message.decode('utf-8', 'replace'))
+                       )
+                store.rollback()
+                return
+               
 
 class SIRunImporter(Importer):
     """Import SICard readout data from a backup file.
