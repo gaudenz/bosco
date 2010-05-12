@@ -17,7 +17,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from csv import reader, writer, Sniffer
+from csv import reader, writer, Sniffer, Error
 from datetime import datetime, date
 from time import sleep
 from sys import exit, hexversion
@@ -64,9 +64,13 @@ class CSVImporter(Importer):
         
         # Set up CSV reader
         fh = open(fname, 'rb')
-        dialect = Sniffer().sniff(fh.read(1024))
-        fh.seek(0)
-        csv = reader(fh, dialect = dialect)
+        try:
+            dialect = Sniffer().sniff(fh.read(1024))
+            fh.seek(0)
+            csv = reader(fh, dialect = dialect)
+        except Error:
+            fh.seek(0)
+            csv = reader(fh, delimiter="\t")
 
         # Read labels
         labels = [ v.strip() for v in csv.next() ]
