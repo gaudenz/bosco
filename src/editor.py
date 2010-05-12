@@ -241,7 +241,7 @@ class RunEditor(Observable):
 
         self.connect_reader(sireader_port)
 
-        self._print_command = "lp"
+        self._print_command = "lp -o media=A5"
 
         self.__initialized = True
 
