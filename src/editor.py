@@ -234,7 +234,6 @@ class RunEditor(Observable):
         self._event = event
         
         self._run = None
-        self._running = False
         self.progress = None
         self._is_changed = False
 
@@ -652,12 +651,18 @@ class RunEditor(Observable):
         self._clear_cache()
         self._notify_observers('run')
 
-    def new(self):
+    def new(self, si_nr = None):
         """
-        Create a new empty run
+        Create a new empty run. This rolls back any uncommited changes!
         """
         self.rollback()
-        self._run = self._store.add(Run(self._create_virtual_sicard()))
+        if si_nr is None:
+            sicard = self._create_virtual_sicard()
+        else:
+            sicard = self._store.get(SICard, si_nr)
+            if sicard is None:
+                sicard = SICard(si_nr)
+        self._run = self._store.add(Run(sicard))
         # Flush the store to assign default values to the new run
         self._store.flush()
         self.changed = True
@@ -697,15 +702,8 @@ class RunEditor(Observable):
     def _get_status(self):
         if self._sireader is None:
             return ''
-        elif self._running is False and self.sicard is None:
-            return 'No SI-Card inserted.'
         elif self.sicard is None:
-            return 'Waiting for SI-Card...'
-        elif self._running and self.sicard_runner is not None:
-            return 'Reading SI-Card %s of runner %s...' % (self.sicard,
-                                                           self.sicard_runner)
-        elif self._running:
-            return 'Reading SI-Card %s...' % self.sicard
+            return 'No SI-Card inserted.'
         elif self.sicard_runner is not None:
             return 'SI-Card %s of runner %s inserted.' % (self.sicard,
                                                           self.sicard_runner)
@@ -761,26 +759,12 @@ class RunEditor(Observable):
             
         self._notify_observers('reader')
         
-    def start_reader(self):
-        """Start immediately reading out inserted SI-Cards. While polling
-        the reader the edited run may change at any time if a new SI-Card
-        is inserted."""
-        self._running = True
-
-    def stop_reader(self):
-        """Stop reading  si-cards."""
-        self._running = False
-
     def poll_reader(self):
-        """Polls the sireader for changes. If the reader is started, the
-        card is read out immediately. Otherwise the run must be loaded
-        manually by calling load_run_from_card."""
+        """Polls the sireader for changes."""
         if self._sireader is not None:
             if self._sireader.poll_sicard():
                 self._notify_observers('reader')
-                if self.sicard is not None and self._running:
-                    self.load_run_from_card()
-                    
+
     def load_run_from_card(self):
         """Read out card data and create or load a run based on this data."""
         

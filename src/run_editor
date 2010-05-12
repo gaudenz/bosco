@@ -354,6 +354,7 @@ class EditRunPanel(RunPanel):
         self.commit = wx.Button(self.window_1_pane_1, wx.ID_APPLY, "")
         self.rollback = wx.Button(self.window_1_pane_1, wx.ID_REVERT_TO_SAVED, "")
         self.add_button = wx.Button(self.window_1_pane_1, wx.ID_ADD, "")
+        self.registration = wx.CheckBox(self.window_1_pane_1, -1, "Registration mode")
         self.run_runner_combo = wx.ComboBox(self.window_1_pane_2, -1, choices=[], style=wx.CB_DROPDOWN|wx.CB_DROPDOWN|wx.CB_READONLY)
         self.runner_number = wx.TextCtrl(self.window_1_pane_2, -1, "101A")
         self.label_1 = wx.StaticText(self.window_1_pane_2, -1, "Category:")
@@ -521,6 +522,8 @@ class EditRunPanel(RunPanel):
         sizer_19.Add(self.commit, 0, wx.ALL|wx.EXPAND|wx.ALIGN_CENTER_VERTICAL, 2)
         sizer_19.Add(self.rollback, 0, wx.ALL|wx.EXPAND|wx.ALIGN_CENTER_VERTICAL, 2)
         sizer_19.Add(self.add_button, 0, wx.ALL|wx.EXPAND|wx.ALIGN_CENTER_VERTICAL, 2)
+        sizer_19.Add((20, 20), 0, 0, 0)
+        sizer_19.Add(self.registration, 0, wx.ALL, 2)
         sizer_13.Add(sizer_19, 0, wx.EXPAND, 0)
         self.window_1_pane_1.SetSizer(sizer_13)
         label_2 = wx.StaticText(self.window_1_pane_2, -1, "Change Runner:")
@@ -848,6 +851,13 @@ class EditRunPanel(RunPanel):
                     for ctrl in ctrl_list:
                         ctrl.Enable()
 
+            elif type(observable) == RunEditor and event == 'reader':
+                if (self.GetGrandParent().notebook.GetCurrentPage() == self and
+                    self.registration.GetValue() and 
+                    observable.sicard is not None and 
+                    self.AskApply()):
+                    observable.new(observable.sicard)
+
         finally:
             # Enable Event handling after updating
             self.SetEvtHandlerEnabled(True)
@@ -1032,10 +1042,13 @@ class ReadoutRunPanel(RunPanel):
                 
                 if (self.editor.has_runner() == False
                     or self.editor.has_course() == False):
-                    # stop reader
-                    self.editor.stop_reader()
                     # change to edit run page
                     self.GetParent().SetSelection(0)
+
+            elif type(observable) == RunEditor and event == 'reader':
+                if (self.GetGrandParent().notebook.GetCurrentPage() == self and
+                    observable.sicard is not None):
+                    observable.load_run_from_card()
                     
             elif type(observable) == RunEditor and event == 'progress':
                 p = observable.progress

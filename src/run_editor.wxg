@@ -280,6 +280,22 @@
                                             </events>
                                         </object>
                                     </object>
+                                    <object class="sizeritem">
+                                        <border>0</border>
+                                        <option>0</option>
+                                        <object class="spacer" name="spacer" base="EditSpacer">
+                                            <height>20</height>
+                                            <width>20</width>
+                                        </object>
+                                    </object>
+                                    <object class="sizeritem">
+                                        <flag>wxALL</flag>
+                                        <border>2</border>
+                                        <option>0</option>
+                                        <object class="wxCheckBox" name="registration" base="EditCheckBox">
+                                            <label>Registration mode</label>
+                                        </object>
+                                    </object>
                                 </object>
                             </object>
                         </object>
