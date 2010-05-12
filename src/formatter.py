@@ -289,7 +289,7 @@ class ReportlabRunFormatter(AbstractRunFormatter):
         elements.append(Spacer(0,10))
 
         runner = self._run.sicard.runner
-        elements.append(Paragraph("%s %s" % (str(runner), runner.number and 
+        elements.append(Paragraph("%s %s" % (unicode(runner), runner.number and 
                                              ("(%s)" % runner.number) or ''), 
                                   styles['Heading1']))
         elements.append(Paragraph("SI-Card: %s" % str(self._run.sicard.id), 
@@ -329,7 +329,7 @@ class ReportlabRunFormatter(AbstractRunFormatter):
 
         return io.getvalue()
 
-    def _format_punchlist(self, cols=12):
+    def _format_punchlist(self, cols=10):
         punchlist = self._punchlist(with_finish = True)
         
         # format into triples (control, time, time_to_last)
