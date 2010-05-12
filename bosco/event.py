@@ -322,7 +322,7 @@ class MassstartEvent(Event):
 class RelayEvent(Event):
     """Event class for a traditional relay."""
 
-    def __init__(self, legs, header={}, extra_rankings=[], combined_categories=None,
+    def __init__(self, legs, header={}, extra_rankings=[], combined_categories=None, single_categories=None,
                  template_dir = 'templates',
                  print_template = 'relay.tex',
                  html_template = 'relay.html',
@@ -337,12 +337,14 @@ class RelayEvent(Event):
                      * 'defaulttime': time scored if no runner of the team successfully
                        completes this leg, type timedelta or None if there is no defaulttime
         @param combined_categories: List of CombinedCategory objects.
+        @param single_categories:   Liste of category names which are not relay categories.
         @see:        Event for other arguments
         """
 
         # assign legs first as this is needed to list all rankings in Event.__init__
         self._legs = legs
         self._combined_categories = combined_categories or []
+        self._single_categories = single_categories or []
 
         Event.__init__(self, header, extra_rankings, template_dir, print_template,
                        html_template, run_html_template, cache, store)
@@ -364,9 +366,14 @@ class RelayEvent(Event):
                     if course is None:
                         # Skip this if course is not yet defined, needs a restart after the course is loaded
                         continue
-                    reorder = l.get('reorder', {}).get(c, None)
-                    course._validator = SequenceCourseValidator(course, reorder, cache=cache)
-                    course._scoreing = TimeScoreing(starttime_strategy=RelayMassstartStarttime(l['starttime'], cache=cache))
+
+                    if course.code not in self._single_categories:
+                        reorder = l.get('reorder', {}).get(c, None)
+                        course._validator = SequenceCourseValidator(course, reorder, cache=cache)
+                        course._scoreing = TimeScoreing(starttime_strategy=RelayMassstartStarttime(l['starttime'], cache=cache))
+                    else:
+                        course._validator = SequenceCourseValidator(course, cache=cache)
+                        course._scoreing = TimeScoreing(starttime_strategy=SelfstartStarttime())
 
     def validate(self, obj, validator_class = None, args = None):
 
@@ -425,11 +432,14 @@ class RelayEvent(Event):
             if obj.sicard.runner.team.category is None:
                 raise UnscoreableException("Can't score a realy leg without a category.")
             scoreing_class = TimeScoreing
-            try:
-                cat = obj.sicard.runner.team.category.name
-                args['starttime_strategy'] = RelayMassstartStarttime(self._starttimes[cat][obj.course.code], cache = args['cache'])
-            except AttributeError:
-                # default to selfstart if we can't find the runner or team
+            if obj.course.code not in self._single_categories:
+                try:
+                    cat = obj.sicard.runner.team.category.name
+                    args['starttime_strategy'] = RelayMassstartStarttime(self._starttimes[cat][obj.course.code], cache = args['cache'])
+                except AttributeError:
+                    # default to selfstart if we can't find the runner or team
+                    args['starttime_strategy'] = SelfstartStarttime()
+            else:
                 args['starttime_strategy'] = SelfstartStarttime()
 
         elif isinstance(obj, Team) and scoreing_class is None:
@@ -466,18 +476,23 @@ class RelayEvent(Event):
         l = []
         legs_added = set()
         for c in self.list_categories():
-            for leg in self._legs[c.name]:
-                if not leg['name'] in legs_added:
-                    legs_added.add(leg['name'])
-                    l.append((leg['name'],
-                              self.ranking(CombinedCourse(
-                                  leg['variants'],
-                                  leg['name'],
-                                  self._store,
-                              ))))
-            for i, leg in enumerate(self._legs[c.name]):
-                l.append(('%s %s' % (c.name, leg['name']), self.ranking(c, scoreing_args = {'legs': i+1},
-                                                                        validation_args = {'legs': i+1})))
+            if c.name in self._single_categories:
+                l.append((c.name,
+                          self.ranking(self._store.find(Course,
+                                                        Course.code == c.name).one())))
+            else:
+                for leg in self._legs[c.name]:
+                    if not leg['name'] in legs_added:
+                        legs_added.add(leg['name'])
+                        l.append((leg['name'],
+                                  self.ranking(CombinedCourse(
+                                      leg['variants'],
+                                      leg['name'],
+                                      self._store,
+                                  ))))
+                for i, leg in enumerate(self._legs[c.name]):
+                    l.append(('%s %s' % (c.name, leg['name']), self.ranking(c, scoreing_args = {'legs': i+1},
+                                                                            validation_args = {'legs': i+1})))
 
         # Add extra rankings
         l.extend([(e[0], self.ranking(**e[1])) for e in self._extra_rankings ])
