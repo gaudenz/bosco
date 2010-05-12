@@ -168,69 +168,69 @@ class SOLVDBImporter(RunnerImporter):
             if self._verbose:
                 print "%i: Adding %s %s" % (i+1, r['Vorname'], r['Name'])
 
-            # check if we already know this SI-Card
             try:
-                sicard = RunnerImporter._get_sicard(r['SI_Karte'], store)
-            except InvalidSICardException, e:
-                print ("Runner %s %s (%s): %s" % 
-                       (r['Vorname'], r['Name'], r['SOLV-Nr'], e.message))
-                sicard = None
-            except NoSICardException, e:
-                sicard = None
-            else:
-                if sicard.runner and not (sicard.runner.given_name == r['Vorname'] and 
-                                          sicard.runner.surname == r['Name']):
-                    # This sicard is already assigned and the names do not match. Don't
-                    # assign an sicard to this runner
+                # check if we already know this SI-Card
+                try:
+                    sicard = RunnerImporter._get_sicard(r['SI_Karte'], store)
+                except InvalidSICardException, e:
+                    print ("Runner %s %s (%s): %s" % 
+                           (r['Vorname'], r['Name'], r['SOLV-Nr'], e.message))
                     sicard = None
-
-            # check if we already know this runner
-            runner = store.find(Runner, Runner.solvnr == r['SOLV-Nr']).one()
-            if runner is None:
-                if sicard and sicard.runner:
-                    runner = sicard.runner
+                except NoSICardException, e:
+                    sicard = None
                 else:
-                    runner = store.add(Runner(solvnr = r['SOLV-Nr']))
-            else:
-                if sicard and sicard.runner and sicard.runner != runner: 
-                    # we have both a matching runner for the sicard and 
-                    # they do not match => give up and do nothing
-                    print ("SOLV Number %s and SI-card %s are already in the "
-                           "database and assigned to different runners. Skipping "
-                           "entry for % % on line %i" %
-                           (r['SOLV-Nr'], r['SI-Karte'], r['Vorname'], r['Name'],
-                            i+2))
-                    continue
+                    if sicard.runner and not (sicard.runner.given_name == r['Vorname'] and 
+                                              sicard.runner.surname == r['Name']):
+                        # This sicard is already assigned and the names do not match. Don't
+                        # assign an sicard to this runner
+                        sicard = None
+
+                # check if we already know this runner
+                runner = store.find(Runner, Runner.solvnr == r['SOLV-Nr']).one()
+                if runner is None:
+                    if sicard and sicard.runner:
+                        runner = sicard.runner
+                    else:
+                        runner = store.add(Runner(solvnr = r['SOLV-Nr']))
                 else:
-                    print ("Runner %s %s with SOLV Number %s already exists. "
-                           "Updating information." %
-                           (runner.given_name, runner.surname, runner.solvnr)
-                           )
+                    if sicard and sicard.runner and sicard.runner != runner: 
+                        # we have both a matching runner for the sicard and 
+                        # they do not match => give up and do nothing
+                        print ("SOLV Number %s and SI-card %s are already in the "
+                               "database and assigned to different runners. Skipping "
+                               "entry for % % on line %i" %
+                               (r['SOLV-Nr'], r['SI-Karte'], r['Vorname'], r['Name'],
+                                i+2))
+                        continue
+                    else:
+                        print ("Runner %s %s with SOLV Number %s already exists. "
+                               "Updating information." %
+                               (runner.given_name, runner.surname, runner.solvnr)
+                               )
 
-            if sicard:        
-                RunnerImporter._add_sicard(runner, sicard, store)
+                if sicard:        
+                    RunnerImporter._add_sicard(runner, sicard, store)
 
-            club = store.find(Club, Club.name == r['Verein']).one()
-            if not club:
-                club = Club(r['Verein'])
+                club = store.find(Club, Club.name == r['Verein']).one()
+                if not club:
+                    club = Club(r['Verein'])
 
-            runner.given_name = r['Vorname']
-            runner.surname = r['Name']
-            runner.dateofbirth = RunnerImporter._parse_yob(r['Jahrgang'])
-            runner.sex = RunnerImporter._parse_sex(r['Geschlecht'])
-            runner.nation = store.find(Country, Country.code3 == r['Nation']).one()
-            runner.solvnr = r['SOLV-Nr']
-            runner.club = club
-            runner.address1 = r['Adressz1']
-            runner.address2 = r['Adressz2']
-            runner.zipcode = r['PLZ']
-            runner.city = r['Ort']
-            runner.address_country = store.find(Country, Country.code2 == r['Land']).one()
-            runner.email = r['Email']
-            runner.preferred_category = r['Kategorie']
-            runner.doping_declaration = bool(int(r['Dop.Stat']))
+                runner.given_name = r['Vorname']
+                runner.surname = r['Name']
+                runner.dateofbirth = RunnerImporter._parse_yob(r['Jahrgang'])
+                runner.sex = RunnerImporter._parse_sex(r['Geschlecht'])
+                runner.nation = store.find(Country, Country.code3 == r['Nation']).one()
+                runner.solvnr = r['SOLV-Nr']
+                runner.club = club
+                runner.address1 = r['Adressz1']
+                runner.address2 = r['Adressz2']
+                runner.zipcode = r['PLZ']
+                runner.city = r['Ort']
+                runner.address_country = store.find(Country, Country.code2 == r['Land']).one()
+                runner.email = r['Email']
+                runner.preferred_category = r['Kategorie']
+                runner.doping_declaration = bool(int(r['Dop.Stat']))
                 
-            try:
                 store.flush()
             except (DataError, IntegrityError), e:
                 print (u"Error importing runner %s %s on line %i: %s\n"
