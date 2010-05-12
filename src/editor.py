@@ -19,13 +19,15 @@ editor.py - High level editing classes.
 
 from datetime import datetime
 from time import sleep
+from subprocess import Popen, PIPE
+
 from storm.exceptions import NotOneError, LostObjectError
 from storm.locals import *
 
 from runner import Team, Runner, SICard, Category
 from run import Run, Punch, RunException
 from course import Control, SIStation, Course
-from formatter import AbstractRankingFormatter
+from formatter import AbstractFormatter, ReportlabRunFormatter
 from ranking import ValidationError, UnscoreableException, Validator
 from sireader import SIReaderReadout, SIReaderException
 
@@ -238,7 +240,9 @@ class RunEditor(Observable):
         self._is_changed = False
 
         self.connect_reader(sireader_port)
-        
+
+        self._print_command = "lp"
+
         self.__initialized = True
 
     run_readout_time = property(lambda obj: obj._run and obj._run.readout_time and str(obj._run.readout_time) or 'unknown')
@@ -320,7 +324,7 @@ class RunEditor(Observable):
             validation = self._event.validate(self._run)
         except ValidationError:
             return ''
-        return AbstractRankingFormatter.validation_codes[validation['status']]
+        return AbstractFormatter.validation_codes[validation['status']]
     run_validation = property(_get_run_validation)
 
     def _get_run_score(self):
@@ -363,7 +367,7 @@ class RunEditor(Observable):
             validation = self._event.validate(team)
         except ValidationError:
             return ''
-        return AbstractRankingFormatter.validation_codes[validation['status']]
+        return AbstractFormatter.validation_codes[validation['status']]
     team_validation = property(_get_team_validation)
 
     def _get_team_score(self):
@@ -434,7 +438,9 @@ class RunEditor(Observable):
     def _get_changed(self):
         return self._is_changed
     changed = property(_get_changed, _set_changed)
-    
+
+    print_command = property(lambda x:x._print_command)
+
     def _clear_cache(self):
         try:
             self._event.clear_cache(self._run)
@@ -747,6 +753,10 @@ class RunEditor(Observable):
                 return '%s (%s)' % (string, runner.team.name)
     sicard_runner = property(_get_sicard_runner)
 
+    def print_run(self):
+        f = ReportlabRunFormatter(self._run, self._event._header, self._event)
+        Popen(self._print_command, shell=True, stdin=PIPE).communicate(input=str(f))
+
     def connect_reader(self, port = None):
         """
         Connect an SI-Reader
@@ -875,7 +885,10 @@ class RunEditor(Observable):
                 return False
 
         return True
-            
+
+    def set_print_command(self, command):
+        self._print_command = command
+
 class TeamEditor(Observable):
 
     def __init__(self, store, event):
@@ -902,7 +915,7 @@ class TeamEditor(Observable):
             validation = self._event.validate(self._team)
         except (ValidationError, AttributeError):
             return ''
-        return AbstractRankingFormatter.validation_codes[validation['status']]
+        return AbstractFormatter.validation_codes[validation['status']]
     validation = property(_get_validation)
 
     def _get_score(self):
@@ -932,7 +945,7 @@ class TeamEditor(Observable):
         for r in runs:
             try:
                 code = self._event.validate(r)['status']
-                validation = AbstractRankingFormatter.validation_codes[code]
+                validation = AbstractFormatter.validation_codes[code]
             except ValidationError:
                 validation = ''
             try:
