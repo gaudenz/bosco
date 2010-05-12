@@ -730,10 +730,13 @@ class RelayScoreing(AbstractRelayScoreing):
             return self._from_cache(self._valid_runs, team)
         except KeyError:
             pass
-        
+
         runs =  [r for r in team.runs
                  if r.course is not None and r.complete and self._event.validate(r)['status'] == Validator.OK]
-        runs.sort(key = lambda x: x.finish_time)
+        try:
+            runs.sort(key = lambda x: x.finish_time)
+        except TypeError:
+            raise UnscoreableException("Unable to order runs!")
 
         self._to_cache(self._valid_runs, team, runs)
         return runs
