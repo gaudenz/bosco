@@ -1069,7 +1069,7 @@ class ReadoutRunPanel(RunPanel):
                     observable.sicard is not None):
                     observable.load_run_from_card()
                     if (self.print_checkbox.GetValue() and 
-                        self.GetParent.GetCurrentPage() == self):
+                        self.GetParent().GetCurrentPage() == self):
                         # the current page might change if the run is not complete
                         observable.print_run()
                     
