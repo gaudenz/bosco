@@ -763,6 +763,14 @@ class RelayScoreing(AbstractRelayScoreing):
             for l in self._legs:
                 try:
                     run = runners[i].run
+                except IndexError:
+                    # no more runners in team
+                    if l['defaulttime'] is not None:
+                        # the status remains the same
+                        continue
+                    else:
+                        result['status'] = Validator.DISQUALIFIED
+                        break
                 except RunnerException: 
                     # no run or multiple runs for this runner
                     if l['defaulttime'] is not None:
@@ -814,13 +822,17 @@ class RelayScoreing(AbstractRelayScoreing):
             pass
 
         time = timedelta(0)
-        
+
         # compute sum of individual run times
         # this automatically takes mass starts into account
 
         runs = self._valid_runs(team)
+        if len(runs) == 0:
+            raise UnscoreableException(u'Unable to score team %s (%s): no '
+                                       u'valid run.' %
+                                       (team.name, team.number))
         missing = 0 # count of missing legs
-        
+
         for i,l in enumerate(self._legs):
             default = l['defaulttime']
             try:
@@ -834,7 +846,9 @@ class RelayScoreing(AbstractRelayScoreing):
                         incomplete = True
                         break
                 if default is None or incomplete:
-                    raise UnscoreableException(u'Unable to score team %s (%s): missing or incomplete run for leg %i' % (team.name, team.number, i+1))
+                    raise UnscoreableException(u'Unable to score team %s (%s): missing or '
+                                               u'incomplete run for leg %i' % 
+                                               (team.name, team.number, i+1))
                 else:
                     time += default
                 
@@ -842,7 +856,9 @@ class RelayScoreing(AbstractRelayScoreing):
                 # missing leg
                 missing += 1
                 if default is None:
-                    raise UnscoreableException(u'Unable to score team %s (%s): missing run for leg %i' % (team.name, team.number, i+1))
+                    raise UnscoreableException(u'Unable to score team %s (%s): missing '
+                                               u'run for leg %i' % 
+                                               (team.name, team.number, i+1))
                 else:
                     time += default
             else:
