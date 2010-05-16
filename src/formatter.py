@@ -134,7 +134,7 @@ class CourseSOLVRankingFormatter(AbstractSOLVRankingFormatter):
                         r['item'].sicard.runner.given_name.encode(encoding),
                         r['item'].sicard.runner.dateofbirth and r['item'].sicard.runner.dateofbirth.strftime('%y') or '',
                         r['item'].sicard.runner.sex,
-                        r['item'].sicard.runner.team.name.encode(encoding),
+                        r['item'].sicard.runner.team and r['item'].sicard.runner.team.name.encode(encoding) or '',
                         self._print_score(r),
                         ]
                 try:
@@ -149,8 +149,12 @@ class CourseSOLVRankingFormatter(AbstractSOLVRankingFormatter):
                 for p in r['item'].punches.order_by('COALESCE(manual_punchtime, card_punchtime)'):
                     if (not p.sistation.control is None
                         and p.sistation.id > SIStation.SPECIAL_MAX):
-                        line.extend([p.sistation.control.code.encode(encoding),
-                                     p.punchtime - r['scoreing']['start']])
+                        try:
+                            line.extend([p.sistation.control.code.encode(encoding),
+                                         p.punchtime - r['scoreing']['start']])
+                        except TypeError:
+                            line.extend([p.sistation.control.code.encode(encoding),
+                                         ''])
 
                 output.writerow(line)
 
@@ -171,7 +175,7 @@ class CategorySOLVRankingFormatter(AbstractSOLVRankingFormatter):
             
             for r in ranking:
                 line = [r['rank'] or '',
-                        str(r['item']),
+                        unicode(r['item']).encode(encoding),
                         self._print_score(r),
                         ]
                     
