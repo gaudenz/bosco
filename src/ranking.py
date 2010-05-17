@@ -505,10 +505,10 @@ class SequenceCourseValidator(CourseValidator):
         CourseValidator.__init__(self, course, cache)
         
         # list of all controls which have sistations
-        self._controllist = [ i.control for i in
-                              self._course.sequence.order_by('sequence_number')
-                              if (i.control.sistations.count() > 0 and
-                                  i.control.override is not True) ]
+        self._controllist = [ c for c in
+                              self._course.controls
+                              if (c.sistations.count() > 0 and
+                                  c.override is not True) ]
 
     @staticmethod
     def _exact_match(plist, clist):

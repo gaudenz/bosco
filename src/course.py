@@ -144,8 +144,11 @@ class Course(MyStorm, Rankable):
     climb = Int()
     members = ReferenceSet(id, 'Run._course_id')
     controls = ReferenceSet(id, ControlSequence._course_id,
-                            ControlSequence._control_id, Control.id)
-    sequence = ReferenceSet(id, 'ControlSequence._course_id')
+                            ControlSequence._control_id, 
+                            Control.id, 
+                            order_by=ControlSequence.sequence_number)
+    sequence = ReferenceSet(id, 'ControlSequence._course_id',
+                            order_by=ControlSequence.sequence_number)
 
     def __init__(self, code, length = None, climb = None):
         """
