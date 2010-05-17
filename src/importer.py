@@ -100,6 +100,8 @@ class RunnerImporter(CSVImporter):
         """Parses the year of birth
         @rtype: date or None
         """
+        if yob is None:
+            return None
         try:
             return date(int(yob), 1, 1)
         except ValueError:
@@ -153,6 +155,8 @@ class RunnerImporter(CSVImporter):
 
     @staticmethod
     def _parse_sex(sex):
+        if sex is None:
+            return None
         sex = sex.lower()
         return (sex == 'm' and 'male' 
                 or sex == 'f' and 'female' 
@@ -160,38 +164,44 @@ class RunnerImporter(CSVImporter):
 
 class SOLVDBImporter(RunnerImporter):
     """Import runners from the SOLV runner database. Uses what the SOLV calls
-    a VELPOZ data file."""
+    a VELPOZ data file. This can also be used to import reduced files which do not 
+    contain all the columns of the SOLV database."""
 
     def import_data(self, store):
 
         for i, r in enumerate(self.data):
             if self._verbose:
-                print "%i: Adding %s %s" % (i+1, r['Vorname'], r['Name'])
+                print "%i: Adding %s %s" % (i+1, r.get('Vorname', u''), 
+                                            r.get('Name', u''))
 
             try:
                 # check if we already know this SI-Card
                 try:
-                    sicard = RunnerImporter._get_sicard(r['SI_Karte'], store)
+                    sicard = RunnerImporter._get_sicard(r.get('SI_Karte', None), store)
                 except InvalidSICardException, e:
                     print ("Runner %s %s (%s): %s" % 
-                           (r['Vorname'], r['Name'], r['SOLV-Nr'], e.message))
+                           (r.get('Vorname', u''), r.get('Name', u''), r.get('SOLV-Nr', u''), e.message))
                     sicard = None
                 except NoSICardException, e:
                     sicard = None
                 else:
-                    if sicard.runner and not (sicard.runner.given_name == r['Vorname'] and 
-                                              sicard.runner.surname == r['Name']):
+                    if sicard.runner and not (sicard.runner.given_name == r.get('Vorname', None) and 
+                                              sicard.runner.surname == r.get('Name', None)):
                         # This sicard is already assigned and the names do not match. Don't
                         # assign an sicard to this runner
                         sicard = None
 
                 # check if we already know this runner
-                runner = store.find(Runner, Runner.solvnr == r['SOLV-Nr']).one()
+                solvnr = r.get('SOLV-Nr', None)
+                if solvnr:
+                    runner = store.find(Runner, Runner.solvnr == solvnr).one()
+                else:
+                    runner = None
                 if runner is None:
                     if sicard and sicard.runner:
                         runner = sicard.runner
                     else:
-                        runner = store.add(Runner(solvnr = r['SOLV-Nr']))
+                        runner = store.add(Runner(solvnr = r.get('SOLV-Nr', None)))
                 else:
                     if sicard and sicard.runner and sicard.runner != runner: 
                         # we have both a matching runner for the sicard and 
@@ -199,7 +209,7 @@ class SOLVDBImporter(RunnerImporter):
                         print ("SOLV Number %s and SI-card %s are already in the "
                                "database and assigned to different runners. Skipping "
                                "entry for % % on line %i" %
-                               (r['SOLV-Nr'], r['SI-Karte'], r['Vorname'], r['Name'],
+                               (r.get('SOLV-Nr', u''), r.get('SI-Karte', u''), r.get('Vorname', u''), r.get('Name', u''),
                                 i+2))
                         continue
                     else:
@@ -211,31 +221,41 @@ class SOLVDBImporter(RunnerImporter):
                 if sicard:        
                     RunnerImporter._add_sicard(runner, sicard, store)
 
-                club = store.find(Club, Club.name == r['Verein']).one()
-                if not club:
-                    club = Club(r['Verein'])
+                clubname = r.get('Verein', None)
+                if clubname:
+                    club = store.find(Club, Club.name == clubname).one()
+                else:
+                    club = None
+                if not club and clubname is not None:
+                    club = Club(r.get('Verein', u''))
 
-                runner.given_name = r['Vorname']
-                runner.surname = r['Name']
-                runner.dateofbirth = RunnerImporter._parse_yob(r['Jahrgang'])
-                runner.sex = RunnerImporter._parse_sex(r['Geschlecht'])
-                runner.nation = store.find(Country, Country.code3 == r['Nation']).one()
-                runner.solvnr = r['SOLV-Nr']
+                runner.given_name = r.get('Vorname', None)
+                runner.surname = r.get('Name', None)
+                runner.dateofbirth = RunnerImporter._parse_yob(r.get('Jahrgang', None))
+                runner.sex = RunnerImporter._parse_sex(r.get('Geschlecht', None))
+                nationname = r.get('Nation', None)
+                if nationname:
+                    runner.nation = store.find(Country, Country.code3 == nationname).one()
+                runner.solvnr = solvnr
                 runner.club = club
-                runner.address1 = r['Adressz1']
-                runner.address2 = r['Adressz2']
-                runner.zipcode = r['PLZ']
-                runner.city = r['Ort']
-                runner.address_country = store.find(Country, Country.code2 == r['Land']).one()
-                runner.email = r['Email']
-                runner.preferred_category = r['Kategorie']
-                runner.doping_declaration = bool(int(r['Dop.Stat']))
+                runner.address1 = r.get('Adressz1', None)
+                runner.address2 = r.get('Adressz2', None)
+                runner.zipcode = r.get('PLZ', None)
+                runner.city = r.get('Ort', None)
+                countryname = r.get('Land', None)
+                if countryname:
+                    runner.address_country = store.find(Country, Country.code2 == countryname).one()
+                runner.email = r.get('Email', None)
+                runner.preferred_category = r.get('Kategorie', None)
+                dop = r.get('Dop.Stat', None)
+                if dop is not None:
+                    runner.doping_declaration = bool(int(dop))
                 
                 store.flush()
             except (DataError, IntegrityError), e:
                 print (u"Error importing runner %s %s on line %i: %s\n"
                        u"Import aborted." %
-                       (r['Vorname'], r['Name'], i+2, e.message.decode('utf-8', 'replace'))
+                       (r.get('Vorname', u''), r.get('Name', u''), i+2, e.message.decode('utf-8', 'replace'))
                        )
                 store.rollback()
                 return
