@@ -223,6 +223,15 @@ class Course(MyStorm, Rankable):
     def controlcount(self):
         return self.controls.count()
 
+    def controllist(self):
+        """
+        @return list of controls in this course with sistations that are not overriden.
+        """
+        return [ c for c in
+                 self.controls
+                 if (c.sistations.count() > 0 and
+                     c.override is not True) ]
+    
     def __str__(self):
         return unicode(self).encode('utf-8')
     
