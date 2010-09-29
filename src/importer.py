@@ -165,7 +165,11 @@ class RunnerImporter(CSVImporter):
 class SOLVDBImporter(RunnerImporter):
     """Import runners from the SOLV runner database. Uses what the SOLV calls
     a VELPOZ data file. This can also be used to import reduced files which do not 
-    contain all the columns of the SOLV database."""
+    contain all the columns of the SOLV database.
+    Additionally to the fields of the SOLV database the fields "Angemeldete_Kategorie" and 
+    "Bahn" are supported. They link the runner to the given Category and create an open run 
+    for the given Course respectively.
+    """
 
     def import_data(self, store):
 
@@ -250,7 +254,32 @@ class SOLVDBImporter(RunnerImporter):
                 dop = r.get('Dop.Stat', None)
                 if dop is not None:
                     runner.doping_declaration = bool(int(dop))
-                
+            
+                # Add category if present
+                categoryname = r.get('Angemeldete_Kategorie', None)
+                if categoryname:
+                    category = store.find(Category, Category.name == categoryname).one()
+                    if not category:
+                        category = Category(categoryname)
+                    runner.category = category
+
+                # Add run if course code is present
+                coursecode = r.get('Bahn', None)
+                if coursecode:
+                    course = store.find(Course, Course.code == coursecode).one()
+                    sicount = runner.sicards.count()
+                    if sicount == 1 and course:
+                        store.add(Run(runner.sicards.one(), course))
+                    elif sicount != 1:
+                        print (u"Can't add run for runner %s %s on line %i: %s." %
+                               (r.get('Vorname', u''), r.get('Name', u''), i+2, 
+                                sicount == 0 and "No SI-card." or "More than one SI-card")
+                               )
+                    elif course is None:
+                        print (u"Can't add run for runner %s %s on line %i: Course not found" % 
+                               (r.get('Vorname', u''), r.get('Name', u''), i+2)
+                               )
+
                 store.flush()
             except (DataError, IntegrityError), e:
                 print (u"Error importing runner %s %s on line %i: %s\n"
