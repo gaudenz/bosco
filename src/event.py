@@ -28,7 +28,7 @@ from ranking import (SequenceCourseValidator, TimeScoreing, SelfstartStarttime,
                      Ranking, CourseValidator, OpenRuns,
                      ControlPunchtimeScoreing, RelayScoreing,
                      Relay24hScoreing, Relay12hScoreing,
-                     ValidationError, UnscoreableException)
+                     ValidationError, UnscoreableException, Validator, RoundCountScoreing)
 
 from formatter import MakoRankingFormatter
 
@@ -429,4 +429,44 @@ class Relay24hEvent(Event):
 
         return Event.score(self, obj, scoreing_class, args)
     
+class RoundCountEvent(Event):
 
+    def __init__(self, course, mindiff = timedelta(0), header = {}, extra_rankings = [],
+                 template_dir = 'templates',
+                 print_template = 'course.tex', html_template = 'course.html',
+                 cache = None, store = None):
+        """
+        @param mindiff:        Minimal time difference between two valid punches
+        @see Event for the other parameters
+        """
+
+        super(RoundCountEvent, self).__init__(header, extra_rankings, template_dir, 
+                                              print_template, html_template, cache, store)
+        self._course = self._store.find(Course, Course.code == course).one()
+        self._mindiff = mindiff
+
+    def validate(self, obj, validator_class = None, args = None):
+
+        if args is None:
+            args = {}
+        
+        if validator_class is None:
+            validator_class = CourseValidator
+
+        return super(RoundCountEvent, self).validate(obj, validator_class, args)
+
+    def score(self, obj, scoreing_class = None, args = None):
+
+        if args is None:
+            args = {}
+
+        if 'mindiff' not in args:
+            args['mindiff'] = self._mindiff
+
+        if 'course' not in args:
+            args['course'] = self._course
+
+        if scoreing_class is None:
+            scoreing_class = RoundCountScoreing
+        
+        return super(RoundCountEvent, self).score(obj, scoreing_class, args)

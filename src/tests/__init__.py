@@ -59,6 +59,12 @@ class BoscoTest(unittest.TestCase):
         c = self._store.add(Course(u'C', length = 1679, climb = 587))
         c.extend([u'131', u'132', c200, u'132'])
 
+        # Add additional course for RoundCountScoreing
+        c = self._store.add(Course(u'D', length = 0, climb = 0))
+        c.extend([u'131', c200])
+        c = self._store.add(Course(u'E', length = 0, climb = 0))
+        c.extend([c200])
+        
         # Create categorys
         self._cat_ind = self._store.add(Category(u'HAM'))
         cat_team = Category(u'D135')
@@ -180,7 +186,49 @@ class BoscoTest(unittest.TestCase):
                               store = self._store
                               ))
         self._runs[6].complete = True
-                              
+
+        # runs for RoundCountScoreing tests, sistation 200 and 201 are at the 
+        # same control!
+
+        # course with 2 controls, 3 rounds
+        self._runs.append(Run(SICard(10),
+                              None,
+                              [(131, datetime(2008,3,19,8,22,29)),
+                               (200, datetime(2008,3,19,8,23,30)),
+                               (131, datetime(2008,3,19,8,24,29)),
+                               (201, datetime(2008,3,19,8,25,30)),
+                               (131, datetime(2008,3,19,8,25,50)),
+                               (200, datetime(2008,3,19,8,26,30)),
+                               (131, datetime(2008,3,19,8,27,29))],
+                              store = self._store
+                              ))
+        self._runs[7].complete = True
+
+        # course with 1 control, 3 rounds, time between punch 2 and 3 is < mindiff
+        self._runs.append(Run(SICard(11),
+                              None,
+                              [(200, datetime(2008,3,19,8,22,29)),
+                               (201, datetime(2008,3,19,8,24,29)),
+                               (200, datetime(2008,3,19,8,24,39)),
+                               (200, datetime(2008,3,19,8,27,29))],
+                              store = self._store
+                              ))
+        self._runs[8].complete = True
+
+        # course with 2 controls, 2 rounds, control 200 not punched one time
+        self._runs.append(Run(SICard(12),
+                              None,
+                              [(131, datetime(2008,3,19,8,22,29)),
+                               (200, datetime(2008,3,19,8,23,30)),
+                               (131, datetime(2008,3,19,8,24,29)),
+                               (131, datetime(2008,3,19,8,23,30)),
+                               (131, datetime(2008,3,19,8,25,29)),
+                               (201, datetime(2008,3,19,8,26,30)),
+                               (131, datetime(2008,3,19,8,27,29))],
+                              store = self._store
+                              ))
+        self._runs[9].complete = True
+
     def tearDown(self):
         # Clean up Database
         self._store.rollback()

@@ -23,6 +23,7 @@ from runner import SICard, Runner, Category, Team
 
 from run import Run, Punch
 from ranking import (TimeScoreing,
+                     RoundCountScoreing,
                      MassstartStarttime,
                      SelfstartStarttime,
                      RelayStarttime,
@@ -460,6 +461,22 @@ class RunTest(BoscoTest):
 
         self._team.members.remove(self._runners[2])
         self.assertRaises(UnscoreableException, event.score, self._team)
-    
+
+    def test_roundcount_2controls(self):
+        """Test RunCountScoreing for a Course with 2 controls"""
+        scoreing = RoundCountScoreing(self._store.find(Course, Course.code == u'D').one())
+        self.assertEquals(scoreing.score(self._runs[7])['score'], 3)
+
+    def test_roundcount_mindiff(self):
+        """Test that the time between valid punches is more than mindiff"""
+        scoreing = RoundCountScoreing(self._store.find(Course, Course.code == u'E').one(),
+                                      mindiff = timedelta(seconds=30))
+        self.assertEquals(scoreing.score(self._runs[8])['score'], 3)
+
+    def test_roundcount_missing(self):
+        """Test that rounds with missing punches are not counted"""
+        scoreing = RoundCountScoreing(self._store.find(Course, Course.code == u'D').one())
+        self.assertEquals(scoreing.score(self._runs[9])['score'], 2)
+
 if __name__ == '__main__':
     unittest.main()

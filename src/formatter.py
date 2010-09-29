@@ -30,7 +30,7 @@ from csv import writer
 
 from ranking import Validator, ValidationError, UnscoreableException
 from course import SIStation, Control
-from run import Punch
+from run import Punch, Run
 
 class AbstractFormatter(object):
 
@@ -176,6 +176,36 @@ class CategorySOLVRankingFormatter(AbstractSOLVRankingFormatter):
             for r in ranking:
                 line = [r['rank'] or '',
                         unicode(r['item']).encode(encoding),
+                        self._print_score(r),
+                        ]
+                    
+                output.writerow(line)
+
+        return outstr.getvalue()
+
+class RoundCountRankingFormatter(AbstractSOLVRankingFormatter):
+    
+    def __str__(self):
+
+        encoding = self._encoding
+        
+        outstr = StringIO()
+        output = writer(outstr, delimiter=';',
+                        lineterminator=self._lineterminator)
+        for ranking in self.rankings:
+            output.writerow([str(ranking.rankable)])
+            
+            for r in ranking:
+                if type(r['item']) == Run:
+                    runner = r['item'].sicard.runner
+                    run = r['item']
+                else:
+                    runner = r['item']
+                    run = r['item'].run
+                line = [r['rank'] or '',
+                        run.sicard.id,
+                        runner.given_name.encode(encoding),
+                        runner.surname.encode(encoding),
                         self._print_score(r),
                         ]
                     
