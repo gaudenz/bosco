@@ -831,6 +831,8 @@ class RunEditor(Observable):
                 self._run.card_finish_time = card_data['finish']
                 self._run.card_check_time = card_data['check']
                 self._run.card_clear_time = card_data['clear']
+                if not self._run.readout_time:
+                    self._run.readout_time = datetime.now()
                 self._run.add_punchlist(card_data['punches'])
 
             # mark run as complete
