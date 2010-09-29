@@ -5114,22 +5114,22 @@ CREATE TRIGGER control_trigger AFTER INSERT OR UPDATE OR DELETE ON control FOR E
     </dia:object>
     <dia:object type="UML - Component" version="0" id="O30">
       <dia:attribute name="obj_pos">
-        <dia:point val="5,66.3"/>
+        <dia:point val="5.7,65.9"/>
       </dia:attribute>
       <dia:attribute name="obj_bb">
-        <dia:rectangle val="4.95,66.25;25.2175,245.603"/>
+        <dia:rectangle val="5.65,65.85;27.23,265.203"/>
       </dia:attribute>
       <dia:attribute name="meta">
         <dia:composite type="dict"/>
       </dia:attribute>
       <dia:attribute name="elem_corner">
-        <dia:point val="5,66.3"/>
+        <dia:point val="5.7,65.9"/>
       </dia:attribute>
       <dia:attribute name="elem_width">
-        <dia:real val="20.1675"/>
+        <dia:real val="21.48"/>
       </dia:attribute>
       <dia:attribute name="elem_height">
-        <dia:real val="179.25250000000003"/>
+        <dia:real val="199.25250000000003"/>
       </dia:attribute>
       <dia:attribute name="line_colour">
         <dia:color val="#00ff00"/>
@@ -5287,7 +5287,7 @@ CREATE TRIGGER control_trigger AFTER INSERT OR UPDATE OR DELETE ON control FOR E
 'Nauru','NR','NRU'
 'Niue','NU',NULL
 'Cook Islands','CK','COK'
-'Côte dNULLIvoire','CI','CIV'
+'Côte d''Ivoire','CI','CIV'
 'Switzerland','CH','SUI'
 'Colombia','CO','COL'
 'China','CN','CHN'
@@ -5317,7 +5317,7 @@ CREATE TRIGGER control_trigger AFTER INSERT OR UPDATE OR DELETE ON control FOR E
 'Slovakia','SK','SVK'
 'Korea, Republic of','KR','KOR'
 'Slovenia','SI','SLO'
-'Korea, Democratic PeopleNULLs Republic of','KP','PRK'
+'Korea, Democratic People''s Republic of','KP','PRK'
 'Kuwait','KW','KUW'
 'Senegal','SN','SEN'
 'San Marino','SM','SMR'
@@ -5342,7 +5342,7 @@ CREATE TRIGGER control_trigger AFTER INSERT OR UPDATE OR DELETE ON control FOR E
 'United States Minor Outlying Islands','UM',NULL
 'Lebanon','LB','LIB'
 'Saint Lucia','LC','LCA'
-'Lao PeopleNULLs Democratic Republic','LA','LAO'
+'Lao People''s Democratic Republic','LA','LAO'
 'Tuvalu','TV','TUV'
 'Taiwan, Province of China','TW','TPE'
 'Trinidad and Tobago','TT','TRI'
@@ -5398,7 +5398,7 @@ CREATE TRIGGER control_trigger AFTER INSERT OR UPDATE OR DELETE ON control FOR E
             <dia:real val="0.80000000000000004"/>
           </dia:attribute>
           <dia:attribute name="pos">
-            <dia:point val="7.4,68.48"/>
+            <dia:point val="8.1,68.08"/>
           </dia:attribute>
           <dia:attribute name="color">
             <dia:color val="#000000"/>
