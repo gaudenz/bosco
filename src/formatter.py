@@ -204,6 +204,7 @@ class RoundCountRankingFormatter(AbstractSOLVRankingFormatter):
                     run = r['item'].run
                 line = [r['rank'] or '',
                         run.sicard.id,
+                        runner.number.encode(encoding),
                         runner.given_name.encode(encoding),
                         runner.surname.encode(encoding),
                         self._print_score(r),
