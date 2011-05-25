@@ -197,33 +197,47 @@ class SOLVDBImporter(RunnerImporter):
 
                 # check if we already know this runner
                 solvnr = r.get('SOLV-Nr', None)
+                startnumber = r.get('Startnummer', None)
+                runner = runner_solv = runner_number = runner_sicard = None
                 if solvnr:
-                    runner = store.find(Runner, Runner.solvnr == solvnr).one()
-                else:
-                    runner = None
-                if runner is None:
-                    if sicard and sicard.runner:
-                        runner = sicard.runner
-                    else:
-                        runner = store.add(Runner(solvnr = r.get('SOLV-Nr', None)))
-                else:
-                    if sicard and sicard.runner and sicard.runner != runner: 
-                        # we have both a matching runner for the sicard and 
-                        # they do not match => give up and do nothing
-                        print ("SOLV Number %s and SI-card %s are already in the "
+                    runner_solv = store.find(Runner, Runner.solvnr == solvnr).one()
+                if startnumber:
+                    runner_number = store.find(Runner, Runner.number == startnumber).one()
+                if sicard:
+                    runner_sicard = sicard.runner
+
+                if (runner_solv or runner_number or runner_sicard) and len(set((runner_solv, runner_number, runner_sicard))) > 1: 
+                        # we have matching runners for solvnr, number or sicard
+                        # and they are not all the same
+                        print ("SOLV Number %s, Start Number %s or SI-card %s are already in the "
                                "database and assigned to different runners. Skipping "
                                "entry for % % on line %i" %
-                               (r.get('SOLV-Nr', u''), r.get('SI-Karte', u''), r.get('Vorname', u''), r.get('Name', u''),
+                               (r.get('SOLV-Nr', u''), r.get('Startnummer', u''), r.get('SI-Karte', u''), r.get('Vorname', u''), r.get('Name', u''),
                                 i+2))
                         continue
-                    else:
-                        print ("Runner %s %s with SOLV Number %s already exists. "
-                               "Updating information." %
-                               (runner.given_name, runner.surname, runner.solvnr)
-                               )
 
-                if sicard:        
-                    RunnerImporter._add_sicard(runner, sicard, store)
+                if runner_solv:
+                    print ("Runner %s %s with SOLV Number %s already exists. "
+                           "Updating information." %
+                           (runner.given_name, runner.surname, runner.solvnr)
+                           )
+                    runner = runner_solv
+                elif runner_number:
+                    print ("Runner %s %s with Start Number %s already exists. "
+                           "Updating information." %
+                           (runner.given_name, runner.surname, runner.number)
+                           )
+                    runner = runner_number
+                elif runner_sicard:
+                    print ("Runner %s %s with SI-card %s already exists. "
+                           "Updating information." %
+                           (runner.given_name, runner.surname, sicard.id)
+                           )
+                    runner = runner_sicard
+                else:
+                    runner = store.add(Runner(solvnr=solvnr, number=startnumber))
+
+                RunnerImporter._add_sicard(runner, sicard, store)
 
                 clubname = r.get('Verein', None)
                 if clubname:
