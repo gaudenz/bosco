@@ -206,34 +206,35 @@ class SOLVDBImporter(RunnerImporter):
                 if sicard:
                     runner_sicard = sicard.runner
 
-                if (runner_solv or runner_number or runner_sicard) and len(set((runner_solv, runner_number, runner_sicard))) > 1: 
-                        # we have matching runners for solvnr, number or sicard
-                        # and they are not all the same
-                        print ("SOLV Number %s, Start Number %s or SI-card %s are already in the "
-                               "database and assigned to different runners. Skipping "
-                               "entry for % % on line %i" %
-                               (r.get('SOLV-Nr', u''), r.get('Startnummer', u''), r.get('SI-Karte', u''), r.get('Vorname', u''), r.get('Name', u''),
-                                i+2))
-                        continue
+                if ((runner_solv or runner_number or runner_sicard) 
+                    and len(set((runner_solv, runner_number, runner_sicard)) - set((None, ))) > 1): 
+                    # we have matching runners for solvnr, number or sicard
+                    # and they are not all the same
+                    print ("SOLV Number %s, Start Number %s or SI-card %s are already in the "
+                           "database and assigned to different runners. Skipping "
+                           "entry for %s %s on line %i" %
+                           (r.get('SOLV-Nr', u''), r.get('Startnummer', u''), r.get('SI-Karte', u''), r.get('Vorname', u''), r.get('Name', u''),
+                            i+2))
+                    continue
 
                 if runner_solv:
+                    runner = runner_solv
                     print ("Runner %s %s with SOLV Number %s already exists. "
                            "Updating information." %
                            (runner.given_name, runner.surname, runner.solvnr)
                            )
-                    runner = runner_solv
                 elif runner_number:
+                    runner = runner_number
                     print ("Runner %s %s with Start Number %s already exists. "
                            "Updating information." %
                            (runner.given_name, runner.surname, runner.number)
                            )
-                    runner = runner_number
                 elif runner_sicard:
+                    runner = runner_sicard
                     print ("Runner %s %s with SI-card %s already exists. "
                            "Updating information." %
                            (runner.given_name, runner.surname, sicard.id)
                            )
-                    runner = runner_sicard
                 else:
                     runner = store.add(Runner(solvnr=solvnr, number=startnumber))
 
