@@ -40,7 +40,7 @@ class Runner(AbstractRunner, Storm):
     given_name = Unicode()
     surname = Unicode()
     dateofbirth = Date()
-    sex = RawStr()
+    sex = Enum(map = {'male':u'male', 'female':u'female'})
     _nation_id = Int(name='nation')
     nation = Reference(_nation_id, 'Country.id')
     solvnr = Unicode()
