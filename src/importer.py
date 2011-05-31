@@ -196,8 +196,9 @@ class SOLVDBImporter(RunnerImporter):
                         sicard = None
 
                 # check if we already know this runner
-                solvnr = r.get('SOLV-Nr', None)
-                startnumber = r.get('Startnummer', None)
+                # get solvnr and startnumber, treat empty values (eg. '') as None
+                solvnr = r.get('SOLV-Nr', None) or None
+                startnumber = r.get('Startnummer', None) or None
                 runner = runner_solv = runner_number = runner_sicard = None
                 if solvnr:
                     runner_solv = store.find(Runner, Runner.solvnr == solvnr).one()
