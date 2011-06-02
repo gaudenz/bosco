@@ -132,6 +132,21 @@ class SIReader(object):
                             'PTH': 2,
                             'PTL': 3,
                             },
+                     'SI8':{'CN2': 25,
+                            'CN1': 26,
+                            'CN0': 27,
+                            'ST' : 14,
+                            'FT' : 18,
+                            'CT' : 10,
+                            'LT' : None,
+                            'RC' : 22,
+                            'P1' : 136,
+                            'PL' : 4,
+                            'PM' : 50,
+                            'CN' : 1,
+                            'PTH': 2,
+                            'PTL': 3,
+                            },
                      'SI9':{'CN2': 25,
                             'CN1': 26,
                             'CN0': 27,
@@ -359,15 +374,15 @@ class SIReader(object):
     @staticmethod
     def _decode_cardnr(number):
         """Decodes a 4 byte cardnr to an int. SI-Card numbering is a bit odd:
-           SI-Card 5:   byte 0:   always 0 (not stored on the card)
-                        byte 1:   card series (stored on the card as CNS)
-                        byte 2,3: card number
-                        printed:  100'000*CNS + card number
-                        nr range: 1-499'999 
-           SI-Card 6/9: byte 0:   card series (apparently 0 on all currently sold cards)
-                        byte 1-3: card number
-                        printed:  only card number
-                        nr range: SI6: 500'000-999'999, SI9: 1'000'000-1'999'999
+           SI-Card 5:     byte 0:   always 0 (not stored on the card)
+                          byte 1:   card series (stored on the card as CNS)
+                          byte 2,3: card number
+                          printed:  100'000*CNS + card number
+                          nr range: 1-499'999 
+           SI-Card 6/8/9: byte 0:   card series (apparently 0 on all currently sold cards)
+                          byte 1-3: card number
+                          printed:  only card number
+                          nr range: SI6: 500'000-999'999, SI8: 2'000'000-2'999'999, SI9: 1'000'000-1'999'999
            The card nr ranges guarantee that no ambigous values are possible
            (500'000 = 0x07A120 > 0x04FFFF -> 465535 (highest actually possible value on a SI5))   
         """
@@ -385,7 +400,7 @@ class SIReader(object):
             else:
                 return ord(number[1])*100000 + ret
         else:
-            # SI6/9
+            # SI6/8/9
             return nr
 
     @staticmethod
@@ -577,7 +592,12 @@ class SIReaderReadout(SIReader):
             elif c[0] == SIReader.C_SI9_DET:
                 # SI 9 sends corrupt first byte (insignificant)
                 self.sicard = self._to_int(c[1][1:]) 
-                self.cardtype = 'SI9'
+                if self.sicard >= 2000000 and self.sicard <= 2999999:
+                    self.cardtype = 'SI8'
+                elif self.sicard >= 1000000 and self.sicard <= 1999999:
+                    self.cardtype = 'SI9'
+                else:
+                    raise SIReaderException('Unknown cardtype!')
             else:
                 raise SIReaderException('Unexpected command %s received' % hex(ord(c[0])))
 
@@ -601,7 +621,7 @@ class SIReaderReadout(SIReader):
             raw_data += self._read_command()[1][1:]
             raw_data += self._read_command()[1][1:]
             return SIReader._decode_carddata(raw_data, self.cardtype)
-        elif self.cardtype == 'SI9':
+        elif self.cardtype == 'SI8' or self.cardtype == 'SI9':
             raw_data  = self._send_command(SIReader.C_GET_SI9,
                                            '\x00')[1][1:]
             raw_data += self._send_command(SIReader.C_GET_SI9,
