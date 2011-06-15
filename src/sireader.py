@@ -64,9 +64,30 @@ class SIReader(object):
     # Protocol Parameters
     P_MS_DIRECT   = '\x4D'
     P_MS_INDIRECT = '\x53'
-    P_PROTO       = '\x74\x01'
-    P_PROTO_SET   = '\x74'
     P_SI6_CB      = '\x08'
+
+    # offsets in system data
+    O_MODE        = '\x71'
+    O_STATION_CODE= '\x72'
+    O_PROTO       = '\x74'
+
+    # SI station modes
+    M_CONTROL     = '\x02'
+    M_START       = '\x03'
+    M_FINISH      = '\x04'
+    M_READOUT     = '\x05'
+    M_CLEAR       = '\x07'
+    M_CHECK       = '\x0a'
+    SUPPORTED_MODES = (M_CONTROL, M_START, M_FINISH, M_READOUT, M_CLEAR, M_CHECK)
+
+    # Weekday encoding (only for reference, currently unused)
+    D_SUNDAY      = 0b000
+    D_MONDAY      = 0b001
+    D_TUESDAY     = 0b010
+    D_WEDNESDAY   = 0b011
+    D_THURSDAY    = 0b100
+    D_FRIDAY      = 0b101
+    D_SATURDAY    = 0b111
 
     # Backup memory record length
     REC_LEN       = 8
@@ -227,6 +248,67 @@ class SIReader(object):
         self._set_proto_config(config)
         self.beep()
 
+    def set_operating_mode(self, mode):
+        """Set si station operating mode.
+        @param mode operating mode, supported modes: M_CONTROL, M_START, M_FINISH, M_READOUT, M_CLEAR, M_CHECK
+        """
+        if not mode in SIReader.SUPPORTED_MODES:
+            raise SIReaderException("Unsupported mode '%s'!" % ord(mode))
+        try:
+            self._send_command(SIReader.C_SET_SYS_VAL, SIReader.O_MODE + mode)
+        finally:
+            self._update_proto_config()
+        self.beep()
+
+    def set_station_code(self, code):
+        """Set si station control code.
+        @param code control code (1-1023)
+        """
+        if code < 1 or code > 1023:
+            raise SIReaderException("Invalid control code: '%i'! Supported code range: 1-1023." % code)
+        # lower byte of control code
+        code_low = chr(code & 0xFF)
+        # high byte of control code, only first 2 bits are used, the rest is set to 1
+        code_high = chr((code >> 2) | 0b00111111)
+        try:
+            self._send_command(SIReader.C_SET_SYS_VAL, SIReader.O_STATION_CODE + code_low + code_high)
+        finally:
+            self._update_proto_config()
+        self.beep()
+
+    def get_time(self):
+        """Read out stations internal time.
+        @return datetime
+        """
+        bintime = self._send_command(SIReader.C_GET_TIME, '')[1]
+        year = SIReader._to_int(bintime[0])
+        month = SIReader._to_int(bintime[1])
+        day = SIReader._to_int(bintime[2])
+        am_pm = SIReader._to_int(bintime[3]) & 0b1
+        second = SIReader._to_int(bintime[4:6])
+        hour = am_pm * 12 + second // 3600
+        second %= 3600
+        minute = second // 60
+        second %= 60
+        ms = SIReader._to_int(bintime[6]) / 256.0 * 1000000
+        self.beep()
+        return datetime(year, month, day, hour, minute, second, ms)
+
+    def set_time(self, time):
+        """Set si station internal time.
+        @param time time as a python datetime object.
+        """
+        bintime = (SIReader._to_str(int(time.strftime('%y')), 1)
+                   + SIReader._to_str(time.month, 1)
+                   + SIReader._to_str(time.day, 1)
+                   + SIReader._to_str(((time.isoweekday() % 7) << 1) + time.hour//12, 1)
+                   + SIReader._to_str((time.hour % 12)*3600 + time.minute*60 + time.second, 2)
+                   + SIReader._to_str(int(round(time.microsecond / 1000000.0 * 256)), 1)
+                   )
+
+        self._send_command(SIReader.C_SET_TIME, bintime)
+        self.beep()
+
     def beep(self, count = 1):
         """Beep and blink control station. This even works if now sicard is
         inserted into the station.
@@ -273,7 +355,7 @@ class SIReader(object):
 
     def _update_proto_config(self):
         # Read protocol configuration
-        ret = self._send_command(SIReader.C_GET_SYS_VAL, SIReader.P_PROTO)
+        ret = self._send_command(SIReader.C_GET_SYS_VAL, SIReader.O_PROTO+'\x01')
         config_byte = ord(ret[1][1])
         self.proto_config = {}
         self.proto_config['ext_proto']  = config_byte & (1 << 0) != 0
@@ -281,6 +363,11 @@ class SIReader(object):
         self.proto_config['handshake']  = config_byte & (1 << 2) != 0
         self.proto_config['pw_access']  = config_byte & (1 << 4) != 0
         self.proto_config['punch_read'] = config_byte & (1 << 7) != 0
+
+        # Read operating mode
+        ret = self._send_command(SIReader.C_GET_SYS_VAL, SIReader.O_MODE+'\x01')
+        self.proto_config['mode'] = ret[1][1]
+
         return self.proto_config
         
     def _set_proto_config(self, config):
@@ -290,7 +377,7 @@ class SIReader(object):
                               (config['handshake'] << 2) |
                               (config['pw_access'] << 4) |
                               (config['punch_read'] << 7))
-            self._send_command(SIReader.C_SET_SYS_VAL, SIReader.P_PROTO_SET + config_byte)
+            self._send_command(SIReader.C_SET_SYS_VAL, SIReader.O_PROTO + config_byte)
         finally:
             self._update_proto_config()
 
@@ -573,6 +660,9 @@ class SIReaderReadout(SIReader):
             raise SIReaderException('This command only supports stations in "Extended Protocol" '
                                     'mode. Switch mode first')
 
+        if not self.proto_config['mode'] == SIReader.M_READOUT:
+            raise SIReaderException("Station must be in 'Read SI cards' operating mode! Change operating mode first.")
+
         if self._serial.inWaiting() == 0:
             return False
 
@@ -610,6 +700,9 @@ class SIReaderReadout(SIReader):
         if not self.proto_config['ext_proto']:
             raise SIReaderException('This command only supports stations in "Extended Protocol" '
                                     'mode. Switch mode first')
+
+        if not self.proto_config['mode'] == SIReader.M_READOUT:
+            raise SIReaderException("Station must be in 'Read SI cards' operating mode! Change operating mode first.")
 
         if self.cardtype == 'SI5':
             return SIReader._decode_carddata(self._send_command(SIReader.C_GET_SI5,
@@ -653,6 +746,10 @@ class SIReaderControl(SIReader):
 
         if not self.proto_config['ext_proto']:
             raise SIReaderException('This command only supports stations in "Extended Protocol" '
+                                    'mode. Switch mode first')
+
+        if not self.proto_config['autosend']:
+            raise SIReaderException('This command only supports stations in "Autosend" '
                                     'mode. Switch mode first')
 
         punches = []
