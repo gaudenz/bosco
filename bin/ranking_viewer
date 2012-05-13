@@ -24,7 +24,7 @@ import wx.html
 from optparse import OptionParser
 import sys
 
-import conf
+from bosco.util import load_config
 
 class RotatingRankingViewer(wx.Frame):
     """Rotates through a list of rankings in full screen."""
@@ -62,6 +62,10 @@ class RotatingRankingViewer(wx.Frame):
         wx.FutureCall(self._duration/2*1000, self.ScrollDown)
 
 if __name__ == '__main__':
+
+    # load configuration
+    conf = load_config()
+
     # Read program options
     opt = OptionParser(usage = 'usage: %prog [options]', 
                        description = 'Displays rankings in full screen rotating through all configured rankings.')

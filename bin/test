@@ -28,7 +28,7 @@ import new
 import sys
 import os
 
-import tests
+from bosco import test
 
 
 def find_tests(testpaths=()):
@@ -41,7 +41,7 @@ def find_tests(testpaths=()):
              doctests found, respectively.
     """
     topdir = os.path.abspath(os.path.dirname(__file__))
-    testdir = os.path.dirname(tests.__file__)
+    testdir = os.path.dirname(test.__file__)
     testpaths = set(testpaths)
     unittests = []
     doctests = []

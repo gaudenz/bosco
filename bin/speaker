@@ -22,8 +22,8 @@ import wx
 import wx.html
 import wx.lib.anchors
 
-from gui import UpdateableHtmlPanel
-import conf
+from bosco.gui import UpdateableHtmlPanel
+from bosco.util import load_config
 
 class SpeakerFrame(wx.Frame):
     """Rotates through a list of rankings in full screen."""
@@ -81,6 +81,8 @@ class SpeakerFrame(wx.Frame):
         del cursor
         
 if __name__ == '__main__':
+
+    conf = load_config()
 
     # add EventObserver to cache for automatic updates
     conf.cache.set_observer(conf.observer)

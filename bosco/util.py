@@ -1,6 +1,5 @@
-#!/usr/bin/env python
 #
-#    Copyright (C) 2008  Gaudenz Steinlin <gaudenz@soziologie.ch>
+#    Copyright (C) 2012  Gaudenz Steinlin <gaudenz@durcheinandertal.ch>
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -14,20 +13,24 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 """
-solvexport - Export rankings for all courses in the SOLV ranking format
+util.py - Utility functions
 """
 
-import sys
+import os, sys
+from imp import find_module, load_module
 
-import conf
-from course import Course
-from formatter import SOLVRankingFormatter
-from run import Run
+def load_config(name='conf'):
+    oldpath = sys.path
+    try:
+        sys.path = [os.getcwd(), ]
+        fp, pathname, description = find_module(name)
+    finally:
+        sys.path = oldpath
 
-f = open(sys.argv[1], 'wb')
-courses = conf.store.find(Course)
-f.write(str(SOLVRankingFormatter([conf.event.ranking(c) for c in courses],
-                                 conf.starttime)))
-
-f.close()
+    try:
+        return load_module(name, fp, pathname, description)
+    finally:
+        if fp:
+            fp.close()

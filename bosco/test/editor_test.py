@@ -20,9 +20,9 @@ import unittest
 
 from storm.locals import *
 
-from tests import BoscoTest
+from bosco.test import BoscoTest
 
-from editor import RunFinder
+from bosco.editor import RunFinder
 
 class RunFinderTest(BoscoTest):
 

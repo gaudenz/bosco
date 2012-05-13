@@ -23,9 +23,11 @@ from time import sleep
 from traceback import print_exc
 import sys
 
-from sireader import SIReaderControl
-from run import Run, RunException
-import conf
+from bosco.sireader import SIReaderControl
+from bosco.run import Run, RunException
+from bosco.util import load_config
+
+conf = load_config()
 
 def register_punch(station, cardnr, punchtime):
 

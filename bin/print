@@ -24,13 +24,17 @@ from optparse import OptionParser
 from subprocess import call
 import os, sys
 
-import conf
-from course import Course
-from formatter import MakoRankingFormatter
-from run import Run
-from runner import Category
+from bosco.util import load_config
+from bosco.course import Course
+from bosco.formatter import MakoRankingFormatter
+from bosco.run import Run
+from bosco.runner import Category
 
 if __name__ == '__main__':
+
+    # load configuration
+    conf = load_config()
+
     # Read program options
     opt = OptionParser(usage = 'usage: %prog [options] [outfile]', 
                        description = 'Produces ranking as a PDF file suitable for printing.')

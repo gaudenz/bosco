@@ -20,11 +20,13 @@ solvexport - Export rankings for all courses in the SOLV ranking format
 
 import sys
 
-import conf
-from course import Course
-from runner import Category
-from formatter import RoundCountRankingFormatter
-from run import Run
+from bosco.import import load_config
+from bosco.course import Course
+from bosco.runner import Category
+from bosco.formatter import RoundCountRankingFormatter
+from bosco.run import Run
+
+conf = load_config()
 
 f = open(sys.argv[1], 'wb')
 courses = conf.store.find(Category)

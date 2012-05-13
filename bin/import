@@ -20,10 +20,14 @@
 from optparse import OptionParser
 import sys
 
-import conf
-from importer import Team24hImporter, TeamRelayImporter, SIRunImporter, OCADXMLCourseImporter, CSVCourseImporter, SOLVDBImporter
+from bosco.util import load_config
+from bosco.importer import Team24hImporter, TeamRelayImporter, SIRunImporter, OCADXMLCourseImporter, CSVCourseImporter, SOLVDBImporter
 
 if __name__ == '__main__':
+
+    # load configuration
+    conf = load_config()
+
     # Read program options
     opt = OptionParser(usage = 'usage: %prog [options] command importfile', 
                        description = "Available commands are 'runners', "

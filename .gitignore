@@ -1,3 +1,7 @@
 *.pyc
 docs/bosco_db.sql
 src/conf.py
+
+# Python distutils generated files
+MANIFEST
+dist

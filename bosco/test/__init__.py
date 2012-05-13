@@ -25,9 +25,9 @@ import sys
 
 from storm.locals import *
 
-from course import Course, Control, SIStation
-from runner import Runner, Category, Team, SICard
-from run import Run, Punch
+from bosco.course import Course, Control, SIStation
+from bosco.runner import Runner, Category, Team, SICard
+from bosco.run import Run, Punch
 
 
 class BoscoTest(unittest.TestCase):

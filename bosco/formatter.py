@@ -17,7 +17,8 @@
 formatter.py - Classes to to format rankings
 """
 
-from mako.template import Template
+import pkg_resources
+
 from mako.lookup import TemplateLookup
 
 from reportlab.lib import colors, pagesizes
@@ -71,7 +72,7 @@ class MakoRankingFormatter(AbstractRankingFormatter):
         @type header:         dict
         """
         super(type(self), self).__init__(rankings)
-        lookup = TemplateLookup(directories=[template_dir])
+        lookup = TemplateLookup(directories=[pkg_resources.resource_filename('bosco', template_dir)])
         self._template = lookup.get_template(template_file)
         self._header = header
 

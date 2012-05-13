@@ -1,7 +1,12 @@
 # -*- coding: utf-8 -*-
 <%!
-from runner import Category
-from course import Course, CombinedCourse
+from bosco.runner import Category
+from bosco.course import Course
+
+blocks_de = {'start' :'Start',
+             'night' :'Nacht',
+             'day'   :'Tag',
+             'finish':'Ziel'}
 %>
 
 \documentclass[12pt,a4paper]{article}
@@ -46,15 +51,17 @@ from course import Course, CombinedCourse
 
 \begin{Huge}
 \textbf{${r.rankable} 
-% if type(r.scoreing_args) == dict and 'legs' in r.scoreing_args:
-nach ${r.scoreing_args['legs']} Strecken
+%if type(r.scoreing_args) == dict and 'blocks' in r.scoreing_args and r.scoreing_args['blocks'] != 'finish':
+${'(nach %s Block)' % blocks_de[r.scoreing_args['blocks']]}
+%elif type(r.scoreing_args) == dict and 'method' in r.scoreing_args and r.scoreing_args['method'] == 'lkm':
+(nach Leistungskilometern)
 %endif
 }
 \end{Huge}
 
 %if type(r.rankable) == Category:
   ${category(r)}
-%elif type(r.rankable) == Course or type(r.rankable) == CombinedCourse:
+%elif type(r.rankable) == Course:
   ${course(r)}
 %endif
 
@@ -70,10 +77,10 @@ nach ${r.scoreing_args['legs']} Strecken
 
 <%def name="course(r)">
 
-(${r.rankable.length/1000.0}km, ${r.rankable.climb}m, ${r.rankable.controlcount()} cont.)
+(${r.rankable.length/1000.0}km, ${r.rankable.climb}m, ${r.rankable.controls.count()} cont.)
 
-\begin{longtable}{rp{4cm}p{1.5cm}lp{4.5cm}@{\extracolsep{\fill}}l}
-\textbf{Rang} & \textbf{Läufer} & \textbf{Nr.} & \textbf{Jg.} & \textbf{Team} & \textbf{Zeit} \\ 
+\begin{longtable}{rp{4cm}p{1.5cm}lp{4.5cm}p{1cm}@{\extracolsep{\fill}}l}
+\textbf{Rang} & \textbf{Läufer} & \textbf{Nr.} & \textbf{Jg.} & \textbf{Team} & \textbf{Kat.} & \textbf{Zeit} \\ 
 \hline
   % for line in r:
 
@@ -81,7 +88,8 @@ nach ${r.scoreing_args['legs']} Strecken
   ${line['item']} & 
   ${line['item'].sicard.runner.number or ''} & 
   ${line['item'].sicard.runner.dateofbirth and line['item'].sicard.runner.dateofbirth.strftime('%y') or ''} &
-  ${line['item'].sicard.runner.team and line['item'].sicard.runner.team.name or ''} & 
+  ${line['item'].sicard.runner.team.name} & 
+  ${line['item'].sicard.runner.team.category} &
   ${line['rank'] and line['scoreing']['score'] or validation_codes[line['validation']['status']]} \\ 
 
   % endfor
@@ -91,7 +99,7 @@ nach ${r.scoreing_args['legs']} Strecken
 
 <%def name="category(r)">
 \begin{longtable}{rp{6cm}p{1.5cm}@{\extracolsep{\fill}}lll}
-\textbf{Rang} & \textbf{Team} & \textbf{Nr.} & \textbf{Zeit} \\ 
+\textbf{Rang} & \textbf{Team} & \textbf{Nr.} & \textbf{${type(r.scoreing_args) == dict and 'method' in r.scoreing_args and r.scoreing_args['method'] == 'lkm' and 'LKm' or u'Läufe'}} & \textbf{Zeit} & \textbf{Zielzeit} \\ 
 \hline
   % for line in r:
 
@@ -99,13 +107,15 @@ nach ${r.scoreing_args['legs']} Strecken
     ${'%i.' % line['rank']} & 
     ${line['item']} &
     ${line['item'].number or ''} &
-    ${line['scoreing']['score']} \\ 
+    ${line['scoreing']['score'].runs} & 
+    ${line['scoreing']['score'].time} &
+    ${line['scoreing']['finishtime'].strftime('%H:%M:%S')} \\ 
 
     % else:
     & 
     ${line['item']} &
     ${line['item'].number or ''} &
-    ${validation_codes[line['validation']['status']]} \\ 
+    \multicolumn{3}{l}{${validation_codes[line['validation']['status']]}} \\ 
     % endif
 
   % endfor
