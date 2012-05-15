@@ -79,9 +79,9 @@ nach ${r.scoreing_args['legs']} Strecken
 
   ${line['rank'] and ('%i.' % line['rank']) or ''} &
   ${line['item']} & 
-  ${line['item'].sicard.runner.number or ''} & 
-  ${line['item'].sicard.runner.dateofbirth and line['item'].sicard.runner.dateofbirth.strftime('%y') or ''} &
-  ${line['item'].sicard.runner.team and line['item'].sicard.runner.team.name or ''} & 
+  ${line['item'].sicard.runner and line['item'].sicard.runner.number or ''} &
+  ${line['item'].sicard.runner and line['item'].sicard.runner.dateofbirth and line['item'].sicard.runner.dateofbirth.strftime('%y') or ''} &
+  ${line['item'].sicard.runner and line['item'].sicard.runner.team and line['item'].sicard.runner.team.name.replace('"', '\"') or ''} &
   ${line['rank'] and line['scoreing']['score'] or validation_codes[line['validation']['status']]} \\ 
 
   % endfor
