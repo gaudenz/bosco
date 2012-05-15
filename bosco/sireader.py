@@ -94,33 +94,6 @@ class SIReader(object):
 
     # General card data structure values
     TIME_RESET    = '\xEE\xEE'
-    
-    # SI Card 5 data structure
-    SI5_CNS       = 6
-    SI5_CN1       = 4
-    SI5_CN0       = 5
-    SI5_ST        = 19
-    SI5_FT        = 21
-    SI5_CT        = 25
-    SI5_RC        = 23
-    SI5_1         = 32
-
-    # SI Card 6 data structure
-    SI6_CN        = 10
-    SI6_ST        = 26
-    SI6_FT        = 22
-    SI6_CT        = 30
-    SI6_LT        = 34
-    SI6_RC        = 18
-    SI6_1         = 128
-
-    # SI Card 9 data structure
-    SI9_CN        = 25
-    SI9_ST        = 14
-    SI9_FT        = 18
-    SI9_CT        = 10
-    SI9_RC        = 22
-    SI9_1         = 56
 
     # SI Card data structures
     CARD          = {'SI5':{'CN2': 6,   # card number byte 2
