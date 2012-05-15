@@ -140,6 +140,7 @@ class SIReader(object):
                             'CN' : 1,
                             'PTH': 2,
                             'PTL': 3,
+                            'BC' : 2,   # number of blocks on card (only relevant for SI8 and above = those read with C_GET_SI9)
                             },
                      'SI9':{'CN2': 25,
                             'CN1': 26,
@@ -155,6 +156,23 @@ class SIReader(object):
                             'CN' : 1,
                             'PTH': 2,
                             'PTL': 3,
+                            'BC' : 2,
+                            },
+                    'SI10':{'CN2': 25,
+                            'CN1': 26,
+                            'CN0': 27,
+                            'ST' : 14,
+                            'FT' : 18,
+                            'CT' : 10,
+                            'LT' : None,
+                            'RC' : 22,
+                            'P1' : 128,
+                            'PL' : 4,
+                            'PM' : 64,
+                            'CN' : 1,
+                            'PTH': 2,
+                            'PTL': 3,
+                            'BC' : 8,
                             },
                      }
 
@@ -439,10 +457,12 @@ class SIReader(object):
                           byte 2,3: card number
                           printed:  100'000*CNS + card number
                           nr range: 1-499'999 
-           SI-Card 6/8/9: byte 0:   card series (apparently 0 on all currently sold cards)
+           SI-Card 6/8/9/10/11:
+                          byte 0:   card series (SI6: 00, SI8: 02, SI9: 01, SI10: 0F, SI11: 0F)
                           byte 1-3: card number
                           printed:  only card number
-                          nr range: SI6: 500'000-999'999, SI8: 2'000'000-2'999'999, SI9: 1'000'000-1'999'999
+                          nr range: SI6: 500'000-999'999, SI8: 2'000'000-2'999'999, SI9: 1'000'000-1'999'999,
+                                    SI10: 7'000'000-7'999'999, SI11: 9'000'000-9'999'999
            The card nr ranges guarantee that no ambigous values are possible
            (500'000 = 0x07A120 > 0x04FFFF -> 465535 (highest actually possible value on a SI5))   
         """
@@ -659,6 +679,8 @@ class SIReaderReadout(SIReader):
                     self.cardtype = 'SI8'
                 elif self.sicard >= 1000000 and self.sicard <= 1999999:
                     self.cardtype = 'SI9'
+                elif self.sicard >= 7000000 and self.sicard <= 9999999:
+                    self.cardtype = 'SI10'
                 else:
                     raise SIReaderException('Unknown cardtype!')
             else:
@@ -687,11 +709,12 @@ class SIReaderReadout(SIReader):
             raw_data += self._read_command()[1][1:]
             raw_data += self._read_command()[1][1:]
             return SIReader._decode_carddata(raw_data, self.cardtype)
-        elif self.cardtype == 'SI8' or self.cardtype == 'SI9':
-            raw_data  = self._send_command(SIReader.C_GET_SI9,
-                                           '\x00')[1][1:]
-            raw_data += self._send_command(SIReader.C_GET_SI9,
-                                           '\x01')[1][1:]
+        elif self.cardtype in ('SI8', 'SI9', 'SI10'):
+            raw_data = ''
+            for b in range(SIReader.CARD[self.cardtype]['BC']):
+                raw_data += self._send_command(SIReader.C_GET_SI9,
+                                               chr(b))[1][1:]
+
             return SIReader._decode_carddata(raw_data, self.cardtype)
         else:
             raise SIReaderException('No card in the device.')
