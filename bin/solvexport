@@ -19,17 +19,43 @@ solvexport - Export rankings for all courses in the SOLV ranking format
 """
 
 import sys
+from optparse import OptionParser
 
 from bosco.util import load_config
 from bosco.course import Course
-from bosco.formatter import SOLVRankingFormatter
+from bosco.runner import Category
+from bosco.formatter import CategorySOLVRankingFormatter, CourseSOLVRankingFormatter, RoundCountRankingFormatter
 from bosco.run import Run
 
-conf = load_config()
+modes = {'category'   : {'rankable': Category, 'formatter': CategorySOLVRankingFormatter},
+         'course'     : {'rankable': Course,   'formatter': CourseSOLVRankingFormatter},
+         'roundcount' : {'rankable': Category, 'formatter': RoundCountRankingFormatter},
+         }
 
-f = open(sys.argv[1], 'wb')
-courses = conf.store.find(Course)
-f.write(str(SOLVRankingFormatter([conf.event.ranking(c) for c in courses],
-                                 conf.starttime)))
+if __name__ == '__main__':
 
-f.close()
+    # load configuration
+    conf = load_config()
+
+    # Read program options
+    opt = OptionParser(usage = 'usage: %prog [options] [outfile]', 
+                       description = 'Produces a CSV file suitable for uploading to the SOLV Website.')
+    opt.add_option('-m', '--mode', action='store', default='category',
+                   help='Output category, course or roundcount based rankings. Defaults to category.')
+    (options, args) = opt.parse_args()
+
+    if len(args) > 1:
+        print "Can't write to more than one file!"
+        sys.exit(1)
+
+
+    if len(args) == 0:
+        f = sys.stdout
+    else:
+        f = open(args[0], 'wb')
+
+    courses = conf.store.find(modes[options.mode]['rankable'])
+    f.write(str(modes[options.mode]['formatter']([conf.event.ranking(c) for c in courses],
+                                     conf.starttime)))
+
+    f.close()
