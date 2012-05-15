@@ -147,7 +147,10 @@ class CourseSOLVRankingFormatter(AbstractSOLVRankingFormatter):
                 except TypeError:
                     line.append('')
                     
-                for p in r['item'].punches.order_by('COALESCE(manual_punchtime, card_punchtime)'):
+                for status, p in r['validation']['punchlist']:
+                    # ignore wrong punches
+                    if not status == 'ok':
+                        continue
                     if (not p.sistation.control is None
                         and p.sistation.id > SIStation.SPECIAL_MAX):
                         try:
