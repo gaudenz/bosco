@@ -20,6 +20,7 @@ util.py - Utility functions
 
 import os, sys
 from imp import find_module, load_module
+from optparse import OptionParser
 
 def load_config(name='conf'):
     oldpath = sys.path
@@ -34,3 +35,45 @@ def load_config(name='conf'):
     finally:
         if fp:
             fp.close()
+
+
+class RankingOptionParser(OptionParser):
+
+    def __init__(self, event, *args, **kwargs):
+        # super does not work here because OptionParser derives from OptionContainer
+        # which is an old style class (see optparse.py)
+        self._event = event
+        OptionParser.__init__(self, *args, **kwargs)
+
+        self.add_option('-r', '--rankings', action='store', default=None,
+                        help='Comma separted list of rankings to show.')
+        self.add_option('-l', '--list', action='store_true', default=False,
+                        help='List all available rankings.')
+
+    def parse_args(self):
+        (options, args) = OptionParser.parse_args(self)
+
+        # process rankings arguments
+        if options.list:
+            print 'Available rankings:',
+            for (desc,r) in self._event.list_rankings():
+                print "%s," % desc,
+            print
+            sys.exit()
+
+        if options.rankings:
+            ranking_codes = options.rankings.split(',')
+            ranking_list = [ r for (desc,r) in self._event.list_rankings() if desc in ranking_codes ]
+        else:
+            ranking_list = [ r for (desc,r) in self._event.list_rankings() ]
+
+        # process file arguments
+        if len(args) > 1:
+            print "Can't write to more than one file!"
+            sys.exit(1)
+        if len(args) == 0:
+            f = sys.stdout
+        else:
+            f = open(args[0], 'wb')
+
+        return (options, args, ranking_list, f)
