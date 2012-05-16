@@ -20,11 +20,10 @@ print - print rankings
 
 from tempfile import mkdtemp
 from shutil import move, rmtree, copy
-from optparse import OptionParser
 from subprocess import call
 import os, sys
 
-from bosco.util import load_config
+from bosco.util import load_config, RankingOptionParser
 from bosco.course import Course
 from bosco.formatter import MakoRankingFormatter
 from bosco.run import Run
@@ -36,30 +35,10 @@ if __name__ == '__main__':
     conf = load_config()
 
     # Read program options
-    opt = OptionParser(usage = 'usage: %prog [options] [outfile]', 
-                       description = 'Produces ranking as a PDF file suitable for printing.')
-    opt.add_option('-r', '--rankings', action='store', default=None,
-                   help='Comma separted list of rankings to show.')
-    opt.add_option('-l', '--list', action='store_true', default=False,
-                   help='List all available rankings.')
-    (options, args) = opt.parse_args()
-
-    if len(args) > 1:
-        print "Can't print to more than one file!"
-        sys.exit(1)
-        
-    if options.list:
-        print 'Available rankings:', 
-        for (desc,r) in conf.event.list_rankings():
-            print desc,
-        print
-        sys.exit()
-
-    if options.rankings:
-        ranking_codes = options.rankings.split(',')
-        ranking_list = [ r for (desc,r) in conf.event.list_rankings() if desc in ranking_codes ]
-    else:
-        ranking_list = [ r for (desc,r) in conf.event.list_rankings() ]
+    opt = RankingOptionParser(usage = 'usage: %prog [options] [outfile]', 
+                              description = 'Produces ranking as a PDF file suitable for printing.',
+                              event = conf.event)
+    (options, args, ranking_list, outfile) = opt.parse_args()
 
     tempdir = mkdtemp()
     f = open(os.path.join(tempdir, 'print.tex'), 'wb')
@@ -72,10 +51,7 @@ if __name__ == '__main__':
     os.chdir(tempdir)
     call(['pdflatex','--interaction=batchmode', 'print.tex'])
     os.chdir(orig_dir)
-    if len(args) == 1:
-        move(os.path.join(tempdir, 'print.pdf'), args[0])
-    elif len(args) == 0:
-        f = open(os.path.join(tempdir, 'print.pdf'), 'rb')
-        print f.read(),
-        
-    #rmtree(tempdir)
+    f = open(os.path.join(tempdir, 'print.pdf'), 'rb')
+    outfile.write(f.read())
+
+    rmtree(tempdir)
