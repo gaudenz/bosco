@@ -70,8 +70,6 @@ class Ranking(object):
         self.validator_args = validator_args
         self._reverse = reverse
 
-    def _compute(self):
-        return 
     def __iter__(self):
 
         def ranking_generator(ranking_list):
