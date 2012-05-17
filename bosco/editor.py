@@ -17,7 +17,7 @@
 editor.py - High level editing classes.
 """
 
-from datetime import datetime
+from datetime import datetime, date
 from time import sleep
 from subprocess import Popen, PIPE
 
@@ -119,7 +119,7 @@ class RunFinder(Observable):
             results.append((r.id, 
                             r.course and r.course.code and unicode(r.course.code) 
                               or 'unknown', 
-                            r.readout_time and unicode(r.readout_time) or 'unknown', 
+                            r.readout_time and RunEditor._format_time(r.readout_time) or 'unknown',
                             runner and runner.number and unicode(runner.number) 
                               or 'unknown',
                             runner and unicode(runner) or 'unknown',
@@ -245,15 +245,20 @@ class RunEditor(Observable):
 
         self.__initialized = True
 
-    run_readout_time = property(lambda obj: obj._run and obj._run.readout_time and str(obj._run.readout_time) or 'unknown')
-    run_clear_time = property(lambda obj: obj._run and obj._run.clear_time and str(obj._run.clear_time) or 'unknown')
-    run_check_time = property(lambda obj: obj._run and obj._run.check_time and str(obj._run.check_time) or 'unknown')
-    run_card_start_time = property(lambda obj: obj._run and obj._run.card_start_time and str(obj._run.card_start_time) or 'unknown')
-    run_manual_start_time = property(lambda obj: obj._run and obj._run.manual_start_time and str(obj._run.manual_start_time) or '')
-    run_start_time = property(lambda obj: obj._run and obj._run.start_time and str(obj._run.start_time) or 'unknown')
-    run_card_finish_time = property(lambda obj: obj._run and obj._run.card_finish_time and str(obj._run.card_finish_time) or 'unknown')
-    run_manual_finish_time = property(lambda obj: obj._run and obj._run.manual_finish_time and str(obj._run.manual_finish_time) or '')
-    run_finish_time = property(lambda obj: obj._run and obj._run.finish_time and str(obj._run.finish_time) or 'unknown')
+    @staticmethod
+    def _format_time(time, date = True):
+        format = date and '%x %X' or '%X'
+        return time.strftime(format)
+
+    run_readout_time = property(lambda obj: obj._run and obj._run.readout_time and RunEditor._format_time(obj._run.readout_time) or 'unknown')
+    run_clear_time = property(lambda obj: obj._run and obj._run.clear_time and RunEditor._format_time(obj._run.clear_time) or 'unknown')
+    run_check_time = property(lambda obj: obj._run and obj._run.check_time and RunEditor._format_time(obj._run.check_time) or 'unknown')
+    run_card_start_time = property(lambda obj: obj._run and obj._run.card_start_time and RunEditor._format_time(obj._run.card_start_time) or 'unknown')
+    run_manual_start_time = property(lambda obj: obj._run and obj._run.manual_start_time and RunEditor._format_time(obj._run.manual_start_time) or '')
+    run_start_time = property(lambda obj: obj._run and obj._run.start_time and RunEditor._format_time(obj._run.start_time) or 'unknown')
+    run_card_finish_time = property(lambda obj: obj._run and obj._run.card_finish_time and RunEditor._format_time(obj._run.card_finish_time) or 'unknown')
+    run_manual_finish_time = property(lambda obj: obj._run and obj._run.manual_finish_time and RunEditor._format_time(obj._run.manual_finish_time) or '')
+    run_finish_time = property(lambda obj: obj._run and obj._run.finish_time and RunEditor._format_time(obj._run.finish_time) or 'unknown')
 
     def has_runner(self):
         if self._run is None:
@@ -407,8 +412,8 @@ class RunEditor(Observable):
                 punchlist.append((p.sequence and str(p.sequence) or '',
                                   p.sistation.control and p.sistation.control.code or '',
                                   StationCode(p.sistation.id),
-                                  p.card_punchtime and str(p.card_punchtime) or '',
-                                  p.manual_punchtime and str(p.manual_punchtime) or '',
+                                  p.card_punchtime and RunEditor._format_time(p.card_punchtime) or '',
+                                  p.manual_punchtime and RunEditor._format_time(p.manual_punchtime) or '',
                                   str(int(p.ignore)),
                                   str(code)))
             elif type(p) == Control:
@@ -607,8 +612,37 @@ class RunEditor(Observable):
     def parse_time(self, time):
         if time == '':
             return None
-        else:
+
+        # try date and time in current locale
+        try:
+            return datetime.strptime(time, '%x %X')
+        except ValueError:
+            pass
+
+        # try only time in current locale
+        try:
+            t = datetime.strptime(time, '%X')
+            today = date.today()
+            return t.replace(year=today.year, month=today.month, day=today.day)
+        except ValueError:
+            pass
+
+        # try YYYY-mm-dd hh:mm:ss representation
+        try:
             return datetime.strptime(time, '%Y-%m-%d %H:%M:%S')
+        except ValueError:
+            pass
+
+        # try hh:mm:ss
+        try:
+            t = datetime.strptime(time, '%H:%M:%S')
+            today = date.today()
+            return t.replace(year=today.year, month=today.month, day=today.day)
+        except ValueError:
+            pass
+
+        # we just don't know how to interpret this time
+        return None
 
     def set_manual_start_time(self, time):
         self._run.manual_start_time = self.parse_time(time)
