@@ -16,35 +16,37 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-Test the correct ranking of the 24h Relay test event
+Test the correct ranking of the 24h Relay Event 2008
 """
 
 import unittest
 
+from os.path import join, dirname
+
 from storm.locals import *
 from datetime import datetime, timedelta
 
-from ranking import Cache
-from runner import Category
-from event import Relay24hEvent
+from bosco.ranking import Cache
+from bosco.runner import Category
+from bosco.event import Relay24hEvent
 
-from tests import EventTest
+from bosco.test import EventTest
 
 class Relay24h2008Test(EventTest):
 
     def setUp(self):
 
-        self.import_sql('tests/24h_testevent.sql')
-        self.import_refdata('tests/24h_testevent.pck')
+        self.import_sql(join(dirname(__file__), 'relay_24h_ubol_2008.sql'))
+        self.import_refdata(join(dirname(__file__), 'relay_24h_ubol_2008.pck'))
         
         self.store = Store(create_database('postgres:bosco_test'))
         cat24h = self.store.find(Category, Category.name == u'24h').one()
         cat12h = self.store.find(Category, Category.name == u'12h').one()
 
         # Set up event object
-        self.event = Relay24hEvent(starttime_24h = datetime(2008,4,30,21,55),
-                              starttime_12h = datetime(2008,4,30,22,50),
-                              speed = 1.5,
+        self.event = Relay24hEvent(starttime_24h = datetime(2008,5,10,19,00),
+                              starttime_12h = datetime(2008,5,11,7,0),
+                              speed = 6,
                               extra_rankings = [('24h_lkm',
                                                  {'obj':cat24h,
                                                   'scoreing_args':{'method':'lkm'}
@@ -98,8 +100,8 @@ class Relay24h2008Test(EventTest):
                                                   }
                                                  ),
                                                 ],
-                              duration_24h = timedelta(hours=2, minutes = 6),
-                              duration_12h = timedelta(hours=1, minutes = 3),
+                              duration_24h = timedelta(hours=24, minutes = 0),
+                              duration_12h = timedelta(hours=12, minutes = 0),
                               cache = Cache(), store = self.store)
 
     def testRanking(self):

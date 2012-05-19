@@ -21,6 +21,7 @@ import unittest
 from subprocess import check_call,STDOUT
 from cPickle import load
 from datetime import datetime
+from os.path import join, dirname
 import sys
 
 from storm.locals import *
@@ -256,7 +257,7 @@ class EventTest(unittest.TestCase):
 
     def tearDown(self):
         self.store.rollback()
-        self.import_sql('../docs/bosco_db.sql')
+        self.import_sql(join(dirname(__file__), '../../docs/bosco_db.sql'))
         
     def doTestRanking(self):
         """Test the correct ranking of all courses and runs."""

@@ -18,23 +18,23 @@
 
 from storm.locals import *
 from datetime import datetime, timedelta
-from course import Course, Control, SIStation
-from runner import SICard, Runner, Category, Team
+from bosco.course import Course, Control, SIStation
+from bosco.runner import SICard, Runner, Category, Team
 
-from run import Run, Punch
-from ranking import (TimeScoreing,
-                     RoundCountScoreing,
-                     MassstartStarttime,
-                     SelfstartStarttime,
-                     RelayStarttime,
-                     RelayMassstartStarttime,
-                     UnscoreableException,
-                     Validator,
-                     SequenceCourseValidator,
-                     Ranking)
-from event import Event, RelayEvent
+from bosco.run import Run, Punch
+from bosco.ranking import (TimeScoreing,
+                           RoundCountScoreing,
+                           MassstartStarttime,
+                           SelfstartStarttime,
+                           RelayStarttime,
+                           RelayMassstartStarttime,
+                           UnscoreableException,
+                           Validator,
+                           SequenceCourseValidator,
+                           Ranking)
+from bosco.event import Event, RelayEvent
 
-from tests import BoscoTest
+from bosco.test import BoscoTest
 
 class RunTest(BoscoTest):
 

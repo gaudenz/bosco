@@ -21,13 +21,15 @@ Test specific to the 24h relay.
 
 import unittest
 
+from os.path import join, dirname
+
 from storm.locals import *
 from datetime import datetime, timedelta
 
-from runner import Category, Team, Runner
-from importer import Team24hImporter, OCADXMLCourseImporter, SIRunImporter
-from ranking import Validator, Relay24hScore, Cache
-from event import Relay24hEvent
+from bosco.runner import Category, Team, Runner
+from bosco.importer import Team24hImporter, OCADXMLCourseImporter, SIRunImporter
+from bosco.ranking import Validator, Relay24hScore, Cache
+from bosco.event import Relay24hEvent
 
 class Relay24hTest(unittest.TestCase):
 
@@ -38,17 +40,17 @@ class Relay24hTest(unittest.TestCase):
     def setUp(self):
 
         # import runners from testfile
-        importer = Team24hImporter('tests/import_24h_team.csv', 'iso-8859-1')
+        importer = Team24hImporter(join(dirname(__file__), 'import_24h_team.csv'), 'iso-8859-1')
         importer.import_data(self._store)
         
         # import courses from testfile
-        importer = OCADXMLCourseImporter('tests/import_24h_course.xml',
+        importer = OCADXMLCourseImporter(join(dirname(__file__), 'import_24h_course.xml'),
                                          finish = True,
                                          start = False)
         importer.import_data(self._store)
 
         # import sample runs
-        importer = SIRunImporter('tests/import_24h_run.csv')
+        importer = SIRunImporter(join(dirname(__file__),'import_24h_run.csv'))
         importer.import_data(self._store)
 
         self._cache = Cache()

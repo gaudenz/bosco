@@ -25,7 +25,7 @@ import unittest
 from storm.locals import *
 from storm.exceptions import IntegrityError
 
-from runner import Runner, RunnerException, SICard
+from bosco.runner import Runner, RunnerException, SICard
 
 class RunnerTest(unittest.TestCase):
 
