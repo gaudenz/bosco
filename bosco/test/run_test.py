@@ -205,6 +205,21 @@ class RunTest(BoscoTest):
         self.assertEquals(ranking[4]['validation']['status'], Validator.MISSING_CONTROLS)
         self.assertEquals(ranking[4]['item'], self._runners[3])
         
+    def test_ranking_random_access(self):
+        """Test "random access" functions of Ranking"""
+        
+        ranking = Event({}).ranking(self._course)
+
+        self.assertEquals(ranking.rank(self._runs[0]), 1)
+        self.assertEquals(ranking.rank(self._runs[2]), 1)
+        self.assertEquals(ranking.rank(self._runs[4]), 3)
+        self.assertEquals(ranking.rank(self._runs[1]), 4)
+        self.assertEquals(ranking.rank(self._runs[3]), None)
+
+        self.assertEquals(ranking.score(self._runs[0]), timedelta(minutes=5))
+
+        self.assertRaises(KeyError, ranking.rank, self._runs[6])
+
     def test_overrride_control(self):
         """Test override for a control."""
         # Add override for control 131

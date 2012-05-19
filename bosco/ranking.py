@@ -56,8 +56,11 @@ class Ranking(object):
     a subclass of AbstractScoreing compatible with the RankableItem objects of this Rankable.
     The ranking is generated in lowest first order. Reverse rankings are possible.
 
-    The iterator returns dictionaries with the keys 'rank', 'score', 'validation',
-    'item', 'validation_info' and 'scoreing_info'.
+    The iterator returns dictionaries with the keys 'rank', 'scoreing', 'validation',
+    'item'.
+
+    Rankings are lazyly computed, but not updated unless you eihter call the update mehtod
+    or iterate over them.
     """
 
     def __init__(self, rankable, event, scoreing_class = None, validator_class = None,
@@ -69,26 +72,62 @@ class Ranking(object):
         self.scoreing_args = scoreing_args
         self.validator_args = validator_args
         self._reverse = reverse
+        self._ranking_list = []
+        self._ranking_dict = {}
+
+        # lazy initialization flag
+        self._initialized = False
 
     def __iter__(self):
+        """
+        Iterating over the ranking automatically updates the ranking. This is mainly for
+        backwards compatibility.
+        """
 
         def ranking_generator(ranking_list):
-
-            rank = 1
-            for i, m in enumerate(ranking_list):
-                # Only increase the rank if the current item scores higher than the previous item
-                if (i > 0 and (ranking_list[i]['scoreing']['score']
-                              > ranking_list[i-1]['scoreing']['score'])
-                         or (self._reverse and (ranking_list[i]['scoreing']['score']
-                              < ranking_list[i-1]['scoreing']['score']))):
-                    rank = i + 1
-                result = copy(m)
-                result['rank'] =  (m['validation']['status'] == Validator.OK and rank
-                                   or None) # only assign rank if run is OK
+            for result in ranking_list:
                 yield result
 
+        self.update()
+        # return the generator
+        return ranking_generator(self._ranking_list)
+
+    def rank(self, item):
+        """
+        @param item:  Item ranked in this ranking
+        @return:      Rank of this item
+        """
+        return self.info(item)['rank']
+
+    def score(self, item):
+        """
+        @param item: Item ranked in this ranking
+        @return:     Score of this item
+        """
+        return self.info(item)['scoreing']['score']
+
+    def info(self, item):
+        """
+        Return information dict for one item
+        @param item: Item ranked in this ranking
+        @return:     dict with all information about this item (same as when iterating
+                     over the ranking)
+        """
+        # lazy initialization
+        if not self._initialized:
+            self.update()
+
+        try:
+            return self._ranking_dict[item]
+        except KeyError:
+            raise KeyError('%s not in ranking.' % item)
+
+    def update(self):
+        """
+        Update the ranking. Rankings are not updated automatically.
+        """
         # Create list of (score, member) tuples and sort by score
-        ranking_list = []
+        self._ranking_list = []
         for m in self.rankable.members:
             try:
                 score = self._event.score(m, self._scoreing_class, self.scoreing_args)
@@ -101,15 +140,31 @@ class Ranking(object):
                 print_exc(file=sys.stderr)
                 continue
                 
-            ranking_list.append({'scoreing':score,
-                                 'validation': valid,
-                                 'item':m})
+            self._ranking_list.append({'scoreing':score,
+                                       'validation': valid,
+                                       'item':m})
 
-        ranking_list.sort(key = lambda x: x['scoreing']['score'], reverse = self._reverse)
-        ranking_list.sort(key = lambda x: x['validation']['status'])
+        self._ranking_list.sort(key = lambda x: x['scoreing']['score'], reverse = self._reverse)
+        self._ranking_list.sort(key = lambda x: x['validation']['status'])
+        
+        rank = 1
+        for i, m in enumerate(self._ranking_list):
+            # Only increase the rank if the current item scores higher than the previous item
+            if (i > 0 and (self._ranking_list[i]['scoreing']['score']
+                           > self._ranking_list[i-1]['scoreing']['score'])
+                or (self._reverse and (self._ranking_list[i]['scoreing']['score']
+                                       < self._ranking_list[i-1]['scoreing']['score']))):
+                rank = i + 1
+            # only assign rank if run is OK
+            m['rank'] =  (m['validation']['status'] == Validator.OK and rank or None)
 
-        # return the generator
-        return ranking_generator(ranking_list)
+        # create dictionary with ranked objects as keys for random access
+        self._ranking_dict = {}
+        for obj in self._ranking_list:
+            self._ranking_dict[obj['item']] = obj
+        
+        self._initialized = True
+
 
 class Rankable(object):
     """Defines the interface for rankable objects like courses and categories.
