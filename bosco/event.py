@@ -255,7 +255,9 @@ class RelayEvent(Event):
                  html_template = 'relay.html',
                  cache = None, store = None):
         """
-        @param legs: list of dicts with the following keys:
+        @param legs: dict keyed with category names containing relay category definitions:
+                     lists of leg dicts with the following keys:
+                     * 'name': Name of the Leg
                      * 'variants': tuple of course codes that are valid variants for this leg.
                      * 'starttime': start time for all non replaced runners, type datetime
                      * 'defaulttime': time scored if no runner of the team successfully
@@ -271,11 +273,13 @@ class RelayEvent(Event):
         # create dict of starttimes with course codes as key
         # used for easier access to the starttimes
         self._starttimes = {}
-        for l in legs:
-            for c in l['variants']:
-                if c in self._starttimes:
-                    raise EventException('Multiple legs with the same course are not supported in RelayEvent!')
-                self._starttimes[c] = l['starttime']
+        for cat, legs in self._legs.iteritems():
+            self._starttimes[cat] = {}
+            for l in legs:
+                for c in l['variants']:
+                    if c in self._starttimes[cat]:
+                        raise EventException('Multiple legs with the same course are not supported in RelayEvent!')
+                    self._starttimes[cat][c] = l['starttime']
         
     def validate(self, obj, validator_class = None, args = None):
 
@@ -286,13 +290,14 @@ class RelayEvent(Event):
             
         if type(obj) == Team and validator_class is None:
             validator_class = RelayScoreing
+            cat = obj.category.name
             # build arguments for the RelayScoreing object
             if not 'legs' in args:
                 # score all legs if no leg parameter is specified
-                args['legs'] = len(self._legs)
+                args['legs'] = len(self._legs[cat])
             # build args parameter for RelayScoreing
             if type(args['legs']) == int:
-                args['legs'] = self._legs[:args['legs']]
+                args['legs'] = self._legs[cat][:args['legs']]
             args['event'] = self
 
         # defer validation to the superclass
@@ -318,17 +323,19 @@ class RelayEvent(Event):
             if obj.course is None:
                 raise UnscoreableException("Can't score a relay leg without a course.")
             scoreing_class = TimeScoreing
-            args['starttime_strategy'] = RelayMassstartStarttime(self._starttimes[obj.course.code], cache = args['cache'])
+            cat = obj .sicard.runner.team.category.name
+            args['starttime_strategy'] = RelayMassstartStarttime(self._starttimes[cat][obj.course.code], cache = args['cache'])
         elif type(obj) == Team and scoreing_class is None:
             scoreing_class = RelayScoreing
+            cat = obj.category.name
 
             # build arguments for the RelayScoreing object
             if not 'legs' in args:
                 # score all legs if no leg parameter is specified
-                args['legs'] = self._legs[:len(self._legs)]
+                args['legs'] = self._legs[cat][:len(self._legs[cat])]
             # build args parameter for RelayScoreing
             if type(args['legs']) == int:
-                args['legs'] = self._legs[:args['legs']]
+                args['legs'] = self._legs[cat][:args['legs']]
 
             args['event'] = self
 
@@ -337,14 +344,26 @@ class RelayEvent(Event):
     
     def list_rankings(self):
         l = []
-        for leg in self._legs:
-            l.append((leg['name'], self.ranking(CombinedCourse(leg['variants'], leg['name'], self._store))))
         for c in self.list_categories():
-            for i,leg in enumerate(self._legs):
+            for leg in self._legs[c.name]:
+                l.append((leg['name'], self.ranking(CombinedCourse(leg['variants'], leg['name'], self._store))))
+            for i,leg in enumerate(self._legs[c.name]):
                 l.append(('%s %s' % (c.name, leg['name']), self.ranking(c, scoreing_args = {'legs': i+1},
                                                                         validation_args = {'legs': i+1}))) 
         return l
     
+    def list_legs(self, category):
+        """
+        Lists all legs in a category.
+        @category: Category object to list legs for
+        @return:   list of CombinedCourse objects
+        """
+
+        result = []
+        for leg in self._legs[category.name]:
+            result.append(CombinedCourse(leg['variants'], leg['name'], self._store))
+        return result
+
 class Relay24hEvent(Event):
     """Event class for the 24h orientieering relay."""
 
