@@ -19,7 +19,7 @@
 from storm.locals import *
 from datetime import datetime, timedelta
 from bosco.course import Course, Control, SIStation
-from bosco.runner import SICard, Runner, Category, Team
+from bosco.runner import SICard
 
 from bosco.run import Run, Punch
 from bosco.ranking import (TimeScoreing,
@@ -30,8 +30,7 @@ from bosco.ranking import (TimeScoreing,
                            RelayMassstartStarttime,
                            UnscoreableException,
                            Validator,
-                           SequenceCourseValidator,
-                           Ranking)
+                           SequenceCourseValidator)
 from bosco.event import Event, RelayEvent
 
 from bosco.test import BoscoTest
