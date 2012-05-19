@@ -260,11 +260,6 @@ class RelayEvent(Event):
                      * 'starttime': start time for all non replaced runners, type datetime
                      * 'defaulttime': time scored if no runner of the team successfully
                        completes this leg, type timedelta or None if there is no defaulttime
-        @param legs: list of dicts with the following keys:
-                     * 'variants': tuple of course codes that are valid variants for this leg.
-                     * 'starttime': start time for all non replaced runners, type datetime
-                     * 'defaulttime': time scored if no runner of the team successfully
-                       completes this leg, type timedelta or None if there is no defaulttime
         @see:        Event for other arguments
         """
 
