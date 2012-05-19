@@ -335,9 +335,6 @@ class RelayEvent(Event):
         # if scoreing_class is not None use specified scoreing_class
         return Event.score(self, obj, scoreing_class, args)
     
-#    def ranking(self, obj):
-#        pass
-    
     def list_rankings(self):
         l = []
         for leg in self._legs:
