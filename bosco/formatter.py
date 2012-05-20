@@ -108,7 +108,15 @@ class AbstractSOLVRankingFormatter(AbstractRankingFormatter):
             return str(r['scoreing']['score'])
         else:
             return self.validation_codes[r['validation']['status']]
-        
+
+    def _writer(self):
+        self._outstr = StringIO()
+        return writer(self._outstr, delimiter=';',
+                      lineterminator=self._lineterminator)
+
+    def _output(self):
+        return self._outstr.getvalue()
+
     def __str__(self):
         raise SOLVRankingFormatterException('Use a subclass and overrwrite this method.')
 
@@ -118,11 +126,8 @@ class CourseSOLVRankingFormatter(AbstractSOLVRankingFormatter):
     def __str__(self):
 
         encoding = self._encoding
-        
 
-        outstr = StringIO()
-        output = writer(outstr, delimiter=';',
-                        lineterminator=self._lineterminator)
+        output = self._writer()
         for ranking in self.rankings:
             output.writerow([str(ranking.rankable),
                              ranking.rankable.length,
@@ -162,7 +167,7 @@ class CourseSOLVRankingFormatter(AbstractSOLVRankingFormatter):
 
                 output.writerow(line)
 
-        return outstr.getvalue()
+        return self._output()
 
 class CategorySOLVRankingFormatter(AbstractSOLVRankingFormatter):
     
@@ -170,10 +175,8 @@ class CategorySOLVRankingFormatter(AbstractSOLVRankingFormatter):
 
         encoding = self._encoding
         
+        output = self._writer()
 
-        outstr = StringIO()
-        output = writer(outstr, delimiter=';',
-                        lineterminator=self._lineterminator)
         for ranking in self.rankings:
             output.writerow([str(ranking.rankable)])
             
@@ -185,7 +188,7 @@ class CategorySOLVRankingFormatter(AbstractSOLVRankingFormatter):
                     
                 output.writerow(line)
 
-        return outstr.getvalue()
+        return self._output()
 
 class RoundCountRankingFormatter(AbstractSOLVRankingFormatter):
     
@@ -193,9 +196,7 @@ class RoundCountRankingFormatter(AbstractSOLVRankingFormatter):
 
         encoding = self._encoding
         
-        outstr = StringIO()
-        output = writer(outstr, delimiter=';',
-                        lineterminator=self._lineterminator)
+        output = self._writer()
         for ranking in self.rankings:
             output.writerow([str(ranking.rankable)])
             
@@ -217,7 +218,7 @@ class RoundCountRankingFormatter(AbstractSOLVRankingFormatter):
                     
                 output.writerow(line)
 
-        return outstr.getvalue()
+        return self._output()
 
 class AbstractRunFormatter(AbstractFormatter):
     """Formats a Run."""
