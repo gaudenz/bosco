@@ -194,9 +194,9 @@ class RoundCountRankingFormatter(AbstractSOLVRankingFormatter):
     def __str__(self):
 
         output = self._writer()
+
         for ranking in self.rankings:
-            output.writerow([str(ranking.rankable)])
-            
+            lines = []
             for r in ranking:
                 if type(r['item']) == Run:
                     runner = r['item'].sicard.runner
@@ -205,15 +205,19 @@ class RoundCountRankingFormatter(AbstractSOLVRankingFormatter):
                     runner = r['item']
                     run = r['item'].run
                 number = runner.number or u''
-                line = [r['rank'] or '',
-                        run.sicard.id,
-                        self._encode(number),
-                        self._encode(runner.given_name),
-                        self._encode(runner.surname),
-                        self._print_score(r),
-                        ]
-                    
-                output.writerow(line)
+                lines.append([r['rank'] or '',
+                              run.sicard.id,
+                              self._encode(runner.category),
+                              self._encode(number), # change index below if position of this element changes
+                              self._encode(runner.given_name),
+                              self._encode(runner.surname),
+                              self._print_score(r),
+                              ])
+
+            # reorder by number instead of rank
+            lines.sort(key=lambda x: int(x[3]))
+            output.writerow([str(ranking.rankable)])
+            output.writerows(lines)
 
         return self._output()
 
