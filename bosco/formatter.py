@@ -109,6 +109,9 @@ class AbstractSOLVRankingFormatter(AbstractRankingFormatter):
         else:
             return self.validation_codes[r['validation']['status']]
 
+    def _encode(self, s):
+        return unicode(s).encode(self._encoding)
+
     def _writer(self):
         self._outstr = StringIO()
         return writer(self._outstr, delimiter=';',
@@ -125,8 +128,6 @@ class CourseSOLVRankingFormatter(AbstractSOLVRankingFormatter):
     
     def __str__(self):
 
-        encoding = self._encoding
-
         output = self._writer()
         for ranking in self.rankings:
             output.writerow([str(ranking.rankable),
@@ -136,11 +137,11 @@ class CourseSOLVRankingFormatter(AbstractSOLVRankingFormatter):
                              ])
             for r in ranking:
                 line = [r['rank'] or '',
-                        r['item'].sicard.runner.surname.encode(encoding),
-                        r['item'].sicard.runner.given_name.encode(encoding),
+                        self._encode(r['item'].sicard.runner.surname),
+                        self._encode(r['item'].sicard.runner.given_name),
                         r['item'].sicard.runner.dateofbirth and r['item'].sicard.runner.dateofbirth.strftime('%y') or '',
                         r['item'].sicard.runner.sex,
-                        r['item'].sicard.runner.team and r['item'].sicard.runner.team.name.encode(encoding) or '',
+                        r['item'].sicard.runner.team and self._encode(r['item'].sicard.runner.team.name) or '',
                         self._print_score(r),
                         ]
                 try:
@@ -159,10 +160,10 @@ class CourseSOLVRankingFormatter(AbstractSOLVRankingFormatter):
                     if (not p.sistation.control is None
                         and p.sistation.id > SIStation.SPECIAL_MAX):
                         try:
-                            line.extend([p.sistation.control.code.encode(encoding),
+                            line.extend([self._encode(p.sistation.control.code),
                                          p.punchtime - r['scoreing']['start']])
                         except TypeError:
-                            line.extend([p.sistation.control.code.encode(encoding),
+                            line.extend([self._encode(p.sistation.control.code),
                                          ''])
 
                 output.writerow(line)
@@ -173,8 +174,6 @@ class CategorySOLVRankingFormatter(AbstractSOLVRankingFormatter):
     
     def __str__(self):
 
-        encoding = self._encoding
-        
         output = self._writer()
 
         for ranking in self.rankings:
@@ -182,7 +181,7 @@ class CategorySOLVRankingFormatter(AbstractSOLVRankingFormatter):
             
             for r in ranking:
                 line = [r['rank'] or '',
-                        unicode(r['item']).encode(encoding),
+                        self._encode(r['item']),
                         self._print_score(r),
                         ]
                     
@@ -194,8 +193,6 @@ class RoundCountRankingFormatter(AbstractSOLVRankingFormatter):
     
     def __str__(self):
 
-        encoding = self._encoding
-        
         output = self._writer()
         for ranking in self.rankings:
             output.writerow([str(ranking.rankable)])
@@ -210,9 +207,9 @@ class RoundCountRankingFormatter(AbstractSOLVRankingFormatter):
                 number = runner.number or u''
                 line = [r['rank'] or '',
                         run.sicard.id,
-                        number.encode(encoding),
-                        runner.given_name.encode(encoding),
-                        runner.surname.encode(encoding),
+                        self._encode(number),
+                        self._encode(runner.given_name),
+                        self._encode(runner.surname),
                         self._print_score(r),
                         ]
                     
