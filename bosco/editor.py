@@ -29,7 +29,7 @@ from run import Run, Punch, RunException
 from course import Control, SIStation, Course
 from formatter import AbstractFormatter, ReportlabRunFormatter
 from ranking import ValidationError, UnscoreableException, Validator
-from sireader import SIReaderReadout, SIReaderException
+from sireader import SIReaderReadout, SIReaderException, SIReader
 
 class Observable(object):
 
@@ -220,12 +220,11 @@ class RunEditor(Observable):
             classtype.__single = object.__new__(classtype, *args, **kwargs)
         return classtype.__single
     
-    def __init__(self, store, event, sireader_port = None):
+    def __init__(self, store, event):
         """
         @param store: Storm store of the runs
         @param event: object of class (or subclass of) Event. This is used for
                       run and team validation
-        @param sireader_port: Serial port name of the SI Reader. None means autodetect.
         @note:        Later "instantiations" of this singleton discard all arguments.
         """
         if self.__initialized == True:
@@ -239,7 +238,7 @@ class RunEditor(Observable):
         self.progress = None
         self._is_changed = False
 
-        self.connect_reader(sireader_port)
+        self._sireader = None
 
         self._print_command = "lp -o media=A5"
 
@@ -796,12 +795,30 @@ class RunEditor(Observable):
         Connect an SI-Reader
         @param port: serial port name, default autodetected
         """
+        fail_reasons = []
         try:
             self._sireader = SIReaderReadout(port)
-        except SIReaderException:
+        except SIReaderException, e:
+            fail_reasons.append(e.message)
+        else:
+
+            # check for correct reader configuration
+            fail_template = "Wrong SI-Reader configuration: %s"
+            config = self._sireader.proto_config
+            if config['auto_send'] == True:
+                fail_reasons.append(fail_template % "Autosend is enabled.")
+            if config['ext_proto'] == False:
+                fail_reasons.append(fail_template % "Exended protocol is not enabled.")
+            if config['mode'] != SIReader.M_READOUT:
+                fail_reasons.append(fail_template % "Station is not in readout mode.")
+
+        if len(fail_reasons) > 0:
             self._sireader = None
-            
+
         self._notify_observers('reader')
+
+        if len(fail_reasons) > 0:
+            raise RunEditorException("\n".join(fail_reasons))
         
     def poll_reader(self):
         """Polls the sireader for changes."""

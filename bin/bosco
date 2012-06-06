@@ -227,7 +227,10 @@ class RunEditorFrame(wx.Frame):
             self.Close(True)
 
     def ConnectReader(self, event): # wxGlade: RunEditorFrame.<event_handler>
-        self.editor.connect_reader()
+        try:
+            self.editor.connect_reader()
+        except RunEditorException, e:
+            self.ErrorDialog(e.message, "Error Connecting SI-Reader")
 
     def ErrorDialog(self, msg, title):
         dlg =  wx.MessageDialog(self, msg, title,
@@ -1202,4 +1205,11 @@ if __name__ == "__main__":
     main_frame = RunEditorFrame(None, -1, "")
     app.SetTopWindow(main_frame)
     main_frame.Show()
+
+    # Connect SI-Reader
+    try:
+        main_frame.editor.connect_reader()
+    except RunEditorException, e:
+        main_frame.ErrorDialog(e.message, "Error Connecting SI-Reader")
+
     app.MainLoop()
