@@ -204,13 +204,14 @@ class RoundCountRankingFormatter(AbstractSOLVRankingFormatter):
                 else:
                     runner = r['item']
                     run = r['item'].run
-                number = runner.number or u''
+                number = runner and runner.number or 0
                 lines.append([r['rank'] or '',
                               run.sicard.id,
-                              self._encode(runner.category),
+                              self._encode(runner and runner.category or u''),
                               self._encode(number), # change index below if position of this element changes
-                              self._encode(runner.given_name),
-                              self._encode(runner.surname),
+                              self._encode(runner and runner.given_name or u''),
+                              self._encode(runner and runner.surname or u''),
+
                               self._print_score(r),
                               ])
 
