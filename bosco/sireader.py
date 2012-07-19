@@ -370,6 +370,10 @@ class SIReader(object):
         """
         self._send_command(SIReader.C_BEEP, chr(count)) 
 
+    def poweroff(self):
+        """Switch off the control station."""
+        self._send_command(SIReader.C_OFF, '')
+
     def _connect_reader(self, port):
         """Connect to SI Reader.
         @param port: serial port
