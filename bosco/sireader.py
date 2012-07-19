@@ -234,8 +234,8 @@ class SIReader(object):
         @param autosend Set autosend mode if True, unset otherwise.
         """
         config = self.proto_config.copy()
-        config['auto_send'] = True
-        config['handshake'] = False
+        config['auto_send'] = autosend
+        config['handshake'] = not autosend
         self._set_proto_config(config)
         self.beep()
 
