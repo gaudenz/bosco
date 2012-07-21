@@ -575,7 +575,7 @@ class SIReader(object):
 
         if reftime is None:
             # add two hours as a safety marging for cases where the
-            # machine time runs a bit ahead of the stations time.
+            # machine time runs a bit behind the stations time.
             reftime = datetime.now() + timedelta(hours=2)
 
         #punchtime is in the range 0h-12h!
