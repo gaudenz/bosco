@@ -27,6 +27,10 @@ import os, re
 from course import SIStation
 
 class SIReader(object):
+    """Base protocol functions and constants to interact with SI Stations.
+       This class has a lot of Constants defined that are not (yet) used.
+       This is mainly for documentation purpose as most of this is not
+       documented by SportIdent."""
 
     CRC_POLYNOM = 0x8005
     CRC_BITF    = 0x8000
@@ -64,25 +68,32 @@ class SIReader(object):
     C_GET_BACKUP  = '\x81'
     C_SET_SYS_VAL = '\x82'
     C_GET_SYS_VAL = '\x83'
-    C_GET_SI5     = '\xB1'
-    C_TRANS_REC   = '\xD3'
-    C_GET_SI6     = '\xE1'
-    C_SI5_DET     = '\xE5'
-    C_SI6_DET     = '\xE6'
-    C_SI_REM      = '\xE7'
-    C_SI9_DET     = '\xE8'
-    C_GET_SI9     = '\xEF'
-    C_SET_MS      = '\xF0'
+    C_SRR_WRITE   = '\xA2' # ShortRangeRadio - SysData write
+    C_SRR_READ    = '\xA3' # ShortRangeRadio - SysData read
+    C_SRR_QUERY   = '\xA6' # ShortRangeRadio - network device query
+    C_SRR_PING    = '\xA7' # ShortRangeRadio - heartbeat from linked devices, every 50 seconds
+    C_SRR_ADHOC   = '\xA8' # ShortRangeRadio - ad-hoc message, f.ex. from SI-ActiveCard
+    C_GET_SI5     = '\xB1' # read out SI-card 5 data
+    C_TRANS_REC   = '\xD3' # autosend timestamp (online control)
+    C_CLEAR_CARD  = '\xE0' # found on SI-dev-forum: 02 E0 00 E0 00 03 (http://www.sportident.com/en/forum/8/56#59)
+    C_GET_SI6     = '\xE1' # read out SI-card 6 data block
+    C_SI5_DET     = '\xE5' # SI-card 5 inserted
+    C_SI6_DET     = '\xE6' # SI-card 6 inserted
+    C_SI_REM      = '\xE7' # SI-card removed
+    C_SI9_DET     = '\xE8' # SI-card 8/9/10/11/p/t inserted
+    C_GET_SI9     = '\xEF' # read out SI-card 8/9/10/11/p/t data block
+    C_SET_MS      = '\xF0' # \x4D="M"aster, \x53="S"lave
+    C_GET_MS      = '\xF1'
     C_ERASE_BDATA = '\xF5'
     C_SET_TIME    = '\xF6'
     C_GET_TIME    = '\xF7'
     C_OFF         = '\xF8'
-    C_BEEP        = '\xF9'
-    C_SET_BAUD    = '\xFE'
+    C_BEEP        = '\xF9' # 02 F9 (number of beeps) (CRC16) 03
+    C_SET_BAUD    = '\xFE' # \x00=4800 baud, \x01=38400 baud
 
     # Protocol Parameters
-    P_MS_DIRECT   = '\x4D' # "M"
-    P_MS_INDIRECT = '\x53' # "S"
+    P_MS_DIRECT   = '\x4D' # "M"aster
+    P_MS_INDIRECT = '\x53' # "S"lave
     P_SI6_CB      = '\x08'
 
     # offsets in system data
@@ -153,7 +164,7 @@ class SIReader(object):
     D_SATURDAY    = 0b110
 
     # Backup memory record length
-    REC_LEN       = 8
+    REC_LEN       = 8 # Only in extended protocol, otherwise 6!
 
     # General card data structure values
     TIME_RESET    = '\xEE\xEE'
@@ -221,7 +232,7 @@ class SIReader(object):
                             'PTL': 3,
                             'BC' : 2,
                             },
-                    'SI10':{'CN2': 25,
+                    'SI10':{'CN2': 25,     # Same data structure for SI11
                             'CN1': 26,
                             'CN0': 27,
                             'ST' : 14,
@@ -523,15 +534,19 @@ class SIReader(object):
                           byte 1:   card series (stored on the card as CNS)
                           byte 2,3: card number
                           printed:  100'000*CNS + card number
-                          nr range: 1-499'999 
-           SI-Card 6/8/9/10/11:
-                          byte 0:   card series (SI6: 00, SI8: 02, SI9: 01, SI10: 0F, SI11: 0F)
+                          nr range: 1-65'000 + 200'001-265'000 + 300'001-365'000 + 400'001-465'000
+           SI-Card 6/6*/8/9/10/11/pCard/tCard/fCard/SIAC1:
+                          byte 0:   card series (SI6:00, SI9:01, SI8:02,
+                                        pCard:04, tCard:06, fCard:0E, SI10+SI11+SIAC1:0F)
                           byte 1-3: card number
                           printed:  only card number
-                          nr range: SI6: 500'000-999'999, SI8: 2'000'000-2'999'999, SI9: 1'000'000-1'999'999,
-                                    SI10: 7'000'000-7'999'999, SI11: 9'000'000-9'999'999
+                          nr range: SI6: 500'000-999'999 + 2'003'000-2'003'400 (WM2003) + 16'711'680-16'777'215 (SI6*)
+                                    SI9: 1'000'000-1'999'999, SI8: 2'000'000-2'999'999
+                                    pCard: 4'000'000-4'999'999, tCard: 6'000'000-6'999'999
+                                    SI10: 7'000'000-7'999'999, SIAC1: 8'000'000-8'999'999
+                                    SI11: 9'000'000-9'999'999, fCard: 14'000'000-14'999'999
            The card nr ranges guarantee that no ambigous values are possible
-           (500'000 = 0x07A120 > 0x04FFFF -> 465535 (highest actually possible value on a SI5))   
+           (500'000 = 0x07A120 > 0x04FFFF = 465'535 = highest technically possible value on a SI5)
         """
         
         if number[0] != '\x00':
