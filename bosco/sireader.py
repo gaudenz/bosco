@@ -284,8 +284,8 @@ class SIReader(object):
 
     def set_extended_protocol(self, extended = True):
         """Configure extended protocol mode of si station.
-        @param extended Set exetended protocol if True, basic protocol if 
-                        False.
+        @param extended: Set exetended protocol if True, basic protocol if
+                         False.
         """
         config = self.proto_config.copy()
         config['ext_proto'] = extended
@@ -294,7 +294,7 @@ class SIReader(object):
 
     def set_autosend(self, autosend = True):
         """Set si station into autosend mode.
-        @param autosend Set autosend mode if True, unset otherwise.
+        @param autosend: Set autosend mode if True, unset otherwise.
         """
         config = self.proto_config.copy()
         config['auto_send'] = autosend
@@ -304,7 +304,7 @@ class SIReader(object):
 
     def set_operating_mode(self, mode):
         """Set si station operating mode.
-        @param mode operating mode, supported modes: M_CONTROL, M_START, M_FINISH, M_READOUT, M_CLEAR, M_CHECK
+        @param mode: operating mode, supported modes: M_CONTROL, M_START, M_FINISH, M_READOUT, M_CLEAR, M_CHECK
         """
         if not mode in SIReader.SUPPORTED_MODES:
             raise SIReaderException("Unsupported mode '%s'!" % ord(mode))
@@ -316,7 +316,7 @@ class SIReader(object):
 
     def set_station_code(self, code):
         """Set si station control code.
-        @param code control code (1-1023)
+        @param code: control code (1-1023)
         """
         if code < 1 or code > 1023:
             raise SIReaderException("Invalid control code: '%i'! Supported code range: 1-1023." % code)
@@ -332,7 +332,7 @@ class SIReader(object):
 
     def get_time(self):
         """Read out stations internal time.
-        @return datetime
+        @return: datetime
         """
         bintime = self._send_command(SIReader.C_GET_TIME, '')[1]
         year = SIReader._to_int(bintime[0])
@@ -350,7 +350,7 @@ class SIReader(object):
 
     def set_time(self, time):
         """Set si station internal time.
-        @param time time as a python datetime object.
+        @param time: time as a python datetime object.
         """
         bintime = (SIReader._to_str(int(time.strftime('%y')), 1)
                    + SIReader._to_str(time.month, 1)
@@ -366,7 +366,7 @@ class SIReader(object):
     def beep(self, count = 1):
         """Beep and blink control station. This even works if now sicard is
         inserted into the station.
-        @param count Count of beeps
+        @param count: Count of beeps
         """
         self._send_command(SIReader.C_BEEP, chr(count)) 
 
@@ -804,7 +804,7 @@ class SIReaderControl(SIReader):
         
     def poll_punch(self):
         """Polls for new punches.
-        @retrun: list of (cardnr, punchtime) tuples, empty list if no new punches are available
+        @return: list of (cardnr, punchtime) tuples, empty list if no new punches are available
         """
 
         if not self.proto_config['ext_proto']:
@@ -841,7 +841,7 @@ class SIReaderControl(SIReader):
     def _read_punch(self, offset):
         """Reads a punch from the SI Stations backup memory.
         @param offset: Position in the backup memory to read
-        @warining:     Only supports firmwares 5.55+ older firmwares have an incompatible record format!
+        @warning:      Only supports firmwares 5.55+ older firmwares have an incompatible record format!
         """
         c = self._send_command(SIReader.C_GET_BACKUP, SIReader._to_str(offset, 3)+chr(SIReader.REC_LEN))
         return (self._decode_cardnr('\x00'+c[1][SIReader.BC_CN:SIReader.BC_CN+3]), 
