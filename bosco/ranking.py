@@ -122,10 +122,7 @@ class Ranking(object):
         except KeyError:
             raise KeyError('%s not in ranking.' % item)
 
-    def update(self):
-        """
-        Update the ranking. Rankings are not updated automatically.
-        """
+    def _update_ranking_list(self):
         # Create list of (score, member) tuples and sort by score
         self._ranking_list = []
         for m in self.rankable.members:
@@ -140,14 +137,15 @@ class Ranking(object):
                 print_exc(file=sys.stderr)
                 continue
                 
-            self._ranking_list.append({'scoreing':score,
+            self._ranking_list.append({'scoreing': score,
                                        'validation': valid,
-                                       'item':m})
+                                       'item': m})
 
         self._ranking_list.sort(key = lambda x: x['scoreing']['score'], reverse = self._reverse)
         self._ranking_list.sort(key = lambda x: x['validation']['status'])
         
         rank = 1
+        winner_score = self._ranking_list[0]['scoreing']['score']
         for i, m in enumerate(self._ranking_list):
             # Only increase the rank if the current item scores higher than the previous item
             if (i > 0 and (self._ranking_list[i]['scoreing']['score']
@@ -157,14 +155,55 @@ class Ranking(object):
                 rank = i + 1
             # only assign rank if run is OK
             m['rank'] =  (m['validation']['status'] == Validator.OK and rank or None)
+            m['scoreing']['behind'] = (m['validation']['status'] == Validator.OK 
+                                       and (m['scoreing']['score'] - winner_score) * (self._reverse and -1 or 1)
+                                       or None)
 
+    def _update_ranking_dict(self):
         # create dictionary with ranked objects as keys for random access
         self._ranking_dict = {}
         for obj in self._ranking_list:
             self._ranking_dict[obj['item']] = obj
-        
+ 
+    def update(self):
+        """
+        Update the ranking. Rankings are not updated automatically.
+        """
+        self._update_ranking_list()
+        self._update_ranking_dict()
         self._initialized = True
 
+class RelayRanking(Ranking):
+
+    def update(self):
+        self._update_ranking_list()
+
+        leg_rankings = {}
+        for leg in self._event.list_legs(self.rankable):
+            r = self._event.ranking(leg)
+            leg_rankings.update([(k, r) for k in leg.course_list])
+
+        # Relay rankings for splittimes
+        split_rankings = []
+        for i in range(len(self._event.list_legs(self.rankable))):
+            # Don't use self._event.ranking here to avoid the infinite recursion this
+            # would cause otherwise. Explicitly create a ranking without split rankings
+            r = Ranking(self.rankable, self._event, scoreing_args = {'legs': i+1},
+                        validator_args = {'legs': i+1})
+            split_rankings.append(r)
+
+        for team in self._ranking_list:
+            team['runs'] = []
+            team['splits'] = []
+            for i, run in enumerate(team['scoreing']['runs']):
+                if run:
+                    team['runs'].append(leg_rankings[run.course].info(run))
+                else:
+                    team['runs'].append(None)
+                team['splits'].append(split_rankings[i].info(team['item']))
+
+        self._update_ranking_dict()
+        self._initialized = True
 
 class Rankable(object):
     """Defines the interface for rankable objects like courses and categories.
@@ -825,7 +864,9 @@ class RelayScoreing(AbstractRelayScoreing):
 
     def _valid_runs(self, team):
         """
-        Return a list of all valid and completed runs for this team. Ordered by finish time.
+        Return a list of all valid and completed runs for this team. Ordered by leg. If there is
+        no run for a leg the list contains None at this index. If there is more than one run for
+        a leg the result is undefined.
         @type team: instance of Team
         @return type: list of runs
         """
@@ -834,15 +875,21 @@ class RelayScoreing(AbstractRelayScoreing):
         except KeyError:
             pass
 
-        runs =  [r for r in team.runs
-                 if r.course is not None and r.complete and self._event.validate(r)['status'] == Validator.OK]
-        try:
-            runs.sort(key = lambda x: x.finish_time)
-        except TypeError:
-            raise UnscoreableException("Unable to order runs!")
+        runs =  dict([(r.course.code, r) for r in team.runs
+                      if r.course is not None and r.complete and self._event.validate(r)['status'] == Validator.OK])
+        
+        result = []
+        for l in self._legs:
+            for v in l['variants']:
+                if v in runs.keys():
+                    result.append(runs[v])
+                    break
+            else:
+                # no valid run for this leg
+                result.append(None)
 
-        self._to_cache(self._valid_runs, team, runs)
-        return runs
+        self._to_cache(self._valid_runs, team, result)
+        return result
         
     def validate(self, team):
         """Validates a relay team.
@@ -930,48 +977,75 @@ class RelayScoreing(AbstractRelayScoreing):
         # this automatically takes mass starts into account
 
         runs = self._valid_runs(team)
-        if len(runs) == 0:
-            raise UnscoreableException(u'Unable to score team %s (%s): no '
-                                       u'valid run.' %
-                                       (team.name, team.number))
-        missing = 0 # count of missing legs
-
         for i,l in enumerate(self._legs):
             default = l['defaulttime']
-            try:
-                r = runs[i-missing]
-            except IndexError:
-                # last run is missing
-                # check for incomplete run for this leg
-                incomplete = False
-                for run in [r for r in team.runs if r.complete == False]:
-                    if run.course.code in l['variants']:
-                        incomplete = True
-                        break
-                if default is None or incomplete:
-                    raise UnscoreableException(u'Unable to score team %s (%s): missing or '
-                                               u'incomplete run for leg %i' % 
-                                               (team.name, team.number, i+1))
-                else:
-                    time += default
-                
-            if r.course.code not in l['variants']:
-                # missing leg
-                missing += 1
-                if default is None:
-                    raise UnscoreableException(u'Unable to score team %s (%s): missing '
-                                               u'run for leg %i' % 
-                                               (team.name, team.number, i+1))
-                else:
-                    time += default
-            else:
-                legscore = self._event.score(r)['score']
+
+            if runs[i] is not None:
+                # We have a run
+                legscore = self._event.score(runs[i])['score']
                 if default is None or  legscore < default:
                     time += legscore
                 else:
                     time += default
+            else:
+                # No run on this leg
+                if default is None:
+                    # But we should have a run, set score to 0
+                    # and stop processing
+                    time = timedelta(0)
+                    break
+                else:
+                    time += default
                 
-        result = {'score':time}
+        # if len(runs) == 0:
+        #     raise UnscoreableException(u'Unable to score team %s (%s): no '
+        #                                u'valid run.' %
+        #                                (team.name, team.number))
+        # missing = 0 # count of missing legs
+        # legs = []
+        # valid = True
+        # for i,l in enumerate(self._legs):
+        #     default = l['defaulttime']
+        #     try:
+        #         r = runs[i-missing]
+        #     except IndexError:
+        #         # last run is missing
+        #         # check for incomplete run for this leg
+        #         incomplete = False
+        #         for run in [r for r in team.runs if r.complete == False]:
+        #             if run.course.code in l['variants']:
+        #                 incomplete = True
+        #                 break
+        #             if default is None or incomplete:
+        #                 # missing run for this leg and no default time
+        #                 # continue scoreing to get leg info 
+        #                 valid = False
+        #         else:
+        #             time += default
+        #             legs.append(None)
+                
+        #     if r.course.code not in l['variants']:
+        #         # missing leg
+        #         missing += 1
+        #         if default is None:
+        #             valid = False
+        #         else:
+        #             time += default
+        #             legs.append(None)
+        #     else:
+        #         legscore = self._event.score(r)['score']
+        #         legs.append(r)
+        #         if default is None or  legscore < default:
+        #             time += legscore
+        #         else:
+        #             time += default
+
+        # if not valid:
+        #     time = timedelta(0)
+
+        result = {'score': time,
+                  'runs':  runs}
+
         self._to_cache(self.score, team, result)
         return result
     
@@ -1299,6 +1373,17 @@ class Relay24hScore(object):
                 return 1
             else:
                 return 0
+
+    def __sub__(self, other):
+        """Subtracts Relay24hScore objects. This is mainly usefull to calculate
+        differences between teams."""
+        return Relay24hScore(self.runs - other.runs, self.time - other.time)
+
+    def __mul__(self, other):
+        """Multiplication of Relay24hScore objects. This is to theoretically allow
+        reverse Rankings (behind score multiplied by -1).
+        """
+        return Relay24hScore(self.runs * other, self.time * other)
 
     def __str__(self):
         return "Runs: %s, Time: %s" % (self.runs, self.time) 

@@ -23,10 +23,10 @@ import sys
 from bosco.util import load_config, RankingOptionParser
 from bosco.course import Course, CombinedCourse
 from bosco.runner import Category
-from bosco.formatter import CategorySOLVRankingFormatter, CourseSOLVRankingFormatter, RoundCountRankingFormatter
+from bosco.formatter import CategorySOLVRankingFormatter, CourseSOLVRankingFormatter, RoundCountRankingFormatter, RelayCategorySOLVRankingFormatter
 from bosco.run import Run
 
-modes = {Category       : CategorySOLVRankingFormatter,
+modes = {Category       : RelayCategorySOLVRankingFormatter,
          Course         : CourseSOLVRankingFormatter,
          CombinedCourse : CourseSOLVRankingFormatter,
          }

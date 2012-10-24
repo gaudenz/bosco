@@ -189,6 +189,54 @@ class CategorySOLVRankingFormatter(AbstractSOLVRankingFormatter):
 
         return self._output()
 
+class RelayCategorySOLVRankingFormatter(AbstractSOLVRankingFormatter):
+    """
+    As there is no real documenation for the SOLV ranking format this is modeled
+    after the file for "Osterstaffel 2012" made with ORWare.
+    """
+
+    def __str__(self):
+
+        output = self._writer()
+        for ranking in self.rankings:
+            output.writerow([str(ranking.rankable)])
+
+            for r in ranking:
+                line = [r['rank'] or '',
+                        self._encode(r['item'].number),
+                        self._encode(r['item']),
+                        '', # TODO: put nation of team into database
+                        self._print_score(r),
+                        r['scoreing']['behind'] or '',
+                        '', # RelayAltStart, whatever that could be...
+                        len(r['runs']),
+                        ]
+                for leg in range(len(r['runs'])):
+                    leg_run = r['runs'][leg]
+                    leg_split = r['splits'][leg]
+                    if leg_run is not None:
+                        run = leg_run['item']
+                        runner = run.sicard.runner
+                        line.extend([self._encode(runner.surname) or '',
+                                     self._encode(runner.given_name) or '',
+                                     runner.dateofbirth and runner.dateofbirth.year or '',
+                                     self._encode(run.course.code),
+                                     leg_run['rank'] or '',
+                                     self._print_score(leg_run),
+                                     leg_run['scoreing']['behind'] or '',
+                                     ])
+                    else:
+                        # No valid run on this leg
+                        line.extend([''] * 7)
+                    line.extend(['', # LegAltStart, whatever that could be...
+                                 leg_split['rank'] or '',
+                                 self._print_score(leg_split),
+                                 leg_split['scoreing']['behind'] or '',
+                                 ])
+                output.writerow(line)
+
+        return self._output()
+
 class RoundCountRankingFormatter(AbstractSOLVRankingFormatter):
     
     def __str__(self):

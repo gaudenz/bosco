@@ -257,10 +257,10 @@ class CombinedCourse(Rankable):
                             contains Course objects.
         """
         self._code = code
-        self._course_list = []
+        self.course_list = []
         for c in course_list:
             if type(c) == Course:
-                self._course_list.append(c)
+                self.course_list.append(c)
             else:
                 if store is None:
                     raise CombinedCourseException("Can't add course '%s' without a store." % c)
@@ -268,17 +268,17 @@ class CombinedCourse(Rankable):
                 course = store.find(Course, Course.code == c).one()
                 if course is None:
                     raise CombinedCourseException("Can't find course with code '%s'." % c)
-                self._course_list.append(course)
+                self.course_list.append(course)
 
-        self.length = self._course_list[0].length
-        self.climb = self._course_list[0].climb
-        self._controlcount = self._course_list[0].controls.count()
+        self.length = self.course_list[0].length
+        self.climb = self.course_list[0].climb
+        self._controlcount = self.course_list[0].controls.count()
 
     def _get_members(self):
-        """Get all runs of all the courses in self._course_list."""
+        """Get all runs of all the courses in self.course_list."""
 
         runs = []
-        for c in self._course_list:
+        for c in self.course_list:
             runs.extend([r for r in c.members])
         return runs
     members = property(_get_members)

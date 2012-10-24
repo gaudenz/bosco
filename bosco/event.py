@@ -25,7 +25,7 @@ from course import Course, CombinedCourse
 from runner import (Category, RunnerException)
 from ranking import (SequenceCourseValidator, TimeScoreing, SelfstartStarttime,
                      RelayStarttime, RelayMassstartStarttime,
-                     Ranking, CourseValidator, OpenRuns,
+                     Ranking, RelayRanking, CourseValidator, OpenRuns,
                      ControlPunchtimeScoreing, RelayScoreing,
                      Relay24hScoreing, Relay12hScoreing,
                      ValidationError, UnscoreableException, Validator, RoundCountScoreing)
@@ -342,6 +342,19 @@ class RelayEvent(Event):
         # if scoreing_class is not None use specified scoreing_class
         return Event.score(self, obj, scoreing_class, args)
     
+    def ranking(self, obj, scoreing_class = None, validation_class = None,
+                scoreing_args = None, validation_args = None, reverse = False):
+        """
+        @see: Event.ranking
+        """
+
+        if type(obj) == Category:
+            return RelayRanking(obj, self, scoreing_class, validation_class,
+                                scoreing_args, validation_args, reverse)
+
+        return super(RelayEvent, self).ranking(obj, scoreing_class, validation_class,
+                                               scoreing_args, validation_args, reverse)
+
     def list_rankings(self):
         l = []
         for c in self.list_categories():

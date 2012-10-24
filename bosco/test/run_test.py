@@ -475,7 +475,7 @@ class RunTest(BoscoTest):
         
 
     def test_relay_team_unscoreable(self):
-        """Test that a relay team with missing runs is not scoreable if there is no defaulttime."""
+        """Test that a relay team with missing runs is not scoreable (score = 0) if there is no defaulttime."""
         starttime = datetime(2008,3,19,8,15,00)
         event = RelayEvent({'D135': [{'variants': ('A', ), 'starttime': starttime, 'defaulttime': timedelta(minutes=5)},
                                      {'variants': ('B', ), 'starttime': datetime(2008,3,19,8,19,00), 'defaulttime': timedelta(minutes=13)},
@@ -484,7 +484,7 @@ class RunTest(BoscoTest):
         self._prepare_relay_team()
 
         self._team.members.remove(self._runners[2])
-        self.assertRaises(UnscoreableException, event.score, self._team)
+        self.assertEquals(event.score(self._team)['score'], timedelta(0))
 
     def test_roundcount_2controls(self):
         """Test RunCountScoreing for a Course with 2 controls"""
