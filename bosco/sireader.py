@@ -240,7 +240,7 @@ class SIReader(object):
                             'CT' : 10,
                             'LT' : None,
                             'RC' : 22,
-                            'P1' : 128,
+                            'P1' : 512,
                             'PL' : 4,
                             'PM' : 64,
                             'CN' : 1,
