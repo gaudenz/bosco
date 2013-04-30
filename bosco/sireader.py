@@ -665,6 +665,8 @@ class SIReader(object):
             command_string = command + chr(len(parameters)) + parameters
             crc = SIReader._crc(command_string)
             cmd = SIReader.STX + command_string + crc + SIReader.ETX
+            if self._debug:
+                print "==>> command '%s', parameters %s" % (hexlify(command), [hexlify(c) for c in parameters])
             self._serial.write(cmd)
         except (SerialException, OSError),  msg:
             raise SIReaderException('Could not send command: %s' % msg)
@@ -713,7 +715,7 @@ class SIReader(object):
                 os.fsync(self._logfile)
                 
             if self._debug:
-                print "command '%s', data %s" % (hexlify(cmd), [hexlify(c) for c in data])
+                print "<<== command '%s', data %s" % (hexlify(cmd), [hexlify(c) for c in data])
                 
         except (SerialException, OSError), msg:
             raise SIReaderException('Error reading command: %s' % msg)
