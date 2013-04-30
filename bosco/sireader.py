@@ -355,9 +355,13 @@ class SIReader(object):
         second %= 3600
         minute = second // 60
         second %= 60
-        ms = SIReader._to_int(bintime[6]) / 256.0 * 1000000
+        ms = int(round(SIReader._to_int(bintime[6]) / 256.0 * 1000000))
         self.beep()
-        return datetime(year, month, day, hour, minute, second, ms)
+        try:
+            return datetime(year, month, day, hour, minute, second, ms)
+        except ValueError:
+            # return None if the time reported by the station is impossible
+            return None
 
     def set_time(self, time):
         """Set si station internal time.
