@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 <%!
-from bosco.runner import Team, Category
+from bosco.runner import Runner, Team, Category
 from bosco.course import Course
 from bosco.run import Run
 from bosco.ranking import OpenRuns, Validator, Relay24hScore
@@ -45,12 +45,12 @@ blocks_de = {'start' :'Start',
     <td><b>Start Nr.</b></td>
     <td><b>Läufer</b></td>
     <td><b>Zeit</b></td>
-  %elif type(ranking.rankable) == Category:
+  %elif type(ranking.rankable) == Category and type(ranking[0]['item']) == Team:
     <td><b>Rang</b></td>
     <td><b>Team</b></td>
     <td><b>Start Nr.</b></td>
     <td><b>Zeit</b></td>
-  %elif type(ranking.rankable) == Course:
+  %elif type(ranking.rankable) == Course or type(ranking.rankable) == Category:
     <td><b>Rang</b></td>
     <td><b>Läufer</b></td>
     <td><b>Jg.</b></td>
@@ -67,6 +67,8 @@ blocks_de = {'start' :'Start',
     ${team(r)}
   %elif type(r['item']) == Run:
     ${run(r)}
+  %elif type(r['item']) == Runner:
+    ${runner(r)}
   %endif
   </tr>
   %endfor
@@ -94,6 +96,25 @@ blocks_de = {'start' :'Start',
     <td valign="top">${runner and runner.number or ''}</td>
     <td valign="top">${team and team.name or ''}</td>
     <td valign="top">${r['rank'] and r['scoreing']['score'] or validation_codes[r['validation']['status']]}</td>
+</%def>
+
+<%def name="runner(r)">
+    <%
+      runner = r['item']
+      team = runner and runner.team or None
+      if r['rank'] and r['scoreing']['score'] and r['scoreing']['behind']:
+         score = "+ " + unicode(r['scoreing']['behind'])
+      elif r['rank'] and r['scoreing']['score']:
+         score = r['scoreing']['score']
+      else:
+         score = validation_codes[r['validation']['status']]
+    %>
+    <td valign="top">${r['rank'] and ('%3i.' % r['rank']) or ''}</td>
+    <td valign="top">${r['item']}</td>
+    <td valign="top">${runner and runner.dateofbirth and runner.dateofbirth.strftime('%y') or ''}</td>
+    <td valign="top">${runner and runner.number or ''}</td>
+    <td valign="top">${team and team.name or ''}</td>
+    <td valign="top">${score}</td>
 </%def>
 
 <%def name="warning(r)">
