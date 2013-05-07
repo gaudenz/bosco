@@ -698,6 +698,16 @@ class RunEditor(Observable):
                 sicard = SICard(si_nr)
         self._run = self._store.add(Run(sicard))
         self.commit()
+
+    def delete(self):
+        """
+        Deletes the current run.
+        """
+        # first remove all punches
+        for p in self._run.punches:
+            self._store.remove(p)
+        self._store.remove(self._run)
+        self.commit()
         
     def commit(self):
         """Commit changes to the database."""

@@ -457,6 +457,7 @@ class EditRunPanel(RunPanel):
         self.searchresults = wx.ListCtrl(self.window_1_pane_1, wx.ID_ANY, style=wx.LC_REPORT | wx.LC_SINGLE_SEL | wx.SUNKEN_BORDER)
         self.sizer_30_staticbox = wx.StaticBox(self.window_1_pane_1, wx.ID_ANY, "Select Run")
         self.rollback = wx.Button(self.window_1_pane_1, wx.ID_REFRESH, "")
+        self.delete = wx.Button(self.window_1_pane_1, wx.ID_DELETE, "")
         self.add_button = wx.Button(self.window_1_pane_1, wx.ID_ADD, "")
         self.registration = wx.CheckBox(self.window_1_pane_1, wx.ID_ANY, "Registration mode")
         self.print_button = wx.Button(self.window_1_pane_1, wx.ID_PRINT, "")
@@ -505,6 +506,7 @@ class EditRunPanel(RunPanel):
         self.Bind(wx.EVT_LIST_ITEM_SELECTED, self.SetRun, self.searchresults)
         self.Bind(wx.EVT_LIST_ITEM_ACTIVATED, self.SetRun, self.searchresults)
         self.Bind(wx.EVT_BUTTON, self.Rollback, self.rollback)
+        self.Bind(wx.EVT_BUTTON, self.DeleteRun, self.delete)
         self.Bind(wx.EVT_BUTTON, self.AddRun, self.add_button)
         self.Bind(wx.EVT_BUTTON, self.OnPrint, self.print_button)
         self.Bind(wx.EVT_COMBOBOX, self.SetRunRunner, self.run_runner_combo)
@@ -633,6 +635,7 @@ class EditRunPanel(RunPanel):
         sizer_30.Add(self.searchresults, 1, wx.ALL | wx.EXPAND, 3)
         sizer_13.Add(sizer_30, 1, wx.EXPAND, 0)
         sizer_19.Add(self.rollback, 0, wx.ALL | wx.EXPAND | wx.ALIGN_CENTER_VERTICAL, 2)
+        sizer_19.Add(self.delete, 0, wx.ALL | wx.EXPAND | wx.ALIGN_CENTER_VERTICAL, 2)
         sizer_19.Add(self.add_button, 0, wx.ALL | wx.EXPAND | wx.ALIGN_CENTER_VERTICAL, 2)
         sizer_19.Add(self.registration, 0, wx.ALL, 2)
         sizer_19.Add(self.print_button, 0, wx.ALL | wx.EXPAND | wx.ALIGN_CENTER_VERTICAL, 2)
@@ -964,6 +967,9 @@ class EditRunPanel(RunPanel):
 
     def OnPrint(self, event):  # wxGlade: EditRunPanel.<event_handler>
         self.editor.print_run()
+
+    def DeleteRun(self, event):  # wxGlade: EditRunPanel.<event_handler>
+        self.editor.delete()
 # end of class EditRunPanel
 
 
