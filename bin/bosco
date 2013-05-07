@@ -12,6 +12,7 @@ from datetime import timedelta, datetime
 
 from bosco.util import load_config
 from bosco.editor import RunFinder, RunEditor, TeamEditor, RunEditorException
+from bosco.sireader import SIReaderException
 
 conf = load_config()
 
@@ -203,8 +204,8 @@ class RunEditorFrame(wx.Frame):
     def OnTimer(self, event):
         try:
             self.editor.poll_reader()
-        except Exception, msg:
-            self.ErrorDialog(str(msg), 'Error reading SI-Card!')
+        except SIReaderException, msg:
+            self.ErrorDialog(str(msg), 'Error communicating to the SI-Reader')
         
     def update(self, observable, event):
         

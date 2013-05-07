@@ -827,8 +827,18 @@ class RunEditor(Observable):
     def poll_reader(self):
         """Polls the sireader for changes."""
         if self._sireader is not None:
-            if self._sireader.poll_sicard():
-                self._notify_observers('reader')
+            try:
+                if self._sireader.poll_sicard():
+                    self._notify_observers('reader')
+            except IOError:
+                # try to reconnect on error
+                try:
+                    self._sireader.reconnect()
+                except SIReaderException:
+                    # reconnection failed, disconnect reader and reraise
+                    self._sireader = None
+                    self._notify_observers('reader')
+                    raise
 
     def load_run_from_card(self):
         """Read out card data and create or load a run based on this data."""
