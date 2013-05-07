@@ -40,6 +40,9 @@ if __name__ == '__main__':
     opt = RankingOptionParser(usage = 'usage: %prog [options] [outfile]', 
                               description = 'Produces a CSV file suitable for uploading to the SOLV Website.',
                               event = conf.event)
+    opt.add_option('-e', '--encoding', action='store', default='iso-8859-1',
+                   help='Output encoding. This defaults to iso-8859-1 because the SOLV website is unable to handle more modern encodings.')
+
     (options, args, ranking_list, f) = opt.parse_args()
 
     if len(ranking_list) == 0:
@@ -47,6 +50,6 @@ if __name__ == '__main__':
         sys.exit(1)
 
     for r in ranking_list:
-        f.write(str(modes[type(r.rankable)]([r], conf.starttime)))
+        f.write(str(modes[type(r.rankable)]([r], conf.starttime, options.encoding)))
 
     f.close()
