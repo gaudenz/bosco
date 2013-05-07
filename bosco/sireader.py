@@ -768,31 +768,13 @@ class SIReaderReadout(SIReader):
 
         oldcard = self.sicard
         while self._serial.inWaiting() > 0:
-            c = self._read_command(timeout = 0)
+            # _read_command does the actual parsing of the command
+            # if it's an insert or remove event
+            try:
+                self._read_command(timeout = 0)
+            except SIReaderCardChanged:
+                pass
                     
-            if c[0] == SIReader.C_SI_REM:
-                self.sicard = None
-                self.cardtype = None
-            elif c[0] == SIReader.C_SI5_DET:
-                self.sicard = self._decode_cardnr(c[1])
-                self.cardtype = 'SI5'
-            elif c[0] == SIReader.C_SI6_DET:
-                self.sicard = self._to_int(c[1])
-                self.cardtype = 'SI6'
-            elif c[0] == SIReader.C_SI9_DET:
-                # SI 9 sends corrupt first byte (insignificant)
-                self.sicard = self._to_int(c[1][1:]) 
-                if self.sicard >= 2000000 and self.sicard <= 2999999:
-                    self.cardtype = 'SI8'
-                elif self.sicard >= 1000000 and self.sicard <= 1999999:
-                    self.cardtype = 'SI9'
-                elif self.sicard >= 7000000 and self.sicard <= 9999999:
-                    self.cardtype = 'SI10'
-                else:
-                    raise SIReaderException('Unknown cardtype!')
-            else:
-                raise SIReaderException('Unexpected command %s received' % hex(ord(c[0])))
-
         return not oldcard == self.sicard
 
     def read_sicard(self):
@@ -845,6 +827,39 @@ class SIReaderReadout(SIReader):
         except (SerialException, OSError), msg:
             raise SIReaderException('Could not send ACK: %s' % msg)
 
+    def _read_command(self, timeout=None):
+        """Reads commands from the station. As a station in readout mode can send a
+        card inserted or card removed event at any time we have to intercept these events
+        here."""
+        cmd, data = super(type(self), self)._read_command(timeout)
+
+        # check if a card was inserted or removed
+        if cmd == SIReader.C_SI_REM:
+            self.sicard = None
+            self.cardtype = None
+            raise SIReaderCardChanged("SI-Card removed during command.")
+        elif cmd == SIReader.C_SI5_DET:
+            self.sicard = self._decode_cardnr(data)
+            self.cardtype = 'SI5'
+            raise SIReaderCardChanged("SI-Card inserted during command.")
+        elif cmd == SIReader.C_SI6_DET:
+            self.sicard = self._to_int(data)
+            self.cardtype = 'SI6'
+            raise SIReaderCardChanged("SI-Card inserted during command.")
+        elif cmd == SIReader.C_SI9_DET:
+            # SI 9 sends corrupt first byte (insignificant)
+            self.sicard = self._to_int(data[1:])
+            if self.sicard >= 2000000 and self.sicard <= 2999999:
+                self.cardtype = 'SI8'
+            elif self.sicard >= 1000000 and self.sicard <= 1999999:
+                self.cardtype = 'SI9'
+            elif self.sicard >= 7000000 and self.sicard <= 9999999:
+                self.cardtype = 'SI10'
+            else:
+                raise SIReaderException('Unknown cardtype!')
+            raise SIReaderCardChanged("SI-Card inserted during command.")
+
+        return (cmd, data)
 
 class SIReaderControl(SIReader):
     """Class for reading an SI Station configured as control in autosend mode."""
@@ -904,3 +919,5 @@ class SIReaderException(Exception):
 class SIReaderTimeout(Exception):
     pass
         
+class SIReaderCardChanged(Exception):
+    pass
