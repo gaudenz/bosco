@@ -434,15 +434,6 @@ class RunEditor(Observable):
         return punchlist
     punchlist = property(_get_punchlist)
 
-    def _set_changed(self, value):
-        self._is_changed = value
-        if self._is_changed == True:
-            self._clear_cache()
-            self._notify_observers('run')
-    def _get_changed(self):
-        return self._is_changed
-    changed = property(_get_changed, _set_changed)
-
     print_command = property(lambda x:x._print_command)
 
     def _clear_cache(self):
@@ -500,10 +491,7 @@ class RunEditor(Observable):
             # leaves the sicard with the runner so to not reconnect this
             # run if another run with this sicard is created
             self._run.sicard = self._create_virtual_sicard()
-            self.changed = True
-            return
-
-        if self._run.sicard.runner is None or self._run.sicard.runs.count() == 1:
+        elif self._run.sicard.runner is None or self._run.sicard.runs.count() == 1:
             self._run.sicard.runner = runner
         else:
             # run already belongs to another runner
@@ -513,7 +501,7 @@ class RunEditor(Observable):
             self._run.sicard = si
             runner.sicards.add(si)
             
-        self.changed = True
+        self.commit()
 
     def set_runner_number(self, n, force = False):
 
@@ -521,7 +509,7 @@ class RunEditor(Observable):
         if n == '':
             if self._run.sicard.runner is not None:
                 self._run.sicard.runner.number = None
-                self.changed = True
+                self.commit()
             return
         
         # numbers must be unique. See if there is already another runner
@@ -541,7 +529,7 @@ class RunEditor(Observable):
             prev_runner.number = None
             
         self._run.sicard.runner.number = n
-        self.changed = True
+        self.commit()
 
     def set_runner_category(self, cat_name):
         
@@ -551,7 +539,7 @@ class RunEditor(Observable):
         cat = self._store.find(Category, Category.name == cat_name).one()
         self._run.sicard.runner.category = cat
         self.set_course(cat_name)
-        self.changed = True
+        self.commit()
             
     def set_runner_given_name(self, n):
         try:
@@ -559,7 +547,7 @@ class RunEditor(Observable):
         except AttributeError:
             self._run.sicard.runner = Runner(given_name = n)
 
-        self.changed = True
+        self.commit()
 
     def set_runner_surname(self, n):
         try:
@@ -567,7 +555,7 @@ class RunEditor(Observable):
         except AttributeError:
             self._run.sicard.runner = Runner(surname = n)
 
-        self.changed = True
+        self.commit()
 
     def set_runner_dateofbirth(self, d):
 
@@ -582,7 +570,7 @@ class RunEditor(Observable):
             self._run.sicard.runner = Runner()
 
         self._run.sicard.runner.dateofbirth = d    
-        self.changed = True
+        self.commit()
 
     def set_runner_team(self, team):
 
@@ -593,7 +581,7 @@ class RunEditor(Observable):
             self._run.sicard.runner = Runner()
             
         self._run.sicard.runner.team = team
-        self.changed = True
+        self.commit()
     
     def set_course(self, course):
         if course == '':
@@ -603,17 +591,17 @@ class RunEditor(Observable):
         except RunException:
             pass
         else:
-            self.changed = True
+            self.commit()
 
     def set_override(self, override):
         if override == 0:
             override = None
         self._run.override = override
-        self.changed = True
+        self.commit()
 
     def set_complete(self, complete):
         self._run.complete = complete
-        self.changed = True
+        self.commit()
 
     def parse_time(self, time):
         if time == '':
@@ -652,11 +640,11 @@ class RunEditor(Observable):
 
     def set_manual_start_time(self, time):
         self._run.manual_start_time = self.parse_time(time)
-        self.changed = True
+        self.commit()
 
     def set_manual_finish_time(self, time):
         self._run.manual_finish_time = self.parse_time(time)
-        self.changed = True
+        self.commit()
     
     def set_punchtime(self, punch, time):
 
@@ -675,7 +663,7 @@ class RunEditor(Observable):
         else:
             punch[1].manual_punchtime = self.parse_time(time)
 
-        self.changed = True
+        self.commit()
         
     def set_ignore(self, punch, ignore):
         punch = self._raw_punchlist()[punch][1]
@@ -684,7 +672,7 @@ class RunEditor(Observable):
         elif ignore == '1':
             punch.ignore = True
 
-        self.changed = True
+        self.commit()
 
     def load(self, run):
         """
@@ -709,14 +697,13 @@ class RunEditor(Observable):
             if sicard is None:
                 sicard = SICard(si_nr)
         self._run = self._store.add(Run(sicard))
-        # Flush the store to assign default values to the new run
-        self._store.flush()
-        self.changed = True
+        self.commit()
         
     def commit(self):
         """Commit changes to the database."""
         self._store.commit()
-        self.changed = False
+        self._clear_cache()
+        self._notify_observers('run')
 
     def rollback(self):
         """Rollback all changes."""
@@ -731,7 +718,6 @@ class RunEditor(Observable):
                 # may reference objects in the store. Use this hack instead.
                 self._run = None
             
-            self.changed = False
             # But notify observers that the object may have changed and clear
             # the cache
             self._clear_cache()
@@ -916,7 +902,6 @@ class RunEditor(Observable):
             self.progress = 'Commiting run to database...'
             self.commit()
             self._sireader.ack_sicard()
-            self.changed = True
                 
         finally:
             # roll back and re-raise the exception

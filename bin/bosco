@@ -157,7 +157,6 @@ class RunEditorFrame(wx.Frame):
         self.Bind(wx.EVT_MENU, self.Quit, id=wx.ID_EXIT)
         self.Bind(wx.EVT_MENU, self.ConnectReader, self.connect_reader)
         self.Bind(wx.EVT_MENU, self.SetPrintCommand, self.print_command)
-        self.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGING, self.PageChange, self.notebook)
         # end wxGlade
         
         # Setting editor and selector, it would be cleaner to do this via a custom constructor, 
@@ -214,17 +213,8 @@ class RunEditorFrame(wx.Frame):
             self.statusbar.SetStatusText(observable.port, 1)
             wx.Yield()
 
-    def PageChange(self, event): # wxGlade: RunEditorFrame.<event_handler>
-        if (self.notebook.GetCurrentPage() == self.edit_run_page and
-            not self.edit_run_page.AskApply()):
-            event.Veto()
-            return
-
-        event.Skip()
-
     def Quit(self, event): # wxGlade: RunEditorFrame.<event_handler>
-        if self.edit_run_page.AskApply():
-            self.Close(True)
+        self.Close(True)
 
     def ConnectReader(self, event): # wxGlade: RunEditorFrame.<event_handler>
         try:
@@ -466,8 +456,7 @@ class EditRunPanel(RunPanel):
         self.searchbox = RunSearchWidget(self.window_1_pane_1, wx.ID_ANY)
         self.searchresults = wx.ListCtrl(self.window_1_pane_1, wx.ID_ANY, style=wx.LC_REPORT | wx.LC_SINGLE_SEL | wx.SUNKEN_BORDER)
         self.sizer_30_staticbox = wx.StaticBox(self.window_1_pane_1, wx.ID_ANY, "Select Run")
-        self.commit = wx.Button(self.window_1_pane_1, wx.ID_APPLY, "")
-        self.rollback = wx.Button(self.window_1_pane_1, wx.ID_REVERT_TO_SAVED, "")
+        self.rollback = wx.Button(self.window_1_pane_1, wx.ID_REFRESH, "")
         self.add_button = wx.Button(self.window_1_pane_1, wx.ID_ADD, "")
         self.registration = wx.CheckBox(self.window_1_pane_1, wx.ID_ANY, "Registration mode")
         self.print_button = wx.Button(self.window_1_pane_1, wx.ID_PRINT, "")
@@ -515,7 +504,6 @@ class EditRunPanel(RunPanel):
 
         self.Bind(wx.EVT_LIST_ITEM_SELECTED, self.SetRun, self.searchresults)
         self.Bind(wx.EVT_LIST_ITEM_ACTIVATED, self.SetRun, self.searchresults)
-        self.Bind(wx.EVT_BUTTON, self.Commit, self.commit)
         self.Bind(wx.EVT_BUTTON, self.Rollback, self.rollback)
         self.Bind(wx.EVT_BUTTON, self.AddRun, self.add_button)
         self.Bind(wx.EVT_BUTTON, self.OnPrint, self.print_button)
@@ -644,7 +632,6 @@ class EditRunPanel(RunPanel):
         sizer_30.Add(self.searchbox, 0, wx.ALL | wx.EXPAND, 3)
         sizer_30.Add(self.searchresults, 1, wx.ALL | wx.EXPAND, 3)
         sizer_13.Add(sizer_30, 1, wx.EXPAND, 0)
-        sizer_19.Add(self.commit, 0, wx.ALL | wx.EXPAND | wx.ALIGN_CENTER_VERTICAL, 2)
         sizer_19.Add(self.rollback, 0, wx.ALL | wx.EXPAND | wx.ALIGN_CENTER_VERTICAL, 2)
         sizer_19.Add(self.add_button, 0, wx.ALL | wx.EXPAND | wx.ALIGN_CENTER_VERTICAL, 2)
         sizer_19.Add(self.registration, 0, wx.ALL, 2)
@@ -838,8 +825,7 @@ class EditRunPanel(RunPanel):
             self.GetGrandParent().ErrorDialog(str(msg), 'Error saving changes')
 
     def AddRun(self, event): # wxGlade: EditRunPanel.<event_handler>
-        if self.AskApply():
-            self.editor.new()
+        self.editor.new()
 
     def EditPunch(self, event): # wxGlade: EditRunPanel.<event_handler>
 
@@ -902,31 +888,8 @@ class EditRunPanel(RunPanel):
 
     def SetRun(self, event): # wxGlade: EditRunPanel.<event_handler>
         index = event.m_itemIndex
-        if not self.AskApply():
-            self.searchresults.SetItemState(index, 0, wx.LIST_STATE_SELECTED)
-        else:
-            self.editor.load(self.searchresults.GetItemData(index))
+        self.editor.load(self.searchresults.GetItemData(index))
 
-    def AskApply(self):
-        if not self.editor.changed:
-            return True
-
-        dlg = wx.MessageDialog(self, 'You have made changes to this run. Do you want to apply '
-                               'these changes now? If you answser "No" the changes will be lost!',
-                               'unapplied changes',
-                               style = wx.YES_NO|wx.CANCEL|wx.ICON_QUESTION)
-        answer = dlg.ShowModal()
-        dlg.Destroy()
-        if answer == wx.ID_YES:
-            self.editor.commit()
-            return True
-        elif answer == wx.ID_NO:
-            self.editor.rollback()
-            return True
-        elif answer == wx.ID_CANCEL:
-            return False
-
-        
     def update(self, observable, event):
         
         try:
@@ -979,8 +942,7 @@ class EditRunPanel(RunPanel):
             elif type(observable) == RunEditor and event == 'reader':
                 if (self.GetGrandParent().notebook.GetCurrentPage() == self and
                     self.registration.GetValue() and 
-                    observable.sicard is not None and 
-                    self.AskApply()):
+                    observable.sicard is not None):
                     observable.new(observable.sicard)
 
         finally:
