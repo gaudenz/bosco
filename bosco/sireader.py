@@ -240,7 +240,7 @@ class SIReader(object):
                             'CT' : 10,
                             'LT' : None,
                             'RC' : 22,
-                            'P1' : 512,
+                            'P1' : 128, # would be 512 if all blocks were read, but blocks 1-3 are skipped on readout
                             'PL' : 4,
                             'PM' : 64,
                             'CN' : 1,
@@ -807,12 +807,23 @@ class SIReaderReadout(SIReader):
             raw_data += self._read_command()[1][1:]
             raw_data += self._read_command()[1][1:]
             return SIReader._decode_carddata(raw_data, self.cardtype)
-        elif self.cardtype in ('SI8', 'SI9', 'SI10'):
+        elif self.cardtype in ('SI8', 'SI9'):
             raw_data = ''
             for b in range(SIReader.CARD[self.cardtype]['BC']):
                 raw_data += self._send_command(SIReader.C_GET_SI9,
                                                chr(b))[1][1:]
 
+            return SIReader._decode_carddata(raw_data, self.cardtype)
+        elif self.cardtype == 'SI10':
+            # Reading out SI10 cards block by block proved to be unreliable and slow
+            # Thus reading with C_GET_SI9 and block number 8 = P_SI6_CB like SI6
+            # cards
+            raw_data =  self._send_command(SIReader.C_GET_SI9,
+                                           SIReader.P_SI6_CB)[1][1:]
+            raw_data += self._read_command()[1][1:]
+            raw_data += self._read_command()[1][1:]
+            raw_data += self._read_command()[1][1:]
+            raw_data += self._read_command()[1][1:]
             return SIReader._decode_carddata(raw_data, self.cardtype)
         else:
             raise SIReaderException('No card in the device.')
