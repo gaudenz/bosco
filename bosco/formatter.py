@@ -447,7 +447,7 @@ class ReportlabRunFormatter(AbstractRunFormatter):
                 table.extend(row_items)
                 row_items = ([],[],[])
                 rowcount = len(table)
-                styles.append(('TOPPADDING', (rowcount,rowcount), (rowcount,rowcount), 20))
+                styles.append(('TOPPADDING', (0,rowcount), (-1,rowcount), 20))
 
             for j in range(3):
                 row_items[j].append(punch_triples[i][j])
