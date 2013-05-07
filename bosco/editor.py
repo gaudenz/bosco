@@ -707,6 +707,7 @@ class RunEditor(Observable):
         for p in self._run.punches:
             self._store.remove(p)
         self._store.remove(self._run)
+        self._run = None
         self.commit()
         
     def commit(self):
