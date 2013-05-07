@@ -24,7 +24,7 @@ from datetime import timedelta
 from course import Course, CombinedCourse
 from runner import (Category, RunnerException)
 from ranking import (SequenceCourseValidator, TimeScoreing, SelfstartStarttime,
-                     RelayStarttime, RelayMassstartStarttime,
+                     RelayStarttime, RelayMassstartStarttime, MassstartStarttime,
                      Ranking, RelayRanking, CourseValidator, OpenRuns,
                      ControlPunchtimeScoreing, RelayScoreing,
                      Relay24hScoreing, Relay12hScoreing,
@@ -245,7 +245,52 @@ class Event(object):
         @return: list of all categories in the event
         """
         return list(self._store.find(Category))
-    
+
+class MassstartEvent(Event):
+    """Massstart individual race event."""
+
+    def __init__(self, categories,  strict=True, header={}, extra_rankings=[],
+                 template_dir = 'templates',
+                 print_template = 'relay.tex',
+                 html_template = 'relay.html',
+                 cache = None, store = None):
+        """
+        @param categories: dict keyed with category names containing category definitions:
+                     dicts with the following keys:
+                     * 'variants': tuple of course codes that are valid variants for this leg.
+                     * 'starttime': start for this category
+        @param strict: boolean value wheter manual starttimes on the card take precedence over
+                       the category starttime (strict = False) or the massstart time is strict
+                       (strict = True)
+        @see:        Event for other arguments
+        """
+
+        self.categories = categories
+        self._strict = strict
+        super(MassstartEvent, self).__init__(header, extra_rankings, template_dir, print_template,
+                                            html_template, cache, store)
+
+    def score(self, obj, scoreing_class = None, args = None):
+
+        if args is None:
+            args = {}
+
+        if 'cache' not in args:
+            args['cache'] = self._cache
+
+        if 'starttime_strategy' not in args:
+            try:
+                category = obj.category.name
+            except AttributeError:
+                try:
+                    category = obj.sicard.runner.category.name
+                except AttributeError:
+                    raise UnscoreableException(u"Can't score runner without a category")
+            starttime = self.categories[category]['starttime']
+            args['starttime_strategy'] = MassstartStarttime(starttime, self._strict, args['cache'])
+
+        return super(MassstartEvent, self).score(obj, scoreing_class, args)
+
 class RelayEvent(Event):
     """Event class for a traditional relay."""
 
