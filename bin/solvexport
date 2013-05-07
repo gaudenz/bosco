@@ -42,6 +42,10 @@ if __name__ == '__main__':
                               event = conf.event)
     (options, args, ranking_list, f) = opt.parse_args()
 
+    if len(ranking_list) == 0:
+        print "No ranking selected. Aborting."
+        sys.exit(1)
+
     for r in ranking_list:
         f.write(str(modes[type(r.rankable)]([r], conf.starttime)))
 
