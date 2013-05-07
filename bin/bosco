@@ -781,6 +781,7 @@ class EditRunPanel(RunPanel):
             if answer == wx.ID_YES:
                 self.editor.set_runner_number(self.runner_number.GetValue().strip(), force = True)
             elif answer == wx.ID_NO:
+                self.runner_number.SetValue(self.editor.runner_number)
                 self.runner_number.SetFocus()
             
     def SetRunnerCategory(self, event):
