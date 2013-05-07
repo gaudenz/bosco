@@ -12,7 +12,7 @@ from datetime import timedelta, datetime
 
 from bosco.util import load_config
 from bosco.editor import RunFinder, RunEditor, TeamEditor, RunEditorException
-from bosco.sireader import SIReaderException
+from bosco.sireader import SIReaderException, SIReaderTimeout, SIReaderCardChanged
 
 conf = load_config()
 
@@ -1150,11 +1150,15 @@ class ReadoutRunPanel(RunPanel):
             elif type(observable) == RunEditor and event == 'reader':
                 if (self.GetGrandParent().notebook.GetCurrentPage() == self and
                     observable.sicard is not None):
-                    observable.load_run_from_card()
-                    if (self.print_checkbox.GetValue() and 
-                        self.GetParent().GetCurrentPage() == self):
-                        # the current page might change if the run is not complete
-                        observable.print_run()
+                    try:
+                        observable.load_run_from_card()
+                    except (SIReaderException, SIReaderTimeout, SIReaderCardChanged), msg:
+                        self.GetGrandParent().ErrorDialog(str(msg), 'Error communicating to the SI-Reader')
+                    else:
+                        if (self.print_checkbox.GetValue() and
+                            self.GetParent().GetCurrentPage() == self):
+                            # the current page might change if the run is not complete
+                            observable.print_run()
                     
             elif type(observable) == RunEditor and event == 'progress':
                 p = observable.progress
