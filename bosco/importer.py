@@ -618,9 +618,9 @@ class OCADXMLCourseImporter(Importer):
     KNOWN_ROOTTAGS = ('CourseData', )
 
     # XPaths to control point codes
-    CONTROL_PATHS  = ('/StartPoint/StartPointCode',
-                      '/FinishPoint/FinishPointCode',
-                      '/Control/ControlCode',
+    CONTROL_PATHS  = ('./StartPoint/StartPointCode',
+                      './FinishPoint/FinishPointCode',
+                      './Control/ControlCode',
                       )
 
     def __init__(self, fname, finish, start, verbose = False):
@@ -629,7 +629,7 @@ class OCADXMLCourseImporter(Importer):
         self._finish = finish
         self._verbose = False
         
-        version = self.__tree.find('/IOFVersion').attrib['version']
+        version = self.__tree.find('./IOFVersion').attrib['version']
         if not version in OCADXMLCourseImporter.KNOWN_VERSIONS:
             raise FileFormatException("Unknown IOFVersion '%s'" % version)
 
@@ -692,7 +692,7 @@ class OCADXMLCourseImporter(Importer):
                     control = Control(code, store=store)
 
         # Read courses
-        for c_el in self.__tree.findall('/Course'):
+        for c_el in self.__tree.findall('./Course'):
             variations = c_el.findall('CourseVariation')
             if len(variations) == 1:
                 var = variations[0]
