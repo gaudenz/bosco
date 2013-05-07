@@ -479,13 +479,20 @@ class RunEditor(Observable):
         return SICard(min_id)
 
     def set_runner(self, runner):
+        """
+        Changes the runner of the current run. If no runner is not found
+        the run is disconnected from the current runner. If the current
+        runner has multiple runs, a "virtual" sicard is created.
+        @param runner: ID of the new runner
+        """
+
         if self._run is None:
             return
 
         runner = self._store.get(Runner, runner)
 
         if runner == self._run.sicard.runner:
-            # return if runner did not change
+            # return and don't commit if runner did not change
             return
 
         if runner is None:
