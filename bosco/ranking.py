@@ -92,6 +92,12 @@ class Ranking(object):
         # return the generator
         return ranking_generator(self._ranking_list)
 
+    def __getitem__(self, key):
+        if not self._initialized:
+            self.update()
+
+        return self._ranking_list[key]
+
     def rank(self, item):
         """
         @param item:  Item ranked in this ranking
