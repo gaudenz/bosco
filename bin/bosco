@@ -897,6 +897,20 @@ class EditRunPanel(RunPanel):
 
     def update(self, observable, event):
         
+        def update_runfinder():
+            if self.finder is not None:
+                current_run = self.searchresults.GetItemData(self.searchresults.GetFirstSelected()) or None
+                self.searchresults.DeleteAllItems()
+                results = self.finder.get_results()
+                for row, run in enumerate(results):
+                    index = self.searchresults.InsertStringItem(sys.maxint, unicode(run[0]))
+                    self.searchresults.SetItemData(index, run[0])
+                    for col,v in enumerate(run[0:]):
+                        self.searchresults.SetStringItem(index, col, unicode(v))
+                    # activate if it's the current run
+                    if run[0] == current_run:
+                        self.searchresults.SetItemState(index, wx.LIST_STATE_SELECTED, wx.LIST_STATE_SELECTED)
+
         try:
             busy = wx.BusyCursor()
             
@@ -904,15 +918,8 @@ class EditRunPanel(RunPanel):
             self.SetEvtHandlerEnabled(False)
         
             if type(observable) == RunFinder:
-                if self.finder is not None:
-                    self.searchresults.DeleteAllItems()
-                    results = self.finder.get_results()
-                    for row, run in enumerate(results):
-                        index = self.searchresults.InsertStringItem(sys.maxint, unicode(run[0]))
-                        self.searchresults.SetItemData(index, run[0])
-                        for col,v in enumerate(run[0:]):
-                            self.searchresults.SetStringItem(index, col, unicode(v))
-            
+                update_runfinder()
+
             elif type(observable) == RunEditor and event == 'run':
                 self.UpdateRun()
                 self.course.SetValue(self.editor.run_course)
@@ -943,6 +950,10 @@ class EditRunPanel(RunPanel):
                 else:
                     for ctrl in ctrl_list:
                         ctrl.Enable()
+
+                # also update the runfinder, names may have changed or a run may have been deleted
+                # TODO make this more conditional on when the results actually change...
+                update_runfinder()
 
             elif type(observable) == RunEditor and event == 'reader':
                 if (self.GetGrandParent().notebook.GetCurrentPage() == self and
