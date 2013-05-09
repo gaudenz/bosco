@@ -397,8 +397,13 @@ class RelayEvent(Event):
             if obj.sicard.runner.team.category is None:
                 raise UnscoreableException("Can't score a realy leg without a category.")
             scoreing_class = TimeScoreing
-            cat = obj.sicard.runner.team.category.name
-            args['starttime_strategy'] = RelayMassstartStarttime(self._starttimes[cat][obj.course.code], cache = args['cache'])
+            try:
+                cat = obj.sicard.runner.team.category.name
+                args['starttime_strategy'] = RelayMassstartStarttime(self._starttimes[cat][obj.course.code], cache = args['cache'])
+            except AttributeError:
+                # default to selfstart if we can't find the runner or team
+                args['starttime_strategy'] = SelfstartStarttime()
+
         elif type(obj) == Team and scoreing_class is None:
             scoreing_class = RelayScoreing
             cat = obj.category.name
