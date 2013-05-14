@@ -11,7 +11,7 @@ from wx.lib.embeddedimage import PyEmbeddedImage
 from datetime import timedelta, datetime
 
 from bosco.util import load_config
-from bosco.editor import RunFinder, RunEditor, TeamEditor, RunEditorException
+from bosco.editor import RunFinder, RunEditor, TeamEditor, RunEditorException, Reports
 from bosco.sireader import SIReaderException, SIReaderTimeout, SIReaderCardChanged
 
 conf = load_config()
@@ -127,6 +127,88 @@ sicard = PyEmbeddedImage(
     "SjOI8EWKTYqA7xMy5wDFvzMoSQGdUz0IVsXLQgs/+8y3Jl//G8kxOdjx9mnRAAAAAElFTkSu"
     "QmCC")
 
+
+class ReportsPanel(wx.Panel):
+    def __init__(self, *args, **kwds):
+        # begin wxGlade: ReportsPanel.__init__
+        kwds["style"] = wx.TAB_TRAVERSAL
+        wx.Panel.__init__(self, *args, **kwds)
+        self.label_10 = wx.StaticText(self, wx.ID_ANY, "Select Report:")
+        self.report_combo = wx.ComboBox(self, wx.ID_ANY, choices=[], style=wx.CB_DROPDOWN | wx.CB_READONLY)
+        self.run_grid = wx.grid.Grid(self, wx.ID_ANY, size=(1, 1))
+
+        self.__set_properties()
+        self.__do_layout()
+
+        self.Bind(wx.EVT_COMBOBOX, self.ChangeReport, self.report_combo)
+        # end wxGlade
+
+        self._reports = Reports(conf.store, conf.event)
+
+        # populate reports list
+        for r in self._reports.list_reports():
+            self.report_combo.Append(r[1], r[0])
+
+    def __set_properties(self):
+        # begin wxGlade: ReportsPanel.__set_properties
+        self.run_grid.CreateGrid(0, 10)
+        self.run_grid.EnableEditing(0)
+        self.run_grid.EnableDragRowSize(0)
+        self.run_grid.EnableDragGridSize(0)
+        self.run_grid.SetSelectionMode(wx.grid.Grid.wxGridSelectRows)
+        self.run_grid.SetColLabelValue(0, "Run ID")
+        self.run_grid.SetColLabelValue(1, "Course")
+        self.run_grid.SetColLabelValue(2, "Runner")
+        self.run_grid.SetColLabelValue(3, "SI-Card")
+        self.run_grid.SetColLabelValue(4, "Team")
+        self.run_grid.SetColLabelValue(5, "Start")
+        self.run_grid.SetColLabelValue(6, "Finish")
+        self.run_grid.SetColLabelValue(7, "Validation")
+        self.run_grid.SetColLabelValue(8, "Team Validation")
+        self.run_grid.SetColLabelValue(9, "Score")
+        # end wxGlade
+
+    def __do_layout(self):
+        # begin wxGlade: ReportsPanel.__do_layout
+        sizer_33 = wx.BoxSizer(wx.VERTICAL)
+        sizer_34 = wx.BoxSizer(wx.HORIZONTAL)
+        sizer_34.Add(self.label_10, 0, wx.ALIGN_CENTER_VERTICAL, 0)
+        sizer_34.Add(self.report_combo, 0, 0, 0)
+        sizer_33.Add(sizer_34, 0, wx.EXPAND, 0)
+        sizer_33.Add((20, 10), 0, 0, 0)
+        sizer_33.Add(self.run_grid, 1, wx.EXPAND, 0)
+        self.SetSizer(sizer_33)
+        sizer_33.Fit(self)
+        # end wxGlade
+
+    def update(self):
+        busy = wx.BusyCursor()
+
+        try:
+            runs = self._reports.runs
+            grid_size = self.run_grid.GetNumberRows()
+            if len(runs) > grid_size:
+                self.run_grid.AppendRows(numRows = len(runs) - grid_size)
+            elif len(runs) < grid_size:
+                self.run_grid.DeleteRows(numRows = grid_size - len(runs))
+
+            for row, r in enumerate(runs):
+                for col, v in enumerate(r):
+                    self.run_grid.SetCellValue(row, col, v)
+
+            self.run_grid.AutoSize()
+            self.Layout()
+        finally:
+            del busy
+
+    def ChangeReport(self, event):  # wxGlade: ReportsPanel.<event_handler>
+        report = self.report_combo.GetClientData(self.report_combo.GetSelection())
+        self._reports.set_report(report)
+
+        # update run list
+        self.update()
+
+# end of class ReportsPanel
 class RunEditorFrame(wx.Frame):
     def __init__(self, *args, **kwds):
         # begin wxGlade: RunEditorFrame.__init__
@@ -138,6 +220,12 @@ class RunEditorFrame(wx.Frame):
         self.file = wx.Menu()
         self.file.Append(wx.ID_EXIT, "", "", wx.ITEM_NORMAL)
         self.main_frame_menubar.Append(self.file, "&File")
+        self.reports = wx.Menu()
+        self.open_runs = wx.MenuItem(self.reports, wx.ID_ANY, "&Open runs", "List not yet completed runs", wx.ITEM_NORMAL)
+        self.reports.AppendItem(self.open_runs)
+        self.orphan_runs = wx.MenuItem(self.reports, wx.ID_ANY, "&Orphan runs", "List runs not connected to a runner", wx.ITEM_NORMAL)
+        self.reports.AppendItem(self.orphan_runs)
+        self.main_frame_menubar.Append(self.reports, "&Reports")
         self.settings = wx.Menu()
         self.connect_reader = wx.MenuItem(self.settings, wx.ID_ANY, "&Connect SI-Reader", "", wx.ITEM_NORMAL)
         self.settings.AppendItem(self.connect_reader)
@@ -151,11 +239,14 @@ class RunEditorFrame(wx.Frame):
         self.edit_run_page = EditRunPanel(self.notebook, wx.ID_ANY)
         self.readout_run_page = ReadoutRunPanel(self.notebook, wx.ID_ANY)
         self.team_page = TeamPanel(self.notebook, wx.ID_ANY)
+        self.reports_page = ReportsPanel(self.notebook, wx.ID_ANY)
 
         self.__set_properties()
         self.__do_layout()
 
         self.Bind(wx.EVT_MENU, self.Quit, id=wx.ID_EXIT)
+        self.Bind(wx.EVT_MENU, self.OpenRuns, self.open_runs)
+        self.Bind(wx.EVT_MENU, self.OrphanRuns, self.orphan_runs)
         self.Bind(wx.EVT_MENU, self.ConnectReader, self.connect_reader)
         self.Bind(wx.EVT_MENU, self.SetPrintCommand, self.print_command)
         # end wxGlade
@@ -191,6 +282,7 @@ class RunEditorFrame(wx.Frame):
         self.notebook.AddPage(self.edit_run_page, "Edit Run")
         self.notebook.AddPage(self.readout_run_page, "Read SI-Card")
         self.notebook.AddPage(self.team_page, "Team Overview")
+        self.notebook.AddPage(self.reports_page, "Reports")
         sizer_1.Add(self.notebook, 1, wx.EXPAND, 0)
         self.SetSizer(sizer_1)
         self.Layout()
@@ -237,6 +329,13 @@ class RunEditorFrame(wx.Frame):
             self.editor.set_print_command(dlg.GetValue())
         dlg.Destroy()
 
+    def OpenRuns(self, event):  # wxGlade: RunEditorFrame.<event_handler>
+        print "Event handler 'OpenRuns' not implemented!"
+        event.Skip()
+
+    def OrphanRuns(self, event):  # wxGlade: RunEditorFrame.<event_handler>
+        print "Event handler 'OrphanRuns' not implemented!"
+        event.Skip()
 # end of class RunEditorFrame
 
 class RunSearchWidget(wx.SearchCtrl):
@@ -324,7 +423,7 @@ class TeamPanel(EditingPanel):
         self.validation.SetForegroundColour(wx.Colour(255, 0, 0))
         self.validation.SetFont(wx.Font(12, wx.DEFAULT, wx.NORMAL, wx.BOLD, 0, ""))
         self.score.SetFont(wx.Font(12, wx.DEFAULT, wx.NORMAL, wx.BOLD, 0, ""))
-        self.run_grid.CreateGrid(0, 8)
+        self.run_grid.CreateGrid(0, 10)
         self.run_grid.EnableEditing(0)
         self.run_grid.EnableDragColSize(0)
         self.run_grid.EnableDragRowSize(0)
@@ -333,10 +432,12 @@ class TeamPanel(EditingPanel):
         self.run_grid.SetColLabelValue(1, "Course")
         self.run_grid.SetColLabelValue(2, "Runner")
         self.run_grid.SetColLabelValue(3, "SI-Card")
-        self.run_grid.SetColLabelValue(4, "Start")
-        self.run_grid.SetColLabelValue(5, "Finish")
-        self.run_grid.SetColLabelValue(6, "Validation")
-        self.run_grid.SetColLabelValue(7, "Score")
+        self.run_grid.SetColLabelValue(4, "Team")
+        self.run_grid.SetColLabelValue(5, "Start")
+        self.run_grid.SetColLabelValue(6, "Finish")
+        self.run_grid.SetColLabelValue(7, "Validation")
+        self.run_grid.SetColLabelValue(8, "Team Validation")
+        self.run_grid.SetColLabelValue(9, "Score")
         # end wxGlade
 
     def __do_layout(self):

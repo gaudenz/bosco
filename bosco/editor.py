@@ -28,7 +28,7 @@ from runner import Team, Runner, SICard, Category
 from run import Run, Punch, RunException
 from course import Control, SIStation, Course
 from formatter import AbstractFormatter, ReportlabRunFormatter
-from ranking import ValidationError, UnscoreableException, Validator
+from ranking import ValidationError, UnscoreableException, Validator, OpenRuns
 from sireader import SIReaderReadout, SIReaderException, SIReader
 
 class Observable(object):
@@ -955,7 +955,50 @@ class RunEditor(Observable):
     def set_print_command(self, command):
         self._print_command = command
 
-class TeamEditor(Observable):
+class RunListFormatter(object):
+
+    def format_run(self, run):
+
+        def format_runner(runner):
+            if run.sicard.runner is None:
+                return ''
+            elif run.sicard.runner.number is None:
+                return unicode(runner)
+            else:
+                return unicode('%3s: %s' % (run.sicard.runner.number,
+                                            run.sicard.runner))
+
+        # run validation and score
+        try:
+            code = self._event.validate(run)['status']
+            validation = AbstractFormatter.validation_codes[code]
+        except ValidationError:
+            validation = ''
+        try:
+            score = self._event.score(run)
+        except UnscoreableException:
+            score = {'start':'', 'finish':'', 'score':''}
+
+        # team validation and score
+        team = run.sicard.runner and run.sicard.runner.team or None
+        try:
+            code = self._event.validate(team)['status']
+            team_validation =  AbstractFormatter.validation_codes[code]
+        except ValidationError:
+            team_validation = ''
+
+        return (str(run.id),
+                run.course and run.course.code or '',
+                format_runner(run.sicard.runner),
+                str(run.sicard.id),
+                team and team.name or '',
+                str(score['start'] or ''),
+                str(score['finish'] or ''),
+                validation,
+                team_validation,
+                str(score['score']))
+
+class TeamEditor(Observable, RunListFormatter):
 
     def __init__(self, store, event):
         """
@@ -993,15 +1036,6 @@ class TeamEditor(Observable):
 
     def _get_runs(self):
 
-        def format_runner(runner):
-            if r.sicard.runner is None:
-                return ''
-            elif r.sicard.runner.number is None:
-                return unicode(runner)
-            else:
-                return unicode('%3s: %s' % (r.sicard.runner.number,
-                                            r.sicard.runner))
-            
         if self._team is None:
             return []
         
@@ -1009,24 +1043,8 @@ class TeamEditor(Observable):
         runs.sort(key = lambda x: x.finish_time or datetime.max)
         result = []
         for r in runs:
-            try:
-                code = self._event.validate(r)['status']
-                validation = AbstractFormatter.validation_codes[code]
-            except ValidationError:
-                validation = ''
-            try:
-                score = self._event.score(r)
-            except UnscoreableException:
-                score = {'start':'', 'finish':'', 'score':''}
+            result.append(self.format_run(r))
 
-            result.append((str(r.id),
-                           r.course and r.course.code or '',
-                           format_runner(r.sicard.runner),
-                           str(r.sicard.id),
-                           str(score['start'] or ''),
-                           str(score['finish'] or ''),
-                           validation,
-                           str(score['score'])))
         return result
     runs = property(_get_runs)
 
@@ -1034,3 +1052,49 @@ class TeamEditor(Observable):
         self._store.rollback()
         self._team = self._store.get(Team, team)
         self._notify_observers()
+
+class Reports(RunListFormatter):
+
+    # list of supported reports
+    # these are (method, descriptive name) tuples
+    # the method should return a list of Run objects
+    _supported_reports = (('_open_runs',   'Open runs'  ),
+                          ('_orphan_runs', 'Orphan runs'),
+                          )
+
+    def __init__(self, store, event):
+        """
+        @param store: Storm store of the runs
+        @param event: object of class (or subclass of) Event. This is used for
+                      run and team validation
+        """
+        self._store = store
+        self._event = event
+        self._report = None
+
+    def list_reports(self):
+        return Reports._supported_reports
+
+    def set_report(self, report):
+        if report in [r[0] for r in Reports._supported_reports]:
+            self._report = report
+
+    def _get_runs(self):
+        runs = getattr(self, self._report)()
+        result = []
+        for r in runs:
+            result.append(self.format_run(r))
+        return result
+    runs = property(_get_runs)
+
+    def _open_runs(self):
+        """Lists all runs that are not yet completed."""
+        return OpenRuns(self._store).members
+
+    def _orphan_runs(self):
+        """Lists all runs that don't belong to any runner."""
+        return self._store.find(Run,
+                                And(Run.sicard == SICard.id,
+                                    SICard.runner == None,
+                                    )
+                                )
