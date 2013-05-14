@@ -868,21 +868,21 @@ class RelayScoreing(AbstractRelayScoreing):
         for l in self._legs:
             self._courses.extend(l['variants'])
 
-    def _valid_runs(self, team):
+    def _runs(self, team):
         """
-        Return a list of all valid and completed runs for this team. Ordered by leg. If there is
+        Return a list of all completed runs for this team. Ordered by leg. If there is
         no run for a leg the list contains None at this index. If there is more than one run for
         a leg the result is undefined.
         @type team: instance of Team
         @return type: list of runs
         """
         try:
-            return self._from_cache(self._valid_runs, team)
+            return self._from_cache(self._runs, team)
         except KeyError:
             pass
 
         runs =  dict([(r.course.code, r) for r in team.runs
-                      if r.course is not None and r.complete and self._event.validate(r)['status'] == Validator.OK])
+                      if r.course is not None and r.complete])
         
         result = []
         for l in self._legs:
@@ -894,7 +894,7 @@ class RelayScoreing(AbstractRelayScoreing):
                 # no valid run for this leg
                 result.append(None)
 
-        self._to_cache(self._valid_runs, team, result)
+        self._to_cache(self._runs, team, result)
         return result
         
     def validate(self, team):
@@ -982,7 +982,7 @@ class RelayScoreing(AbstractRelayScoreing):
         # compute sum of individual run times
         # this automatically takes mass starts into account
 
-        runs = self._valid_runs(team)
+        runs = self._runs(team)
         for i,l in enumerate(self._legs):
             default = l['defaulttime']
 
