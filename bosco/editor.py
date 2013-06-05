@@ -992,8 +992,8 @@ class RunListFormatter(object):
                 format_runner(run.sicard.runner),
                 str(run.sicard.id),
                 team and team.name or '',
-                str(score['start'] or ''),
-                str(score['finish'] or ''),
+                str(score.has_key('start') and score['start'] or ''),
+                str(score.has_key('finish') and score['finish'] or ''),
                 validation,
                 team_validation,
                 str(score['score']))
