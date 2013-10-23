@@ -368,7 +368,7 @@ class RelayEvent(Event):
             if obj.course is None:
                 raise UnscoreableException("Can't score a relay leg without a course.")
             scoreing_class = TimeScoreing
-            cat = obj .sicard.runner.team.category.name
+            cat = obj.sicard.runner.team.category.name
             args['starttime_strategy'] = RelayMassstartStarttime(self._starttimes[cat][obj.course.code], cache = args['cache'])
         elif type(obj) == Team and scoreing_class is None:
             scoreing_class = RelayScoreing
