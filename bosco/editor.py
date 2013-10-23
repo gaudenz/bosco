@@ -22,6 +22,7 @@ from time import sleep
 from subprocess import Popen, PIPE
 
 from storm.exceptions import NotOneError, LostObjectError
+from storm.expr import Func
 from storm.locals import *
 
 from runner import Team, Runner, SICard, Category
@@ -389,7 +390,7 @@ class RunEditor(Observable):
                 return []
             
             # create pseudo validation result
-            punchlist = [ ('', p) for p in self._run.punches ]
+            punchlist = [ ('ignored', p) for p in self._run.punches.order_by(Func('COALESCE', Punch.manual_punchtime, Punch.card_punchtime))]
 
         # add finish punch if it does not have one
         if self._run.finish_time is None:
