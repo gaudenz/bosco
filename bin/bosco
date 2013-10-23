@@ -526,7 +526,8 @@ class RunPanel(EditingPanel):
             self.punches_grid.SetCellRenderer(row,4,
                                               wx.grid.GridCellDateTimeRenderer())
             self.punches_grid.SetCellRenderer(row,5, wx.grid.GridCellBoolRenderer())
-            self.punches_grid.SetCellEditor(row,5, wx.grid.GridCellBoolEditor())
+            # Using the GridCellBoolEditor causes segfaults after editing this cell
+            # self.punches_grid.SetCellEditor(row,5, wx.grid.GridCellBoolEditor())
             self.punches_grid.SetReadOnly(row,6)
             for col, v in enumerate(p):
                 self.punches_grid.SetCellValue(row, col, v)
