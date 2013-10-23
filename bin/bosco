@@ -663,6 +663,9 @@ class EditRunPanel(RunPanel):
                       self.runner_dateofbirth):
             field.Bind(wx.EVT_SET_FOCUS, self.ResetFieldChanged)
         
+        self.field_changed = False
+        self._punch_changed = False
+
         self.finder = RunFinder(conf.store)
         self.finder.add_observer(self)
         self.searchbox.SetFinder(self.finder)
