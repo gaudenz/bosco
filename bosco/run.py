@@ -151,7 +151,7 @@ class Run(MyStorm, RankableItem):
         else:
             return 'SI-Card: %s' % self.sicard.id
     
-    def add_punch(self, punch):
+    def add_punch(self, punch, sequence_nr=None):
         """Adds a (stationnumber, punchtime) tuple to the run."""
 
         (number, punchtime) = punch
@@ -165,14 +165,14 @@ class Run(MyStorm, RankableItem):
             if station is None:
                 station = SIStation(number)
         
-            self.punches.add(Punch(station, punchtime))
+            self.punches.add(Punch(station, punchtime, sequence=sequence_nr))
 
     def add_punchlist(self, punchlist):
         """Adds a list of (stationnumber, punchtime) tupeles to the run."""
         errors = ''
-        for p in punchlist:
+        for i,p in enumerate(punchlist):
             try:
-                self.add_punch(p)
+                self.add_punch(p, i+1)
             except RunException, msg:
                 errors = '%s%s\n' % (errors, msg)
                 
