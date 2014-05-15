@@ -516,7 +516,9 @@ class RunEditor(Observable):
         # with this number
         prev_runner = self._store.find(Runner, Runner.number == n).one()
 
-        if prev_runner is self._run.sicard.runner:
+        # Attention: check for prev_runnner first, None is None == True !
+        if prev_runner and prev_runner is self._run.sicard.runner:
+            # same runner as current runner, nothing to be done
             return
         
         if prev_runner is not None and force is False:
@@ -526,6 +528,7 @@ class RunEditor(Observable):
             self._run.sicard.runner = Runner()
             
         if prev_runner is not None:
+            # unset number on previous runner, force is True by now
             prev_runner.number = None
             
         self._run.sicard.runner.number = n
