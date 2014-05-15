@@ -160,10 +160,10 @@ class Ranking(object):
                                        < self._ranking_list[i-1]['scoreing']['score']))):
                 rank = i + 1
             # only assign rank if run is OK
-            m['rank'] =  (m['validation']['status'] == Validator.OK and rank or None)
-            m['scoreing']['behind'] = (m['validation']['status'] == Validator.OK 
-                                       and (m['scoreing']['score'] - winner_score) * (self._reverse and -1 or 1)
-                                       or None)
+            m['rank'] = rank if m['validation']['status'] == Validator.OK else None
+            m['scoreing']['behind'] = ((m['scoreing']['score'] - winner_score) * (self._reverse and -1 or 1)
+                                       if m['validation']['status'] == Validator.OK
+                                       else None)
 
     def _update_ranking_dict(self):
         # create dictionary with ranked objects as keys for random access
