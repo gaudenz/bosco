@@ -1064,7 +1064,8 @@ class EditRunPanel(RunPanel):
                 if (self.GetGrandParent().notebook.GetCurrentPage() == self and
                     self.registration.GetValue() and 
                     observable.sicard is not None):
-                    observable.new(observable.sicard)
+                    observable.new_from_reader()
+                    self.runner_number.SetFocus()
 
         finally:
             # Enable Event handling after updating

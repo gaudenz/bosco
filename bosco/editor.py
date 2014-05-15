@@ -700,6 +700,34 @@ class RunEditor(Observable):
         self._run = self._store.add(Run(sicard))
         self.commit()
 
+    def new_from_reader(self):
+        """
+        Creates a new empty run for the card currently inserted into the reader.
+        If an open run for this card already exists, this run is loaded and no
+        new run created.
+        """
+        si_nr = self._sireader.sicard
+        if not si_nr:
+            raise RunEditorException("Could not read SI-Card.")
+
+        self.rollback()
+        self._run = None
+        sicard = self._store.get(SICard, si_nr)
+        if sicard is None:
+            sicard = SICard(si_nr)
+        else:
+            # try to load existing open run
+            self._run = self._store.find(Run,
+                                         Run.sicard == si_nr,
+                                         Run.complete == False).order_by(Run.id).last()
+
+        if self._run is None:
+            # Create new run
+            self._run = self._store.add(Run(sicard))
+
+        self.commit()
+        self._sireader.ack_sicard()
+
     def delete(self):
         """
         Deletes the current run.
