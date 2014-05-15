@@ -261,9 +261,7 @@ class RunEditor(Observable):
     run_finish_time = property(lambda obj: obj._run and obj._run.finish_time and RunEditor._format_time(obj._run.finish_time) or 'unknown')
 
     def has_runner(self):
-        if self._run is None:
-            return False
-        return self._run.sicard.runner is not None
+        return self.has_run() and self._run.sicard.runner is not None
 
     def has_course(self):
         return self._run.course is not None
@@ -524,7 +522,7 @@ class RunEditor(Observable):
         if prev_runner is not None and force is False:
             raise RunEditorException(u'Runner %s (%s) already has this number.' % (unicode(prev_runner), prev_runner.number))
 
-        if self._run.sicard.runner is None:
+        if not self.has_runner():
             self._run.sicard.runner = Runner()
             
         if prev_runner is not None:
