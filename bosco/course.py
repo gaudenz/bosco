@@ -127,8 +127,13 @@ class ControlSequence(Storm):
         self.sequence_number = sequence_number
         self.length = length
         self.climb = climb
-        
-class Course(MyStorm, Rankable):
+
+
+class BaseCourse(Rankable):
+    """Common base class for Course and CombinedCourse."""
+
+
+class Course(MyStorm, BaseCourse):
     """Base class for all kinds of courses. Special kinds of courses should
        be derived from this class. Derived class must at least override the
        append or validate methods. This class implements an unordered set
@@ -238,7 +243,7 @@ class Course(MyStorm, Rankable):
     def __unicode__(self):
         return self.code
 
-class CombinedCourse(Rankable):
+class CombinedCourse(BaseCourse):
     """
     This class combines several courses to generate a joint ranking of all runns of
     all the combined courses. This is primarily usefull for rankings of relay legs with
