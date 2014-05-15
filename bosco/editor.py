@@ -691,6 +691,7 @@ class RunEditor(Observable):
     def new(self, si_nr = None):
         """
         Create a new empty run. This rolls back any uncommited changes!
+        @param si_nr: number of the SI-Card
         """
         self.rollback()
         if si_nr is None:
