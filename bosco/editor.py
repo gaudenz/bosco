@@ -283,7 +283,8 @@ class RunEditor(Observable):
     runner_surname = property(lambda obj: obj._run and obj._run.sicard.runner and
                               obj._run.sicard.runner.surname or '')
     runner_dateofbirth = property(lambda obj: obj._run and obj._run.sicard.runner and
-                                  str(obj._run.sicard.runner.dateofbirth) or '')
+                                  obj._run.sicard.runner.dateofbirth and
+                                  obj._run.sicard.runner.dateofbirth.strftime('%x') or '')
     
     def _get_runner_number(self):
         try:
@@ -565,7 +566,7 @@ class RunEditor(Observable):
         if d == '':
             d = None
         else:
-            d = datetime.strptime(d, '%Y-%m-%d').date()
+            d = datetime.strptime(d, '%x').date()
 
         if self._run.sicard.runner is None:
             self._run.sicard.runner = Runner()
