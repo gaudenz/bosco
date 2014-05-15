@@ -64,10 +64,11 @@ class MakoRankingFormatter(AbstractRankingFormatter):
 
     def __init__(self, rankings, header, template_file, template_dir):
         """
-        @type ranking:        list of dicts with keys 'ranking' and 'info'
+        @type rankings:        list of dicts with keys 'ranking' and 'info'
                               the value of the 'ranking' key is an object of
                               class Ranking
         @param template_file: File name for the template
+        @param template_dir:  template directory (inside the bosco module)
         @param header:        gerneral information for the ranking header
         @type header:         dict
         """
