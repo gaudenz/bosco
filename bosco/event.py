@@ -525,8 +525,14 @@ class RoundCountEvent(Event):
         if args is None:
             args = {}
         
+        if 'mindiff' not in args:
+            args['mindiff'] = self._mindiff
+
+        if 'course' not in args:
+            args['course'] = self._course
+
         if validator_class is None:
-            validator_class = CourseValidator
+            validator_class = RoundCountScoreing
 
         return super(RoundCountEvent, self).validate(obj, validator_class, args)
 

@@ -537,55 +537,6 @@ class RelayMassstartStarttime(RelayStarttime):
         else:
             return self._starttime < prev_finish and self._starttime or prev_finish
 
-class RoundCountScoreing(AbstractScoreing):
-    """This scoreing strategy computes the score as the count of complete runs of a course. 
-    This is mostly usefull for non orienteering events where runners have to run as much rounds 
-    as possible in a predifined time intervall.
-    Be aware that SI Card 5 and SI Card 8 only hold 30 punches!
-    """
-
-    def __init__(self, course, mindiff = timedelta(0), cache = None):
-        """
-        @param course  Course object with all controls on the roundcourse. In the simplest case 
-                       this course has only 1 control. 
-        @param mindiff Minimal time difference between valid punches. This is necessary to avoid 
-                       counting two runs if runners punch the only control of the course two times
-                       without running the round in between.
-        @type mindiff  timedelta
-        """
-        super(RoundCountScoreing, self).__init__(cache)
-        self._course = course
-        self._mindiff = mindiff
-
-        # list of all controls which have sistations
-        self._controllist = self._course.controllist()
-
-    def score(self, obj):
-        try:
-            return self._from_cache(self.score, obj)
-        except KeyError:
-            pass
-        
-        result = {'score': 0}
-
-        i = 0
-        lastpunch = None
-        for p, c in obj.punchlist():
-            if lastpunch and p.punchtime - lastpunch < self._mindiff:
-                continue
-
-            if c is self._controllist[i]:
-                lastpunch = p.punchtime
-                i += 1
-                
-            if i == len(self._controllist):
-                # round completed
-                result['score'] += 1
-                i = 0
-
-        self._to_cache(self.score, obj, result)
-        return result
-
 class Validator(CachingObject):
     """Defines a strategy for validating objects (runs, runners, teams). The validation
     strategy is tightly coupled to the objects it validates."""
@@ -1468,6 +1419,79 @@ class ControlPunchtimeScoreing(AbstractScoreing, Validator):
         self._to_cache(self.score, run, ret)
         return ret
     
+class RoundCountScoreing(AbstractScoreing, CourseValidator):
+    """This scoreing strategy computes the score as the count of complete runs of a course.
+    This is mostly usefull for non orienteering events where runners have to run as much rounds
+    as possible in a predifined time intervall.
+    Be aware that SI Card 5 and SI Card 8 only hold 30 punches!
+
+    This is a combined validator and scoreing strategy.
+    """
+
+    def __init__(self, course, mindiff = timedelta(0), cache = None):
+        """
+        @param course  Course object with all controls on the roundcourse. In the simplest case
+                       this course has only 1 control.
+        @param mindiff Minimal time difference between valid punches. This is necessary to avoid
+                       counting two runs if runners punch the only control of the course two times
+                       without running the round in between.
+        @type mindiff  timedelta
+        """
+        super(RoundCountScoreing, self).__init__(cache)
+        self._course = course
+        self._mindiff = mindiff
+
+        # list of all controls which have sistations
+        self._controllist = self._course.controllist()
+
+    def validate(self, run):
+
+        try:
+            return self._from_cache(self.validate, run)
+        except KeyError:
+            pass
+
+        # do basic checks from CourseValidator
+        result = CourseValidator.validate(self, run)
+
+        result['score'] = 0
+        i = 0
+        lastpunch = None
+        punchlist = []
+        for code, punch in result['punchlist']:
+
+            if not code == 'ok':
+                punchlist.append((code, punch))
+                continue
+
+            if (not punch.sistation.control
+                or punch.sistation.control not in self._controllist):
+                punchlist.append(('ignored', punch))
+                continue
+
+            if lastpunch and punch.punchtime - lastpunch < self._mindiff:
+                # additional punch for same round
+                punchlist.append(('additional', punch))
+                continue
+
+            if punch.sistation.control is self._controllist[i]:
+                lastpunch = punch.punchtime
+                i += 1
+                punchlist.append(('ok', punch))
+
+            if i == len(self._controllist):
+                # round completed
+                result['score'] += 1
+                i = 0
+
+        result['punchlist'] = punchlist
+        self._to_cache(self.validate, run, result)
+        return result
+
+    def score(self, run):
+
+        return self.validate(run)
+
 class UnscoreableException(Exception):
     pass
 
