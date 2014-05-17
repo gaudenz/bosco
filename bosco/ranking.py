@@ -128,9 +128,23 @@ class Ranking(object):
         except KeyError:
             raise KeyError('%s not in ranking.' % item)
 
+    @property
+    def member_count(self):
+        if not self._initialized:
+            self.update()
+        return self._member_count
+
+    @property
+    def completed_count(self):
+        if not self._initialized:
+            self.update()
+        return self._completed_count
+
     def _update_ranking_list(self):
         # Create list of (score, member) tuples and sort by score
         self._ranking_list = []
+        self._member_count = 0
+        self._completed_count = 0
 
         # convert to a list for counting as it may either be
         # a strom result set or a real list
@@ -150,6 +164,10 @@ class Ranking(object):
                 print_exc(file=sys.stderr)
                 continue
                 
+            self._member_count += 1
+            if valid['status'] != Validator.NOT_COMPLETED:
+                self._completed_count += 1
+
             self._ranking_list.append({'scoreing': score,
                                        'validation': valid,
                                        'item': m})
