@@ -574,11 +574,11 @@ class Validator(CachingObject):
     # This also defines to sorting order of these states in the
     # ranking.
     OK               = 1 # valid run
-    NOT_COMPLETED    = 2 # run not yet completed but started
+    NOT_COMPLETED    = 2 # run not yet completed
     MISSING_CONTROLS = 3 # missing one or more obligatory controls
     DID_NOT_FINISH   = 4 # runner did not finish (but run is complete)
     DISQUALIFIED     = 5 # disqualified for regulatory reasons
-    DID_NOT_START    = 6 # runner / team did not (yet) start
+    DID_NOT_START    = 6 # runner / team did not start
 
     def validate(self, obj):
         """Returns OK for every object. Override in subclasses for more meaningfull

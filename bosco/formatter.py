@@ -40,7 +40,7 @@ class AbstractFormatter(object):
                         Validator.MISSING_CONTROLS : 'missing controls',
                         Validator.DID_NOT_FINISH   : 'did not finish',
                         Validator.DISQUALIFIED     : 'disqualified',
-                        Validator.DID_NOT_START    : 'did not (yet) start'}
+                        Validator.DID_NOT_START    : 'did not start'}
 
 class AbstractRankingFormatter(AbstractFormatter):
     """Formats a ranking. str(rankingRormatter) returns the formatted ranking."""
@@ -92,7 +92,7 @@ class AbstractSOLVRankingFormatter(AbstractRankingFormatter):
                         Validator.MISSING_CONTROLS : 'fehl',
                         Validator.DID_NOT_FINISH   : 'aufg',
                         Validator.DISQUALIFIED     : 'disq',
-                        Validator.DID_NOT_START    : 'gest'}
+                        Validator.DID_NOT_START    : 'n. gest'}
 
     def __init__(self, ranking, reftime, encoding = 'utf-8',
                  lineterminator = '\n'):
