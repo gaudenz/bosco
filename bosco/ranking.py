@@ -131,6 +131,13 @@ class Ranking(object):
     def _update_ranking_list(self):
         # Create list of (score, member) tuples and sort by score
         self._ranking_list = []
+
+        # convert to a list for counting as it may either be
+        # a strom result set or a real list
+        if not len(list(self.rankable.members)) > 0:
+            # stop if rankable has no members
+            return
+
         for m in self.rankable.members:
             try:
                 score = self._event.score(m, self._scoreing_class, self.scoreing_args)
