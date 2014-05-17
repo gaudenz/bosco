@@ -73,6 +73,9 @@ class Event(object):
         self._template['html'] = html_template
         self._store = store
 
+        # add list of rankings to header
+        self._header['rankings'] = [ r[0] for r in self.list_rankings() ]
+
     @staticmethod
     def _var_key(var):
         """recursively make a hashable key out of a variable"""
@@ -310,10 +313,11 @@ class RelayEvent(Event):
         @see:        Event for other arguments
         """
 
+        # assign legs first as this is needed to list all rankings in Event.__init__
+        self._legs = legs
+
         Event.__init__(self, header, extra_rankings, template_dir, print_template,
                        html_template, cache, store)
-
-        self._legs = legs
 
         # create dict of starttimes with course codes as key
         # used for easier access to the starttimes
