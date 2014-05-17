@@ -937,8 +937,8 @@ class RelayScoreing(AbstractRelayScoreing):
         for i,l in enumerate(self._legs):
             default = l['defaulttime']
 
-            if runs[i] is not None:
-                # We have a run
+            if runs[i] is not None and self._event.validate(runs[i])['status'] == Validator.OK:
+                # We have a valid run
                 legscore = self._event.score(runs[i])['score']
                 if default is None or  legscore < default:
                     time += legscore
