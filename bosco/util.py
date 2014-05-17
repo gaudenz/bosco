@@ -63,9 +63,9 @@ class RankingOptionParser(OptionParser):
 
         if options.rankings:
             ranking_codes = options.rankings.split(',')
-            ranking_list = [ r for (desc,r) in self._event.list_rankings() if desc in ranking_codes ]
+            ranking_list = [ (desc,r) for desc, r in self._event.list_rankings() if desc in ranking_codes ]
         else:
-            ranking_list = [ r for (desc,r) in self._event.list_rankings() ]
+            ranking_list = self._event.list_rankings()
 
         return (options, args, ranking_list)
 

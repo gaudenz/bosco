@@ -49,7 +49,7 @@ if __name__ == '__main__':
         print "No ranking selected. Aborting."
         sys.exit(1)
 
-    for r in ranking_list:
+    for dec, r in ranking_list:
         f.write(str(modes[type(r.rankable)]([r], conf.starttime, options.encoding)))
 
     f.close()

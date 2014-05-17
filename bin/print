@@ -43,7 +43,7 @@ if __name__ == '__main__':
     tempdir = mkdtemp()
     f = open(os.path.join(tempdir, 'print.tex'), 'wb')
 
-    f.write(unicode(conf.event.format_ranking(ranking_list, type='print')).encode('utf-8'))
+    f.write(unicode(conf.event.format_ranking([r for desc, r in ranking_list], type='print')).encode('utf-8'))
 
     f.close()
 
