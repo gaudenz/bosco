@@ -160,7 +160,7 @@ class RunTest(BoscoTest):
     def test_ranking_course(self):
         """Test the correct ranking of runs in a course."""
 
-        ranking = list(Event({}).ranking(self._course))
+        ranking = list(Event({}, store=self._store).ranking(self._course))
         self.assertEquals(ranking[0]['rank'], 1)
         self.assertEquals(ranking[0]['validation']['status'], Validator.OK)
         self.assertTrue(ranking[0]['item'] == self._runs[0] or ranking[0]['item'] == self._runs[2])
@@ -184,7 +184,7 @@ class RunTest(BoscoTest):
     def test_ranking_category(self):
         """Test the correct ranking of runs in a category."""
 
-        ranking = list(Event({}).ranking(self._cat_ind))
+        ranking = list(Event({}, store=self._store).ranking(self._cat_ind))
         self.assertEquals(ranking[0]['rank'], 1)
         self.assertEquals(ranking[0]['validation']['status'], Validator.OK)
         self.assertTrue(ranking[0]['item'] == self._runners[0] or ranking[0]['item'] == self._runners[2])
@@ -208,7 +208,7 @@ class RunTest(BoscoTest):
     def test_ranking_random_access(self):
         """Test "random access" functions of Ranking"""
         
-        ranking = Event({}).ranking(self._course)
+        ranking = Event({}, store=self._store).ranking(self._course)
 
         self.assertEquals(ranking.rank(self._runs[0]), 1)
         self.assertEquals(ranking.rank(self._runs[2]), 1)
@@ -350,41 +350,49 @@ class RunTest(BoscoTest):
 
     def _prepare_relay_team(self):
         """Prepares the team for relay testing."""
+        # remove individual category
+        for r in self._runners:
+            r.category = None
+        self._store.remove(self._cat_ind)
+
         self._runs[0].manual_start_time = None
         self._runs[1].course = self._store.find(Course, Course.code == u'B').one()
         self._runs[2].course = self._store.find(Course, Course.code == u'C').one()
         
+    def _prepare_relay(self):
+        self._prepare_relay_team()
+        event = RelayEvent({'D135': [{'name': u'1', 'variants': (u'A', ), 'starttime': self._team_start_time, 'defaulttime': None},
+                                     {'name': u'2', 'variants': (u'B', ), 'starttime': datetime(2008,3,19,8,40,00), 'defaulttime': None},
+                                     {'name': u'3', 'variants': (u'C', ), 'starttime': datetime(2008,3,19,8,40,00), 'defaulttime': None}],
+                            },
+                           store=self._store)
+
+        return event
+
     def test_relay_team_validation(self):
         """Test correct validation of a team for a relay event."""
-        starttime = datetime(2008,3,19,8,15,00)
-        event = RelayEvent({'D135': [{'variants': ('A', ), 'starttime': starttime, 'defaulttime': None},
-                                     {'variants': ('B', ), 'starttime': datetime(2008,3,19,8,40,00), 'defaulttime': None},
-                                     {'variants': ('C', ), 'starttime': datetime(2008,3,19,8,40,00), 'defaulttime': None}],
-                            })
-        self._prepare_relay_team()
+        event = self._prepare_relay()
 
         self.assertEquals(Validator.OK, event.validate(self._team)['status'])
 
     def test_relay_team_invalid_run(self):
         """Test validation of a team for a relay event with an invalid run. This team should validate as Validator.MISSING_CONTROLS."""
-        starttime = datetime(2008,3,19,8,15,00)
-        event = RelayEvent({'D135': [{'variants': ('A', ), 'starttime': starttime, 'defaulttime': None},
-                                     {'variants': ('B', ), 'starttime': datetime(2008,3,19,8,40,00), 'defaulttime': None},
-                                     {'variants': ('C', ), 'starttime': datetime(2008,3,19,8,40,00), 'defaulttime': None}],
-                            })
-        self._prepare_relay_team()
+        event = self._prepare_relay()
         self._runs[1].override = Validator.MISSING_CONTROLS
 
         self.assertEquals(Validator.MISSING_CONTROLS, event.validate(self._team)['status'])
 
     def test_relay_team_run_non_mandatory(self):
         """Test validation of a team for a relay event with an invalid or missing run, which is not mandatory. This team should validate as Validator.OK."""
-        starttime = datetime(2008,3,19,8,15,00)
-        event = RelayEvent({'D135': [{'variants': ('A', ), 'starttime': starttime, 'defaulttime': timedelta(minutes=5)},
-                                     {'variants': ('B', ), 'starttime': datetime(2008,3,19,8,40,00), 'defaulttime': None},
-                                     {'variants': ('C', ), 'starttime': datetime(2008,3,19,8,40,00), 'defaulttime': None}],
-                            })
         self._prepare_relay_team()
+
+        # modified event setup, can't change legs after init
+        event = RelayEvent({'D135': [{'name': u'1', 'variants': (u'A', ), 'starttime': self._team_start_time, 'defaulttime': timedelta(minutes=5)},
+                                     {'name': u'2', 'variants': (u'B', ), 'starttime': datetime(2008,3,19,8,40,00), 'defaulttime': None},
+                                     {'name': u'3', 'variants': (u'C', ), 'starttime': datetime(2008,3,19,8,40,00), 'defaulttime': None}],
+                            },
+                           store = self._store,
+                           )
 
         self._runs[0].override = Validator.MISSING_CONTROLS
         self.assertEquals(Validator.OK, event.validate(self._team)['status'])
@@ -394,12 +402,7 @@ class RunTest(BoscoTest):
     
     def test_realy_team_unfinished(self):
         """Test validation of a team for a relay event which has not yet finished all legs. This team should validate as Validator.NOT_COMPLETED."""
-        starttime = datetime(2008,3,19,8,15,00)
-        event = RelayEvent({'D135': [{'variants': ('A', ), 'starttime': starttime, 'defaulttime': None},
-                                     {'variants': ('B', ), 'starttime': datetime(2008,3,19,8,40,00), 'defaulttime': None},
-                                     {'variants': ('C', ), 'starttime': datetime(2008,3,19,8,40,00), 'defaulttime': None}],
-                            })
-        self._prepare_relay_team()
+        event = self._prepare_relay()
         self._runs[2].complete = False
         self._runs[2].card_finish_time = None
         
@@ -407,12 +410,7 @@ class RunTest(BoscoTest):
     
     def test_relay_team_wrong_order(self):
         """Test validation of a team for a relay event which has run in the wrong order. This team should validate as Validator.DISQUALIFIED."""
-        starttime = datetime(2008,3,19,8,15,00)
-        event = RelayEvent({'D135': [{'variants': ('A', ), 'starttime': starttime, 'defaulttime': None},
-                                     {'variants': ('B', ), 'starttime': datetime(2008,3,19,8,40,00), 'defaulttime': None},
-                                     {'variants': ('C', ), 'starttime': datetime(2008,3,19,8,40,00), 'defaulttime': None}],
-                            })
-        self._prepare_relay_team()
+        event = self._prepare_relay()
         self._runs[0].course = self._store.find(Course, Course.code == u'B').one()
         self._runs[1].course = self._store.find(Course, Course.code == u'A').one()
         
@@ -420,68 +418,59 @@ class RunTest(BoscoTest):
     
     def test_relay_team_dnf(self):
         """Test validation of a team for a relay event which did not finish the relay. This team should validate as Validator.DID_NOT_FINISH."""
-        starttime = datetime(2008,3,19,8,15,00)
-        event = RelayEvent({'D135': [{'variants': ('A', ), 'starttime': starttime, 'defaulttime': None},
-                                     {'variants': ('B', ), 'starttime': datetime(2008,3,19,8,40,00), 'defaulttime': None},
-                                     {'variants': ('C', ), 'starttime': datetime(2008,3,19,8,40,00), 'defaulttime': None}],
-                            })
-        self._prepare_relay_team()
+        event = self._prepare_relay()
         self._runs[2].card_finish_time = None
         
         self.assertEquals(Validator.DID_NOT_FINISH, event.validate(self._team)['status'])
 
     def test_relay_team_score(self):
         """Test correct scoreing of a relay team."""
-        starttime = datetime(2008,3,19,8,15,00)
-        event = RelayEvent({'D135': [{'variants': ('A', ), 'starttime': starttime, 'defaulttime': None},
-                                     {'variants': ('B', ), 'starttime': datetime(2008,3,19,8,40,00), 'defaulttime': None},
-                                     {'variants': ('C', ), 'starttime': datetime(2008,3,19,8,40,00), 'defaulttime': None}],
-                            })
-        self._prepare_relay_team()
+        event = self._prepare_relay()
         
-        self.assertEquals(event.score(self._team)['score'], datetime(2008,3,19,8,36,25)-starttime)
+        self.assertEquals(event.score(self._team)['score'], self._team_time)
 
     def test_relay_team_starttime(self):
         """Test correct scoreing of a relay team with finish time of first runner after starttime of second leg, finish time of second runner before starttime of third leg."""
-        starttime = datetime(2008,3,19,8,15,00)
-        event = RelayEvent({'D135': [{'variants': ('A', ), 'starttime': starttime, 'defaulttime': None},
-                                     {'variants': ('B', ), 'starttime': datetime(2008,3,19,8,24,00), 'defaulttime': None},
-                                     {'variants': ('C', ), 'starttime': datetime(2008,3,19,8,31,24), 'defaulttime': None}],
-                            })
         self._prepare_relay_team()
 
-        self.assertEquals(event.score(self._team)['score'], datetime(2008,3,19,8,36,25)-starttime + timedelta(minutes=1, seconds=35))
+        # modified event setup, can't change legs after init
+        event = RelayEvent({'D135': [{'name': u'1', 'variants': (u'A', ), 'starttime': self._team_start_time, 'defaulttime': None},
+                                     {'name': u'2', 'variants': (u'B', ), 'starttime': datetime(2008,3,19,8,24,00), 'defaulttime': None},
+                                     {'name': u'3', 'variants': (u'C', ), 'starttime': datetime(2008,3,19,8,31,24), 'defaulttime': None}],
+                            },
+                           store = self._store,
+                           )
+
+        self.assertEquals(event.score(self._team)['score'], self._team_time + timedelta(minutes=1, seconds=35))
         
     def test_relay_team_defaulttime(self):
         """Test correct scoreing of a relay team with defaulttime for a missing, invalid or very long run."""
-        starttime = datetime(2008,3,19,8,15,00)
-        event = RelayEvent({'D135': [{'variants': ('A', ), 'starttime': starttime, 'defaulttime': timedelta(minutes=5)},
-                                     {'variants': ('B', ), 'starttime': datetime(2008,3,19,8,19,00), 'defaulttime': timedelta(minutes=13)},
-                                     {'variants': ('C', ), 'starttime': datetime(2008,3,19,8,40,00), 'defaulttime': timedelta(minutes=13)}],
-                            })
         self._prepare_relay_team()
 
+        # modified event setup, can't change legs after init
+        event = RelayEvent({'D135': [{'name': u'1', 'variants': (u'A', ), 'starttime': self._team_start_time, 'defaulttime': timedelta(minutes=5)},
+                                     {'name': u'2', 'variants': (u'B', ), 'starttime': datetime(2008,3,19,8,19,00), 'defaulttime': timedelta(minutes=13)},
+                                     {'name': u'3', 'variants': (u'C', ), 'starttime': datetime(2008,3,19,8,40,00), 'defaulttime': timedelta(minutes=13)}],
+                            },
+                           store = self._store,
+                           )
+
         # runner 1 runs longer than the default time
-        self.assertEquals(event.score(self._team)['score'], datetime(2008,3,19,8,36,25)-starttime + timedelta(minutes=1))
+        self.assertEquals(event.score(self._team)['score'], self._team_time + timedelta(minutes=1))
 
         # runner 2 has an invalid run
         self._runs[1].override = Validator.MISSING_CONTROLS
-        self.assertEquals(event.score(self._team)['score'], datetime(2008,3,19,8,36,25)-starttime + timedelta(minutes=1, seconds=37))
+        self.assertEquals(event.score(self._team)['score'], self._team_time + timedelta(minutes=1, seconds=37))
         self._runs[1].override = None
         
         # remove runner 1
         self._team.members.remove(self._runners[0])
-        self.assertEquals(event.score(self._team)['score'], datetime(2008,3,19,8,36,25)-starttime + timedelta(minutes=1))
+        self.assertEquals(event.score(self._team)['score'], self._team_time + timedelta(minutes=1))
         
 
     def test_relay_team_unscoreable(self):
         """Test that a relay team with missing runs is not scoreable (score = 0) if there is no defaulttime."""
-        starttime = datetime(2008,3,19,8,15,00)
-        event = RelayEvent({'D135': [{'variants': ('A', ), 'starttime': starttime, 'defaulttime': timedelta(minutes=5)},
-                                     {'variants': ('B', ), 'starttime': datetime(2008,3,19,8,19,00), 'defaulttime': timedelta(minutes=13)},
-                                     {'variants': ('C', ), 'starttime': datetime(2008,3,19,8,40,00), 'defaulttime': None}],
-                            })
-        self._prepare_relay_team()
+        event = self._prepare_relay()
 
         self._team.members.remove(self._runners[2])
         self.assertEquals(event.score(self._team)['score'], timedelta(0))

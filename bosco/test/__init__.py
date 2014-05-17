@@ -92,6 +92,11 @@ class BoscoTest(unittest.TestCase):
         self._team.members.add(self._runners[0])
         self._team.members.add(self._runners[1])
         self._team.members.add(self._runners[2])
+
+        # some times we use in several places
+        self._team_start_time = datetime(2008,3,19,8,15,00)
+        self._team_finish_time = datetime(2008,3,19,8,36,25)
+        self._team_time = self._team_finish_time - self._team_start_time
         
         # Create a runs
         self._runs = []
