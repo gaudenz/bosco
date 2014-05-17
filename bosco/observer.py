@@ -177,7 +177,7 @@ class TriggerEventObserver(EventObserver):
                          connections but it resets all uncommited changes.
         """
         EventObserver.__init__(self, store, interval, rollback)
-        self._last = datetime.now()
+        self._last = datetime.utcnow()
         
     def observe(self):
         """Does the actual observation."""
