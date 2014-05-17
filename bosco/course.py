@@ -25,7 +25,7 @@ from storm.locals import *
 
 from datetime import timedelta
 
-from ranking import Rankable
+from ranking import Rankable, ValidationError, UnscoreableException
 from base import MyStorm
 
 class SIStation(Storm):
@@ -155,7 +155,7 @@ class Course(MyStorm, BaseCourse):
     sequence = ReferenceSet(id, 'ControlSequence._course_id',
                             order_by=ControlSequence.sequence_number)
 
-    def __init__(self, code, length = None, climb = None):
+    def __init__(self, code, length = None, climb = None, validator=None, scoreing=None):
         """
         @param code:          Descriptive code for this course. Usually 3 characters long. For
                               'normal' events this corresponds to the category name.
@@ -169,6 +169,8 @@ class Course(MyStorm, BaseCourse):
         self.code = code
         self.length = length
         self.climb = climb
+        self._validator = validator
+        self._scoreing = scoreing
 
     def __max_index(self):
         max = 0
@@ -236,12 +238,35 @@ class Course(MyStorm, BaseCourse):
                  self.controls
                  if (c.sistations.count() > 0 and
                      c.override is not True) ]
-    
+
+    def validate(self, run):
+        """Validate a run according to this course.
+        @param run: Run to be validated.
+        @return:    Validation status
+        @see:       bosco.ranking.Validator
+        """
+        if self._validator is not None:
+            return self._validator.validate(run)
+        else:
+            raise ValidationError("Can't validate a run without a validation strategy.")
+
+    def score(self, run):
+        """Score a run according to this course.
+        @param run: Run to be scored.
+        @return:    Scoreing result
+        @see:       bosco.ranking.AbstractScoreing
+        """
+        if self._scoreing is not None:
+            return self._scoreing.score(run)
+        else:
+            raise UnscoreableException("Can't score a run without a scoreing strategy.")
+
     def __str__(self):
         return unicode(self).encode('utf-8')
     
     def __unicode__(self):
         return self.code
+
 
 class CombinedCourse(BaseCourse):
     """

@@ -330,9 +330,20 @@ class RelayEvent(Event):
                         raise EventException('Multiple legs with the same course are not supported in RelayEvent!')
                     self._starttimes[cat][c] = l['starttime']
         
+                    # set validation and scoreing strategies
+                    # TODO: This is a temporary workaround until everything is adapted to "new-style" validation
+                    course = self._store.find(Course, Course.code == c).one()
+                    course._validator = SequenceCourseValidator(course, cache=cache)
+                    course._scoreing = TimeScoreing(starttime_strategy=RelayMassstartStarttime(l['starttime'], cache=cache))
+
     def validate(self, obj, validator_class = None, args = None):
 
         from runner import Team
+        from run import Run
+
+        # use new style validation for runs
+        if type(obj) == Run:
+            return obj.validate(validator_class, args)
 
         if args is None:
             args = {}
@@ -361,6 +372,10 @@ class RelayEvent(Event):
 
         from runner import Team
         from run import Run
+
+        # use new style scoreing for runs
+        if type(obj) == Run:
+            return obj.score(scoreing_class, args)
 
         if args is None:
             args = {}

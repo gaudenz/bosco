@@ -31,7 +31,7 @@ import re
 from base import MyStorm
 from course import SIStation, Course, Control
 from runner import SICard
-from ranking import RankableItem
+from ranking import RankableItem, ValidationError, UnscoreableException
 
 class Punch(Storm):
     __storm_table__ = 'punch'
@@ -236,6 +236,39 @@ class Run(MyStorm, RankableItem):
         sorted = copy(punchsequence)
         sorted.sort()
         return punchsequence == sorted
+
+    def validate(self, validator_class=None, args=None):
+        """Validate this run. Validation of runs is normally refered to the course, but
+        passing a special validator class is supported.
+        @param validator_class: Class to use as a validation strategy. This must be a subclass
+                                of bosco.ranking.Validator
+        @param args:            Arguments to pass to the validation strategy.
+        @type args:             dict of keyword arguments
+        @return:                validation result from validation_class.validate(obj)
+        @see:                   bosco.ranking.Validator for more information about validation strategies
+        """
+        if validator_class is not None:
+            return validator_class(**args).validate(self)
+        elif self.course is None:
+            raise ValidationError("Can't validate a run without a course.")
+        else:
+            return self.course.validate(self)
+
+    def score(self, scoreing_class=None, args=None):
+        """Score this run. Scoreing of runs is normally refered to the course, but
+        passing a special scoreing class is supported.
+        @param scoreing_class: Class to use a scoreing stratey. This must be a subclass
+                               of bosco.ranking.AbstracScoreing.
+        @type args:            dict of keyword arguments
+        @return:               scoreing result from scoreing_class.score(obj)
+        @see:                  bosco.ranking.AbstractScoreing for more information about scoreing strategies
+        """
+        if scoreing_class is not None:
+            return scoreing_class(**args).score(self)
+        elif self.course is None:
+            raise UnscoreableException("Can't score a run without a course")
+        else:
+            return self.course.score(self)
 
 class RunException(Exception):
     pass
