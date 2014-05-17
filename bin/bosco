@@ -299,12 +299,14 @@ class RunEditorFrame(wx.Frame):
         except SIReaderException, msg:
             self.ErrorDialog(str(msg), 'Error communicating to the SI-Reader')
         
-    def update(self, observable, event):
+    def update(self, observable, event, message=None):
         
         if type(observable) == RunEditor and event == 'reader':
             self.statusbar.SetStatusText(observable.status, 0)
             self.statusbar.SetStatusText(observable.port, 1)
             wx.Yield()
+        elif event == 'error':
+            self.ErrorDialog(str(message), 'Error')
 
     def Quit(self, event): # wxGlade: RunEditorFrame.<event_handler>
         self.Close(True)
@@ -459,7 +461,7 @@ class TeamPanel(EditingPanel):
         sizer_20.Fit(self)
         # end wxGlade
 
-    def update(self, observable, event):
+    def update(self, observable, event, message=None):
         busy = wx.BusyCursor()
 
         try:
@@ -1000,7 +1002,7 @@ class EditRunPanel(RunPanel):
         index = event.m_itemIndex
         self.editor.load(self.searchresults.GetItemData(index))
 
-    def update(self, observable, event):
+    def update(self, observable, event, message=None):
         
         def update_runfinder():
             if self.finder is not None:
@@ -1239,7 +1241,7 @@ class ReadoutRunPanel(RunPanel):
         sizer_3.Fit(self)
         # end wxGlade
 
-    def update(self, observable, event):
+    def update(self, observable, event, message=None):
         
         try:
             busy = wx.BusyCursor()
@@ -1282,7 +1284,7 @@ class ReadoutRunPanel(RunPanel):
                 self.progress_bar.SetValue(p[0])
                 self.progress_text.SetLabel(p[1])
                 wx.Yield()
-            
+
         finally:
             # Enable Event handling after updating
             self.SetEvtHandlerEnabled(True)

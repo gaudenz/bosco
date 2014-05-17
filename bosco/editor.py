@@ -16,10 +16,12 @@
 """
 editor.py - High level editing classes.
 """
+import sys
 
 from datetime import datetime, date
 from time import sleep
 from subprocess import Popen, PIPE
+from traceback import print_exc
 
 from storm.exceptions import NotOneError, LostObjectError
 from storm.expr import Func
@@ -46,9 +48,9 @@ class Observable(object):
         except ValueError:
             pass
 
-    def _notify_observers(self, event = None):
+    def _notify_observers(self, event = None, message = None):
         for o in self._observers:
-            o.update(self, event)
+            o.update(self, event, message)
 
 class RunFinderException(Exception):
     pass
@@ -744,8 +746,19 @@ class RunEditor(Observable):
         
     def commit(self):
         """Commit changes to the database."""
-        self._store.commit()
-        self._clear_cache()
+        try:
+            self._store.commit()
+            # some errors (notably LostObjectError) only occur when the object
+            # is accessed again, clear cache triggers these
+            self._clear_cache()
+        except LostObjectError, e:
+            # run got removed during the transaction
+            self._run = None
+            self._notify_observers('error', str(e))
+        except Exception, e:
+            print_exc(file=sys.stderr)
+            self._notify_observers('error', str(e))
+
         self._notify_observers('run')
 
     def rollback(self):
