@@ -23,7 +23,7 @@ from shutil import move, rmtree, copy
 from subprocess import call
 import os, sys
 
-from bosco.util import load_config, RankingOptionParser
+from bosco.util import load_config, RankingFileOptionParser
 from bosco.course import Course
 from bosco.formatter import MakoRankingFormatter
 from bosco.run import Run
@@ -35,9 +35,9 @@ if __name__ == '__main__':
     conf = load_config()
 
     # Read program options
-    opt = RankingOptionParser(usage = 'usage: %prog [options] [outfile]', 
-                              description = 'Produces ranking as a PDF file suitable for printing.',
-                              event = conf.event)
+    opt = RankingFileOptionParser(usage = 'usage: %prog [options] [outfile]',
+                                  description = 'Produces ranking as a PDF file suitable for printing.',
+                                  event = conf.event)
     (options, args, ranking_list, outfile) = opt.parse_args()
 
     tempdir = mkdtemp()

@@ -67,6 +67,15 @@ class RankingOptionParser(OptionParser):
         else:
             ranking_list = [ r for (desc,r) in self._event.list_rankings() ]
 
+        return (options, args, ranking_list)
+
+
+class RankingFileOptionParser(RankingOptionParser):
+
+    def parse_args(self):
+
+        (options, args, ranking_list) = RankingOptionParser.parse_args(self)
+
         # process file arguments
         if len(args) > 1:
             print "Can't write to more than one file!"

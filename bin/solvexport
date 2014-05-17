@@ -20,7 +20,7 @@ solvexport - Export rankings for all courses in the SOLV ranking format
 
 import sys
 
-from bosco.util import load_config, RankingOptionParser
+from bosco.util import load_config, RankingFileOptionParser
 from bosco.course import Course, CombinedCourse
 from bosco.runner import Category
 from bosco.formatter import CategorySOLVRankingFormatter, CourseSOLVRankingFormatter, RoundCountRankingFormatter, RelayCategorySOLVRankingFormatter
@@ -37,9 +37,9 @@ if __name__ == '__main__':
     conf = load_config()
 
     # Read program options
-    opt = RankingOptionParser(usage = 'usage: %prog [options] [outfile]', 
-                              description = 'Produces a CSV file suitable for uploading to the SOLV Website.',
-                              event = conf.event)
+    opt = RankingFileOptionParser(usage = 'usage: %prog [options] [outfile]',
+                                  description = 'Produces a CSV file suitable for uploading to the SOLV Website.',
+                                  event = conf.event)
     opt.add_option('-e', '--encoding', action='store', default='iso-8859-1',
                    help='Output encoding. This defaults to iso-8859-1 because the SOLV website is unable to handle more modern encodings.')
 
