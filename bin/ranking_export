@@ -1,0 +1,111 @@
+#!/usr/bin/env python
+#
+#    Copyright (C) 2014  Gaudenz Steinlin <gaudenz@soziologie.ch>
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+"""
+ranking_export - Export rankings as individual files
+"""
+
+import sys
+from mako.lookup import TemplateLookup
+from os import path
+from pkg_resources import resource_filename
+from datetime import datetime
+from subprocess import call
+
+from bosco.observer import TriggerEventObserver
+from bosco.util import load_config, RankingOptionParser
+
+class RankingExporter(object):
+
+    def __init__(self, event, ranking_list, outdir, encoding, sync_command=None, observer=None):
+
+        self._event = event
+        self._ranking_list = ranking_list
+        self._outdir = outdir
+        self._encoding = encoding
+        self._sync_command = sync_command
+        if observer:
+            # register for changes in the ranked rankables
+            for rankable in set([r[1].rankable for r in ranking_list]):
+                observer.register(self, rankable)
+
+            # wire up cache clearing
+            conf.cache.set_observer(observer)
+
+    def update(self, event=None):
+        start = datetime.now()
+        print "%s: Ranking update ..." % start.strftime('%F %T'),
+        sys.stdout.flush()
+        completed = {}
+#        import ipdb; ipdb.set_trace()
+        for desc, r in self._ranking_list:
+            html = unicode(self._event.format_ranking([r])).encode(self._encoding)
+            open(path.join(self._outdir, desc.lower().replace(' ', '_') + '.html'), 'wb').write(html)
+            completed[desc] = (r.completed_count, r.member_count)
+
+        # Build index page
+        lookup = TemplateLookup(directories=[resource_filename('bosco', self._event._template_dir)])
+        template = lookup.get_template('index.html')
+
+        html = unicode(template.render_unicode(header = self._event._header, completed = completed)).encode(self._encoding)
+        open(path.join(outdir, 'index.html'), 'wb').write(html)
+        print "%.2fs done." % (datetime.now() - start).total_seconds()
+        sys.stdout.flush()
+        start = datetime.now()
+
+        if self._sync_command:
+            print "%s: Running sync command ..." % start.strftime('%F %T'),
+            sys.stdout.flush()
+            if call(self._sync_command, shell=True) == 0:
+                print "%.2fs done." % (datetime.now() - start).total_seconds()
+            else:
+                print "%.2fs failed." % (datetime.now() - start).total_seconds()
+
+
+if __name__ == '__main__':
+
+    # load configuration
+    conf = load_config()
+
+    # Read program options
+    opt = RankingOptionParser(usage = 'usage: %prog [options] [outdir]', 
+                              description = 'Exports HTML rankings to outdir',
+                              event = conf.event)
+    opt.add_option('-e', '--encoding', action='store', default='utf-8',
+                   help='Output encoding. This defaults to utf-8')
+    opt.add_option('-s', '--sync-command', action='store', default=None,
+                   help='Command to execute after each update to the rankings.')
+    opt.add_option('-i', '--interval', action='store', type='int', default=60,
+                   help='Time between two checks for database updates.')
+    (options, args, ranking_list) = opt.parse_args()
+
+    if len(ranking_list) == 0:
+        print "No ranking selected. Aborting."
+        sys.exit(1)
+
+    if len(args) > 1:
+        print "Can't export to more than one directory."
+        sys.exit(1)
+    elif len(args) == 0:
+        outdir = ''
+    else:
+        outdir = args[0]
+
+    observer = TriggerEventObserver(conf.store, interval=options.interval, rollback=True)
+    exporter = RankingExporter(conf.event, ranking_list, outdir, options.encoding, options.sync_command, observer)
+
+    # create intial export
+    exporter.update()
