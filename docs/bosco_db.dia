@@ -4358,9 +4358,9 @@ CREATE LANGUAGE plpgsql;#</dia:string>
             <dia:string>#CREATE OR REPLACE FUNCTION change_trigger() RETURNS TRIGGER AS $change_trigger$
 BEGIN
   IF (TG_OP = 'DELETE') THEN
-    INSERT INTO log VALUES (TG_TABLE_NAME, NOW(), OLD.id);
+    INSERT INTO log VALUES (TG_TABLE_NAME, clock_timestamp(), OLD.id);
   ELSE
-    INSERT INTO log VALUES (TG_TABLE_NAME, NOW(), NEW.id);
+    INSERT INTO log VALUES (TG_TABLE_NAME, clock_timestamp(), NEW.id);
   END IF;
   RETURN NULL;
 END;
