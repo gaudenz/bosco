@@ -154,12 +154,16 @@ class Ranking(object):
 
         for m in self.rankable.members:
             try:
-                score = self._event.score(m, self._scoreing_class, self.scoreing_args)
+                # copy arguments as they might get modified
+                args = None if self.scoreing_args is None else self.scoreing_args.copy()
+                score = self._event.score(m, self._scoreing_class, args)
             except UnscoreableException:
                 score = {'score': timedelta(0)}
                 
             try:
-                valid = self._event.validate(m, self._validator_class, self.validator_args)
+                # copy arguments as they might get modified
+                args = None if self.validator_args is None else self.validator_args.copy()
+                valid = self._event.validate(m, self._validator_class, args)
             except ValidationError:
                 print_exc(file=sys.stderr)
                 continue
