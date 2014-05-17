@@ -89,7 +89,7 @@ if __name__ == '__main__':
     opt.add_option('-s', '--sync-command', action='store', default=None,
                    help='Command to execute after each update to the rankings.')
     opt.add_option('-i', '--interval', action='store', type='int', default=60,
-                   help='Time between two checks for database updates.')
+                   help='Time in seconds between two checks for database updates.')
     (options, args, ranking_list) = opt.parse_args()
 
     if len(ranking_list) == 0:
