@@ -1,0 +1,188 @@
+# -*- coding: utf-8 -*-
+<%!
+from bosco.runner import Runner, Team, Category
+from bosco.course import BaseCourse
+from bosco.run import Run
+from bosco.ranking import OpenRuns, Validator, Relay24hScore
+blocks_de = {'start' :'Start',
+             'night' :'Nacht',
+             'day'   :'Tag',
+             'finish':'Ziel'}
+%>
+
+<%inherit file="base.html"/>
+
+      <div class="row">
+        <div class="col-xs-4">
+          <p class="text-left"><strong>${header['organiser']}</strong></p>
+        </div>
+        <div class="col-xs-4">
+          <p class="text-center"><strong>${header['map']}</strong></p>
+        </div>
+        <div class="col-xs-4">
+          <p class="pull-right"><strong>${header['place']}, ${header['date']}</strong></p>
+        </div>
+      </div>
+      <p class="pull-right text-muted text-right">Letzte Aktualisierung:<br/>${now}</p>
+
+%for ranking in rankings:
+    <% ranking.update() %>
+    <h3>
+    %if type(ranking.rankable) == OpenRuns:
+      Vorwarnung<small>Läufer beim letzten Posten</small>
+    %else:
+      ${ranking.rankable}
+      %if type(ranking.scoreing_args) == dict and 'legs' in ranking.scoreing_args:
+      nach ${ranking.scoreing_args['legs']} Strecken
+      <small>${ranking.completed_count}/${ranking.member_count}</small>
+      %endif
+      %if isinstance(ranking.rankable, BaseCourse):
+      <small>${ranking.rankable.length/1000.0}km, ${ranking.rankable.climb}m, ${ranking.rankable.controlcount()} Po., 
+        ${ranking.completed_count}/${ranking.member_count}</small>
+      %endif
+    %endif
+      </h3>
+
+      <table class="table table-condensed table-striped">
+        <thead>
+          <tr>
+            %if type(ranking.rankable) == OpenRuns:
+            <th>Team</th>
+            <th>Start Nr.</th>
+            <th>Läufer</th>
+            <th>Zeit</th>
+            %elif type(ranking.rankable) == Category and type(ranking[0]['item']) == Team:
+            <th>#</th>
+            <th>Team</th>
+            <th>Start Nr.</th>
+            <th colspan="2">Zeit</th>
+            %elif isinstance(ranking.rankable, (BaseCourse, Category)):
+            <th>#</th>
+            <th>Läufer</th>
+            <th>Jg.</th>
+            <th>Nummer</th>
+            <th>Team</th>
+            <th colspan="2">Zeit</th>
+            %endif
+          </tr>
+        </thead>
+        <tbody>
+          % for r in ranking:
+            %if type(ranking.rankable) == OpenRuns:
+            ${warning(r)}
+            %elif type(r['item']) == Team:
+            ${team(r)}
+            %elif type(r['item']) == Run:
+            ${run(r)}
+            %elif type(r['item']) == Runner:
+            ${runner(r)}
+            %endif
+          % endfor
+        </tbody>
+      </table>
+
+%endfor
+
+<%def name="team(r)">
+<tr>
+    <td>${r['rank'] and ('%i.' % r['rank']) or ''}</td>
+    <td>${r['item']}</td>
+    <td>${r['item'].number or ''}</td>
+    %if r['rank']:
+    <td>${r['scoreing']['score']}</td>
+    <td>+${r['scoreing']['behind']}</td>
+    %else:
+    <td colspan="2">${validation_codes[r['validation']['status']]}</td>
+    %endif
+</tr>
+<tr>
+  <td>&nbsp;</td>
+  <td colspan="4">
+    <table class="table table-condensed table-team-detail">
+      <tr>
+        %for i,leg in enumerate(r['runs']):
+        %if leg:
+        <td class="leg-name">${leg['item']}</td>
+        %if leg['rank']:
+        <td class="leg-score">${leg['scoreing']['score']}</td>
+        <td class="leg-behind">+${leg['scoreing']['behind']}</td>
+        <td class="leg-rank">${leg['rank'] and ('(%i.)' % leg['rank']) or ''}</td>
+        %else:
+        <td colspan="3" class="leg-validation">${validation_codes[leg['validation']['status']]}</td>
+        %endif
+        %else:
+        <td colspan="4" class="leg-empty">&nbsp;</td>
+        %endif
+        <% split = r['splits'][i] %>
+        %if split['rank']:
+        <td class="split-score">${split['scoreing']['score']}</td>
+        <td class="split-behind">+${split['scoreing']['behind']}</td>
+        <td class="split-rank">${split['rank'] and ('(%i.)' % split['rank']) or ''}</td>
+        %else:
+        <td colspan="3" class="split-validation">${validation_codes[split['validation']['status']]}</td>
+        %endif
+        %if i%2 == 1 or i%2 == 0:
+        </tr><tr>
+        %endif
+        %endfor
+      </tr>
+    </table>
+  </td>
+</tr>
+</%def>
+
+<%def name="run(r)">
+<tr>
+    <%
+      runner = r['item'].sicard.runner
+      team = runner and runner.team or None
+    %>
+    <td>${r['rank'] and ('%3i.' % r['rank']) or ''}</td>
+    <td>${r['item']}</td>
+    <td>${runner and runner.dateofbirth and runner.dateofbirth.strftime('%y') or ''}</td>
+    <td>${runner and runner.number or ''}</td>
+    <td>${team and team.name or ''}</td>
+    %if r['rank']:
+    <td>${r['scoreing']['score']}</td>
+    <td>+${r['scoreing']['behind']}</td>
+    %else:
+    <td colspan="2">${validation_codes[r['validation']['status']]}</td>
+    %endif
+</tr>
+</%def>
+
+<%def name="runner(r)">
+<tr>
+    <%
+      runner = r['item']
+      team = runner and runner.team or None
+      if r['rank'] and r['scoreing']['score'] and r['scoreing']['behind']:
+         score = "+ " + unicode(r['scoreing']['behind'])
+      elif r['rank'] and r['scoreing']['score']:
+         score = r['scoreing']['score']
+      else:
+         score = validation_codes[r['validation']['status']]
+    %>
+    <td>${r['rank'] and ('%3i.' % r['rank']) or ''}</td>
+    <td>${r['item']}</td>
+    <td>${runner and runner.dateofbirth and runner.dateofbirth.strftime('%y') or ''}</td>
+    <td>${runner and runner.number or ''}</td>
+    <td>${team and team.name or ''}</td>
+    <td>${score}</td>
+</tr>
+</%def>
+
+<%def name="warning(r)">
+<tr>
+  %if r['validation']['status'] == Validator.OK:
+    <%
+      runner = r['item'].sicard.runner
+      team = runner and runner.team or None
+    %>
+    <td>${team and team.name or ''}</td>
+    <td>${runner and runner.number or ''}</td>
+    <td>${r['item']}</td>
+    <td>${r['scoreing']['score']}</td>
+  %endif
+</tr>
+</%def>
