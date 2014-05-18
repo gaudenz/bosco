@@ -22,7 +22,7 @@ import sys
 from mako.lookup import TemplateLookup
 from os import path
 from pkg_resources import resource_filename
-from datetime import datetime
+from datetime import datetime, timedelta
 from subprocess import call
 
 from bosco.observer import TriggerEventObserver
@@ -30,12 +30,13 @@ from bosco.util import load_config, RankingOptionParser
 
 class RankingExporter(object):
 
-    def __init__(self, event, ranking_list, outdir, encoding, sync_command=None, observer=None):
+    def __init__(self, event, ranking_list, outdir, encoding, interval=None, sync_command=None, observer=None):
 
         self._event = event
         self._ranking_list = ranking_list
         self._outdir = outdir
         self._encoding = encoding
+        self._interval = interval
         self._sync_command = sync_command
         if observer:
             # register for changes in the ranked rankables
@@ -44,8 +45,16 @@ class RankingExporter(object):
 
             # wire up cache clearing
             conf.cache.set_observer(observer)
+        self._last_update = None
 
     def update(self, event=None):
+        if self._last_update and self._interval:
+            time_since_update = datetime.now() - self._last_update
+            if time_since_update < timedelta(seconds=self._interval):
+                print "Skipping update, only %2fs since last update." % time_since_update.total_seconds()
+                sys.stdout.flush()
+                # only update every interval period
+                return
         start = datetime.now()
         print "%s: Ranking update ..." % start.strftime('%F %T'),
         sys.stdout.flush()
@@ -73,6 +82,7 @@ class RankingExporter(object):
                 print "%.2fs done." % (datetime.now() - start).total_seconds()
             else:
                 print "%.2fs failed." % (datetime.now() - start).total_seconds()
+        self._last_update = datetime.now()
 
 
 if __name__ == '__main__':
@@ -105,7 +115,7 @@ if __name__ == '__main__':
         outdir = args[0]
 
     observer = TriggerEventObserver(conf.store, interval=options.interval, rollback=True)
-    exporter = RankingExporter(conf.event, ranking_list, outdir, options.encoding, options.sync_command, observer)
+    exporter = RankingExporter(conf.event, ranking_list, outdir, options.encoding, options.interval, options.sync_command, observer)
 
     # create intial export
     exporter.update()
