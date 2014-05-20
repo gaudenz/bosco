@@ -134,7 +134,10 @@ class AbstractSOLVRankingFormatter(AbstractRankingFormatter):
 
 
 class CourseSOLVRankingFormatter(AbstractSOLVRankingFormatter):
-    
+    """
+    Formatting a course ranking to be uploaded to the SOLV website
+    Format: Rank;Name;Firstname;YearOfBirth;SexMF;FedNr;Zip;Town;Club;NationIOF;Start Nr;eCardNr;RunTime;StartTime;FinishTime;CtrlCode;SplitTime
+    """
     def __str__(self):
 
         output = self._writer()
@@ -150,7 +153,13 @@ class CourseSOLVRankingFormatter(AbstractSOLVRankingFormatter):
                         self._encode(r['item'].sicard.runner.given_name),
                         r['item'].sicard.runner.dateofbirth and r['item'].sicard.runner.dateofbirth.strftime('%y') or '',
                         r['item'].sicard.runner.sex,
-                        r['item'].sicard.runner.team and self._encode(r['item'].sicard.runner.team.name) or '',
+                        '', # FedNR (?)
+                        '', # Zip
+                        '', # Town
+                        r['item'].sicard.runner.team and self._encode(r['item'].sicard.runner.team.name) or '', # Club
+                        '', # NationIOF
+                        '', # Start Nr
+                        '', # eCardNr
                         self._print_score(r),
                         ]
                 try:
