@@ -94,7 +94,7 @@ class AbstractSOLVRankingFormatter(AbstractRankingFormatter):
                         Validator.DISQUALIFIED     : 'disq',
                         Validator.DID_NOT_START    : 'n. gest'}
 
-    def __init__(self, ranking, reftime, encoding = 'utf-8',
+    def __init__(self, ranking, reftime, encoding = 'utf-8', control_replacements = None, control_exclude = None,
                  lineterminator = '\n'):
         """
         @reftime: reference time for the event (usually first starttime)
@@ -102,6 +102,8 @@ class AbstractSOLVRankingFormatter(AbstractRankingFormatter):
         AbstractRankingFormatter.__init__(self, ranking)
         self._reftime = reftime
         self._encoding = encoding
+        self._control_replacements = control_replacements if control_replacements is not None else {}
+        self._control_exclude = control_exclude if control_exclude is not None else ()
         self._lineterminator = lineterminator
 
     def _print_score(self, r):
@@ -112,6 +114,12 @@ class AbstractSOLVRankingFormatter(AbstractRankingFormatter):
 
     def _encode(self, s):
         return unicode(s).encode(self._encoding)
+
+    def _control_code(self, control):
+        try:
+            return self._control_replacements[control.code]
+        except KeyError:
+            return control.code
 
     def _writer(self):
         self._outstr = StringIO()
@@ -156,15 +164,20 @@ class CourseSOLVRankingFormatter(AbstractSOLVRankingFormatter):
                     
                 for status, p in r['validation']['punchlist']:
                     # ignore wrong punches
+                    if status == 'missing' and not p.code in self._control_exclude:
+                        # p is an object of class Control
+                        line.extend([self._encode(self._control_code(p)), ''])
                     if not status == 'ok':
+                        # ignore additional punches
                         continue
                     if (not p.sistation.control is None
-                        and p.sistation.id > SIStation.SPECIAL_MAX):
+                        and p.sistation.id > SIStation.SPECIAL_MAX
+                        and not p.sistation.control.code in self._control_exclude):
                         try:
-                            line.extend([self._encode(p.sistation.control.code),
+                            line.extend([self._encode(self._control_code(p.sistation.control)),
                                          p.punchtime - r['scoreing']['start']])
                         except TypeError:
-                            line.extend([self._encode(p.sistation.control.code),
+                            line.extend([self._encode(self._control_code(p.sistation.control)),
                                          ''])
 
                 output.writerow(line)
