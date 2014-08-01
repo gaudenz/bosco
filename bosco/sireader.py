@@ -24,8 +24,6 @@ from datetime import datetime, timedelta, time
 from binascii import hexlify
 import os, re
 
-from course import SIStation
-
 class SIReader(object):
     """Base protocol functions and constants to interact with SI Stations.
        This class has a lot of Constants defined that are not (yet) used.
