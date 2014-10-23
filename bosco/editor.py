@@ -27,12 +27,13 @@ from storm.exceptions import NotOneError, LostObjectError
 from storm.expr import Func
 from storm.locals import *
 
+from sireader import SIReaderReadout, SIReaderException, SIReader
+
 from runner import Team, Runner, SICard, Category
 from run import Run, Punch, RunException
 from course import Control, SIStation, Course
 from formatter import AbstractFormatter, ReportlabRunFormatter
 from ranking import ValidationError, UnscoreableException, Validator, OpenRuns
-from sireader import SIReaderReadout, SIReaderException, SIReader
 
 class Observable(object):
 

@@ -23,7 +23,8 @@ from time import sleep
 from traceback import print_exc
 import sys
 
-from bosco.sireader import SIReaderControl
+from sireader import SIReaderControl
+
 from bosco.run import Run, RunException
 from bosco.util import load_config
 

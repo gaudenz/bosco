@@ -10,9 +10,10 @@ from wx.lib.scrolledpanel import ScrolledPanel
 from wx.lib.embeddedimage import PyEmbeddedImage
 from datetime import timedelta, datetime
 
+from sireader import SIReaderException, SIReaderTimeout, SIReaderCardChanged
+
 from bosco.util import load_config
 from bosco.editor import RunFinder, RunEditor, TeamEditor, RunEditorException, Reports
-from bosco.sireader import SIReaderException, SIReaderTimeout, SIReaderCardChanged
 
 conf = load_config()
 
