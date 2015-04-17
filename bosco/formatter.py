@@ -113,7 +113,7 @@ class AbstractSOLVRankingFormatter(AbstractRankingFormatter):
             return self.validation_codes[r['validation']['status']]
 
     def _encode(self, s):
-        return unicode(s).encode(self._encoding)
+        return unicode(s).encode(self._encoding, 'xmlcharrefreplace')
 
     def _control_code(self, control):
         try:
