@@ -50,6 +50,6 @@ if __name__ == '__main__':
         sys.exit(1)
 
     for dec, r in ranking_list:
-        f.write(str(modes[type(r.rankable)]([r], conf.starttime, options.encoding)))
+        f.write(str(modes[type(r.rankable)]([r], conf.starttime, options.encoding, conf.control_replacements, conf.control_exclude)))
 
     f.close()

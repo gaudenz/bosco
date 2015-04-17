@@ -631,10 +631,16 @@ class SequenceCourseValidator(CourseValidator):
     @see http://en.wikipedia.org/wiki/Longest_common_subsequence_problem.
     """
 
-    def __init__(self, course, cache = None):
+    def __init__(self, course, reorder = None, cache = None):
 
         CourseValidator.__init__(self, course, cache)
         
+        if reorder is not None:
+            # make reorder a zero based list, this aligns better with list indexes
+            self._reorder = map(lambda x: x-1, reorder)
+        else:
+            self._reorder = None
+
         # list of all controls which have sistations
         self._controllist = self._course.controllist()
 
@@ -771,7 +777,36 @@ class SequenceCourseValidator(CourseValidator):
                 result['status'] = Validator.MISSING_CONTROLS
 
         result['punchlist'] = diff_list
-            
+
+        if self._reorder:
+
+            from run import ShiftedPunch
+
+            # remove any additional punches from the validated punchlist
+            orig_punchlist = [(status, punch) for status, punch in result['punchlist'] if status in ('ok', 'missing')]
+            punchlist = []
+            for i, control_pos in enumerate(self._reorder):
+                # i is zero based, control_pos is 1 based
+                if i == control_pos:
+                    punchlist.append(orig_punchlist[i])
+                elif orig_punchlist[control_pos-1][0] == 'ok' and orig_punchlist[control_pos][0] == 'ok':
+                    # punches are reordered, shifting possible
+                    orig_punch = orig_punchlist[control_pos][1]
+                    orig_punchtime = orig_punch.punchtime
+                    legtime = orig_punchtime - orig_punchlist[control_pos-1][1].punchtime
+                    # TODO: This fails if the first punch is reordered, would need starttime to fix this
+                    shifted_punchtime = punchlist[i-1][1].punchtime + legtime
+                    # TODO: take into account missing punches
+                    punchlist.append(('ok', ShiftedPunch(orig_punch, shifted_punchtime - orig_punchtime)))
+                elif orig_punchlist[control_pos][0] == 'missing':
+                    # punch to be reordered is missing, after reordering it's still missing ;-)
+                    punchlist.append(('missing', orig_punchlist[control_pos][1]))
+                else:
+                    # reordering needed, but not possible due to missing previous punch
+                    punchlist.append(('missing', orig_punchlist[control_pos][1].sistation.control.code))
+
+            result['reordered_punchlist'] = punchlist
+
         self._to_cache(self.validate, run, result)
         return result
 

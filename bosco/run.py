@@ -62,6 +62,22 @@ class Punch(Storm):
             return self.card_punchtime
     punchtime = property(_get_punchtime)
         
+class ShiftedPunch(object):
+    """
+    Wraps a punch object which has it's punchtime shifted because it's
+    part of a course wrapped by a ReorderedCourseWrapper.
+    """
+
+    def __init__(self, punch, timeshift):
+        self._punch = punch
+        self._shift = timeshift
+
+    def __getattr__(self, attr):
+        if attr == 'punchtime':
+            return self._punch.punchtime + self._shift
+        else:
+            return getattr(self._punch, attr)
+
 class Run(MyStorm, RankableItem):
     """A run is directly connected to a single readout of an SI-Card.
        Competitors can have multiple runs during an event, but one

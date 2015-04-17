@@ -170,9 +170,12 @@ class CourseSOLVRankingFormatter(AbstractSOLVRankingFormatter):
                     line.append(r['scoreing']['finish'] - self._reftime)
                 except TypeError:
                     line.append('')
-                    
-                for status, p in r['validation']['punchlist']:
-                    # ignore wrong punches
+
+                try:
+                    punchlist = r['validation']['reordered_punchlist']
+                except KeyError:
+                    punchlist = r['validation']['punchlist']
+                for status, p in punchlist:
                     if status == 'missing' and not p.code in self._control_exclude:
                         # p is an object of class Control
                         line.extend([self._encode(self._control_code(p)), ''])

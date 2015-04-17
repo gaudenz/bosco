@@ -333,7 +333,8 @@ class RelayEvent(Event):
                     # set validation and scoreing strategies
                     # TODO: This is a temporary workaround until everything is adapted to "new-style" validation
                     course = self._store.find(Course, Course.code == c).one()
-                    course._validator = SequenceCourseValidator(course, cache=cache)
+                    reorder = l.get('reorder', {}).get(c, None)
+                    course._validator = SequenceCourseValidator(course, reorder, cache=cache)
                     course._scoreing = TimeScoreing(starttime_strategy=RelayMassstartStarttime(l['starttime'], cache=cache))
 
     def validate(self, obj, validator_class = None, args = None):
