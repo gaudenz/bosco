@@ -990,11 +990,18 @@ class RunEditor(Observable):
         if punches.count() != len(card_data['punches']):
             # different punch count
             return False
-            
+
+        # compare punches
         card_data['punches'].sort(key = lambda x: x[1])
         for i,p in enumerate(punches.order_by('card_punchtime')):
             if not p.card_punchtime == card_data['punches'][i][1]:
                 return False
+
+        # compare start and finish time
+        if not run.card_start_time == card_data['start']:
+            return False
+        if not run.card_finish_time == card_data['finish']:
+            return False
 
         return True
 
