@@ -59,7 +59,6 @@ class RankingExporter(object):
         print "%s: Ranking update ..." % start.strftime('%F %T'),
         sys.stdout.flush()
         completed = {}
-#        import ipdb; ipdb.set_trace()
         for desc, r in self._ranking_list:
             html = unicode(self._event.format_ranking([r])).encode(self._encoding)
             open(path.join(self._outdir, desc.lower().replace(' ', '_') + '.html'), 'wb').write(html)
