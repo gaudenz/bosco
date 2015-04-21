@@ -789,14 +789,17 @@ class SequenceCourseValidator(CourseValidator):
                 # i is zero based, control_pos is 1 based
                 if i == control_pos:
                     punchlist.append(orig_punchlist[i])
-                elif orig_punchlist[control_pos-1][0] == 'ok' and orig_punchlist[control_pos][0] == 'ok':
-                    # punches are reordered, shifting possible
+                elif (orig_punchlist[control_pos-1][0] == 'ok'
+                      and orig_punchlist[control_pos][0] == 'ok'
+                      and punchlist[i-1][0] == 'ok'):
+                    # the current punch plus the previous punch in the original
+                    # punchlist and the previous punch in the reordered punchlist
+                    # must be available for reordering to be possible
                     orig_punch = orig_punchlist[control_pos][1]
                     orig_punchtime = orig_punch.punchtime
                     legtime = orig_punchtime - orig_punchlist[control_pos-1][1].punchtime
                     # TODO: This fails if the first punch is reordered, would need starttime to fix this
                     shifted_punchtime = punchlist[i-1][1].punchtime + legtime
-                    # TODO: take into account missing punches
                     punchlist.append(('ok', ShiftedPunch(orig_punch, shifted_punchtime - orig_punchtime)))
                 elif orig_punchlist[control_pos][0] == 'missing':
                     # punch to be reordered is missing, after reordering it's still missing ;-)
