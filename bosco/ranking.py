@@ -900,7 +900,7 @@ class RelayScoreing(AbstractRelayScoreing):
             pass
 
         runs =  dict([(r.course.code, r) for r in team.runs
-                      if r.course is not None and r.complete])
+                      if r.course is not None])
         
         result = []
         for l in self._legs:
