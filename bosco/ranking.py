@@ -176,6 +176,10 @@ class Ranking(object):
                                        'validation': valid,
                                        'item': m})
 
+        # Sort by number first, then by score and finally by validation status
+        # x['item'] is either a Run, Runner or Team
+        from run import Run
+        self._ranking_list.sort(key = lambda x: (type(x['item']) == Run) and x['item'].sicard.runner and (x['item'].sicard.runner.number or '0') or x['item'].number or '0')
         self._ranking_list.sort(key = lambda x: x['scoreing']['score'], reverse = self._reverse)
         self._ranking_list.sort(key = lambda x: x['validation']['status'])
         
