@@ -33,6 +33,14 @@ from ranking import Validator, ValidationError, UnscoreableException
 from course import SIStation, Control
 from run import Punch, Run
 
+def format_timedelta(delta):
+    (hours, seconds) = divmod(delta.seconds, 3600)
+    (minutes, seconds) = divmod(seconds, 60)
+    if hours > 0:
+        return "%i:%02i:%02i" % (hours, minutes, seconds)
+    else:
+        return "%i:%02i" % (minutes, seconds)
+
 class AbstractFormatter(object):
 
     validation_codes = {Validator.OK               : 'OK',
@@ -482,10 +490,3 @@ class ReportlabRunFormatter(AbstractRunFormatter):
         table.extend(row_items)
         return (table, styles)
         
-def format_timedelta(delta):
-    (hours, seconds) = divmod(delta.seconds, 3600)
-    (minutes, seconds) = divmod(seconds, 60)
-    if hours > 0:
-        return "%i:%02i:%02i" % (hours, minutes, seconds)
-    else:
-        return "%i:%02i" % (minutes, seconds)
