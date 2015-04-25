@@ -18,6 +18,7 @@ formatter.py - Classes to to format rankings
 """
 
 import pkg_resources
+import json
 
 from mako.lookup import TemplateLookup
 
@@ -303,6 +304,74 @@ class RoundCountRankingFormatter(AbstractSOLVRankingFormatter):
             output.writerows(lines)
 
         return self._output()
+
+
+class OlanaRankingFormatter(AbstractSOLVRankingFormatter):
+
+    def __str__(self):
+        results = {
+            'name': '',
+            'map': '',
+            'date': '',
+            'startTime': str(self._reftime),
+            'categories': [],
+        }
+
+        for ranking in self.rankings:
+            cat = {
+                'name':     str(ranking.rankable),
+                'distance': ranking.rankable.length,
+                'ascent':   ranking.rankable.climb,
+                'controls': ranking.rankable.controlcount(),
+                'runners':   [],
+            }
+
+            for r in ranking:
+                run_dict = {
+                    'fullName':    '%s %s' % (r['item'].sicard.runner.given_name, r['item'].sicard.runner.surname),
+                    'yearOfBirth': r['item'].sicard.runner.dateofbirth and r['item'].sicard.runner.dateofbirth.strftime('%y') or '',
+                    'sex':         r['item'].sicard.runner.sex,
+                    'club':        r['item'].sicard.runner.team and r['item'].sicard.runner.team.name or '',
+                    'city':        '',
+                    'nation':      '',
+                    'time':        self._print_score(r),
+                    'ecard':       r['item'].sicard.id,
+                }
+
+                try:
+                    run_dict['startTime'] = str(r['scoreing']['start'] - self._reftime)
+                except TypeError:
+                    run_dict['startTime'] = ''
+
+                try:
+                    punchlist = r['validation']['reordered_punchlist']
+                except KeyError:
+                    punchlist = r['validation']['punchlist']
+                splits = []
+                for status, p in punchlist:
+                    if status == 'missing' and not p.code in self._control_exclude:
+                        # p is an object of class Control
+                        splits.append([self._control_code(p), ''])
+                    if not status == 'ok':
+                        # ignore additional punches
+                        continue
+                    if (not p.sistation.control is None
+                        and p.sistation.id > SIStation.SPECIAL_MAX
+                        and not p.sistation.control.code in self._control_exclude):
+                        try:
+                            splits.append([self._control_code(p.sistation.control),
+                                           str(p.punchtime - r['scoreing']['start'])])
+                        except TypeError:
+                            splits.append([self._control_code(p.sistation.control), ''])
+                run_dict['splits'] = splits
+                run_dict['course'] = ','.join([s[0] for s in splits])
+
+                cat['runners'].append(run_dict)
+
+            results['categories'].append(cat)
+
+        return json.dumps(results)
+
 
 class AbstractRunFormatter(AbstractFormatter):
     """Formats a Run."""
