@@ -403,7 +403,7 @@ class TeamRelayImporter(RunnerImporter):
                 # Create individual runners
                 num = 0
                 i = 1
-                while num < (self._fieldcount-3)/6:
+                while num < (self._fieldcount-4)/6:
                     surname = t['Name%s' % str(i)]
                     given_name =  t['Vorname%s' % str(i)]
                     number = TeamRelayImporter.RUNNER_NUMBER_FORMAT % \
