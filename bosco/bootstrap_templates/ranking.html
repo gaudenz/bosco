@@ -61,7 +61,7 @@ blocks_de = {'start' :'Start',
             <th>Läufer</th>
             <th>Jg.</th>
             <th>Nummer</th>
-            <th>Team</th>
+            <th>Team/Club</th>
             <th colspan="2">Zeit</th>
             %endif
           </tr>
@@ -141,7 +141,7 @@ blocks_de = {'start' :'Start',
     <td>${r['item']}</td>
     <td>${runner and runner.dateofbirth and runner.dateofbirth.strftime('%y') or ''}</td>
     <td>${runner and runner.number or ''}</td>
-    <td>${team and team.name or ''}</td>
+    <td>${team and team.name or runner and runner.club and runner.club.name or ''}</td>
     %if r['rank']:
     <td>${r['scoreing']['score']}</td>
     <td>+${r['scoreing']['behind']}</td>
@@ -167,7 +167,7 @@ blocks_de = {'start' :'Start',
     <td>${r['item']}</td>
     <td>${runner and runner.dateofbirth and runner.dateofbirth.strftime('%y') or ''}</td>
     <td>${runner and runner.number or ''}</td>
-    <td>${team and team.name or ''}</td>
+    <td>${team and team.name or runner and runner.club and runner.club.name or ''}</td>
     <td>${score}</td>
 </tr>
 </%def>

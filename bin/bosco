@@ -577,6 +577,7 @@ class EditRunPanel(RunPanel):
         self.label_4 = wx.StaticText(self.window_1_pane_2, wx.ID_ANY, "Date of birth:")
         self.runner_dateofbirth = wx.TextCtrl(self.window_1_pane_2, wx.ID_ANY, "1975-10-05")
         self.runner_team = wx.ComboBox(self.window_1_pane_2, wx.ID_ANY, choices=[], style=wx.CB_DROPDOWN | wx.CB_DROPDOWN | wx.CB_READONLY)
+        self.runner_club = wx.TextCtrl(self.window_1_pane_2, wx.ID_ANY, "UBOL")
         self.sizer_8_staticbox = wx.StaticBox(self.window_1_pane_2, wx.ID_ANY, "Runner")
         self.run_id = wx.StaticText(self.window_1_pane_2, wx.ID_ANY, "1234")
         self.course = wx.TextCtrl(self.window_1_pane_2, wx.ID_ANY, "LDN1", style=wx.TE_PROCESS_ENTER)
@@ -622,6 +623,7 @@ class EditRunPanel(RunPanel):
         self.Bind(wx.EVT_TEXT, self.FieldChanged, self.runner_surname)
         self.Bind(wx.EVT_TEXT, self.FieldChanged, self.runner_dateofbirth)
         self.Bind(wx.EVT_COMBOBOX, self.SetRunnerTeam, self.runner_team)
+        self.Bind(wx.EVT_TEXT, self.FieldChanged, self.runner_club)
         self.Bind(wx.EVT_TEXT, self.SetCourse, self.course)
         self.Bind(wx.EVT_TEXT, self.FieldChanged, self.manual_start_time)
         self.Bind(wx.EVT_TEXT, self.FieldChanged, self.manual_finish_time)
@@ -643,7 +645,7 @@ class EditRunPanel(RunPanel):
         self.searchresults.SetColumnWidth(3, 60)
         self.searchresults.InsertColumn(4, "Runner")
         self.searchresults.SetColumnWidth(4, 220)
-        self.searchresults.InsertColumn(5, "Team")
+        self.searchresults.InsertColumn(5, "Team/Club")
         self.searchresults.SetColumnWidth(5, 220)
         self.searchresults.InsertColumn(6, "Category")
         self.searchresults.SetColumnWidth(6, 60)
@@ -655,6 +657,7 @@ class EditRunPanel(RunPanel):
         self.runner_given_name.Bind(wx.EVT_KILL_FOCUS, self.SetRunnerGivenName)
         self.runner_surname.Bind(wx.EVT_KILL_FOCUS, self.SetRunnerSurname)
         self.runner_dateofbirth.Bind(wx.EVT_KILL_FOCUS, self.SetRunnerDateofbirth)
+        self.runner_club.Bind(wx.EVT_KILL_FOCUS, self.SetRunnerClub)
 
         # To avoid updates if the field is not changed and the focus just enters the
         # field and leaves it again without the user changeing any text, track if the field
@@ -663,7 +666,7 @@ class EditRunPanel(RunPanel):
         # first check this self.field_changed.
         for field in (self.manual_start_time, self.manual_finish_time, self.runner_number,
                       self.runner_category, self.runner_given_name, self.runner_surname, 
-                      self.runner_dateofbirth):
+                      self.runner_dateofbirth, self.runner_club):
             field.Bind(wx.EVT_SET_FOCUS, self.ResetFieldChanged)
         
         self.field_changed = False
@@ -775,6 +778,10 @@ class EditRunPanel(RunPanel):
         label_22 = wx.StaticText(self.window_1_pane_2, wx.ID_ANY, "Team:")
         sizer_8.Add(label_22, 0, wx.ALL, 0)
         sizer_8.Add(self.runner_team, 0, wx.ALL, 0)
+        sizer_8.Add((20, 5), 0, 0, 0)
+        label_22_copy = wx.StaticText(self.window_1_pane_2, wx.ID_ANY, "Club:")
+        sizer_8.Add(label_22_copy, 0, wx.ALL, 0)
+        sizer_8.Add(self.runner_club, 0, wx.ALL | wx.EXPAND, 0)
         sizer_9.Add(sizer_8, 0, wx.ALL | wx.EXPAND, 5)
         label_24_copy_copy_copy_copy = wx.StaticText(self.window_1_pane_2, wx.ID_ANY, "Run ID:")
         sizer_27.Add(label_24_copy_copy_copy_copy, 0, wx.ALL, 0)
@@ -924,6 +931,16 @@ class EditRunPanel(RunPanel):
     def SetRunnerTeam(self, event): # wxGlade: EditRunPanel.<event_handler>
         self.editor.set_runner_team(self.GetComboData(self.runner_team))
 
+    def SetRunnerClub(self, event):
+        if not self.field_changed:
+            return
+
+        try:
+            self.editor.set_runner_club(self.runner_club.GetValue().strip())
+        except ValueError, msg:
+            self.GetGrandParent().ErrorDialog(str(msg), 'invalid club')
+            self.runner_club.SetFocus()
+
     def SetOverride(self, event): # wxGlade: EditRunPanel.<event_handler>
         self.editor.set_override(self.override.GetSelection())
 
@@ -1045,6 +1062,7 @@ class EditRunPanel(RunPanel):
                 self.runner_surname.SetValue(self.editor.runner_surname)
                 self.runner_dateofbirth.SetValue(self.editor.runner_dateofbirth)
                 self.runner_team.SetValue(self.editor.runner_team)
+                self.runner_club.SetValue(self.editor.runner_club)
 
                 ctrl_list = (self.run_runner_combo, self.runner_number, self.runner_category,
                              self.runner_given_name,

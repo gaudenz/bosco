@@ -29,7 +29,7 @@ from storm.locals import *
 
 from sireader import SIReaderReadout, SIReaderException, SIReader
 
-from runner import Team, Runner, SICard, Category
+from runner import Team, Runner, SICard, Category, Club
 from run import Run, Punch, RunException
 from course import Control, SIStation, Course
 from formatter import AbstractFormatter, ReportlabRunFormatter
@@ -120,6 +120,7 @@ class RunFinder(Observable):
         for r in self._query.order_by(Run.id):
             runner = r.sicard.runner
             team = runner and runner.team or None
+            club = runner and runner.club and runner.club.name or None
             results.append((r.id, 
                             r.course and r.course.code and unicode(r.course.code) 
                               or 'unknown', 
@@ -127,7 +128,7 @@ class RunFinder(Observable):
                             runner and runner.number and unicode(runner.number) 
                               or 'unknown',
                             runner and unicode(runner) or 'unknown',
-                            team and unicode(team) or 'unknown',
+                            team and unicode(team) or club and unicode(club) or 'unknown',
                             team and unicode(team.category) or runner and unicode(runner.category)
                               or 'unkown'
                             ))
@@ -286,6 +287,10 @@ class RunEditor(Observable):
     runner_dateofbirth = property(lambda obj: obj._run and obj._run.sicard.runner and
                                   obj._run.sicard.runner.dateofbirth and
                                   obj._run.sicard.runner.dateofbirth.strftime('%x') or '')
+
+    runner_club = property(lambda obj: obj._run and obj._run.sicard.runner and
+                           obj._run.sicard.runner.club and
+                           obj._run.sicard.runner.club.name or '')
     
     def _get_runner_number(self):
         try:
@@ -587,6 +592,21 @@ class RunEditor(Observable):
             self._run.sicard.runner = Runner()
             
         self._run.sicard.runner.team = team
+        self.commit()
+
+    def set_runner_club(self, clubname):
+
+        if clubname != '':
+            club = self._store.find(Club, Club.name == clubname).one()
+            if club is None:
+                club = Club(clubname)
+        else:
+            club = None
+
+        if self._run.sicard.runner is None:
+            self._run.sicard.runner = Runner()
+
+        self._run.sicard.runner.club = club
         self.commit()
     
     def set_course(self, course):
