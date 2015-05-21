@@ -173,11 +173,11 @@ class CourseSOLVRankingFormatter(AbstractSOLVRankingFormatter):
                         ]
                 try:
                     line.append(r['scoreing']['start'] - self._reftime)
-                except TypeError:
+                except (TypeError, KeyError):
                     line.append('')
                 try:
                     line.append(r['scoreing']['finish'] - self._reftime)
-                except TypeError:
+                except (TypeError, KeyError):
                     line.append('')
 
                 try:
@@ -197,7 +197,7 @@ class CourseSOLVRankingFormatter(AbstractSOLVRankingFormatter):
                         try:
                             line.extend([self._encode(self._control_code(p.sistation.control)),
                                          p.punchtime - r['scoreing']['start']])
-                        except TypeError:
+                        except (TypeError, KeyError):
                             line.extend([self._encode(self._control_code(p.sistation.control)),
                                          ''])
 
@@ -340,7 +340,7 @@ class OlanaRankingFormatter(AbstractSOLVRankingFormatter):
 
                 try:
                     run_dict['startTime'] = str(r['scoreing']['start'] - self._reftime)
-                except TypeError:
+                except (TypeError, KeyError):
                     run_dict['startTime'] = ''
 
                 try:
@@ -361,7 +361,7 @@ class OlanaRankingFormatter(AbstractSOLVRankingFormatter):
                         try:
                             splits.append([self._control_code(p.sistation.control),
                                            str(p.punchtime - r['scoreing']['start'])])
-                        except TypeError:
+                        except (TypeError, KeyError):
                             splits.append([self._control_code(p.sistation.control), ''])
                 run_dict['splits'] = splits
                 run_dict['course'] = ','.join([s[0] for s in splits])
