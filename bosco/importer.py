@@ -239,7 +239,8 @@ class SOLVDBImporter(RunnerImporter):
                 else:
                     runner = store.add(Runner(solvnr=solvnr, number=startnumber))
 
-                RunnerImporter._add_sicard(runner, sicard, store)
+                if sicard:
+                    RunnerImporter._add_sicard(runner, sicard, store)
 
                 clubname = r.get('Verein', None)
                 if clubname:
