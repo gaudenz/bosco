@@ -290,7 +290,7 @@ class SOLVDBImporter(RunnerImporter):
                     elif sicount != 1:
                         print (u"Can't add run for runner %s %s on line %i: %s." %
                                (r.get('Vorname', u''), r.get('Name', u''), i+2, 
-                                sicount == 0 and "No SI-card." or "More than one SI-card")
+                                sicount == 0 and "No SI-card" or "More than one SI-card")
                                )
                     elif course is None:
                         print (u"Can't add run for runner %s %s on line %i: Course not found" % 
