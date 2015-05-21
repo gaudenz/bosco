@@ -193,6 +193,10 @@ class SOLVDBImporter(RunnerImporter):
                                               sicard.runner.surname == r.get('Name', None)):
                         # This sicard is already assigned and the names do not match. Don't
                         # assign an sicard to this runner
+                        print ("SI-card %i already assigned to runner %s %s. Can't assign to "
+                               "runner %s %s on line %i" %
+                               (sicard.id, sicard.runner.given_name, sicard.runner.surname,
+                                r.get('Vorname'), r.get('Name'), i+2))
                         sicard = None
 
                 # check if we already know this runner
