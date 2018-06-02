@@ -517,7 +517,6 @@ class RunPanel(EditingPanel):
             self.punches_grid.AppendRows(numRows = len(punchlist) - grid_size)
         elif len(punchlist) < grid_size:
             self.punches_grid.DeleteRows(numRows = grid_size - len(punchlist))
-            
         for row, p in enumerate(punchlist):
             self.punches_grid.SetReadOnly(row,0)
             self.punches_grid.SetReadOnly(row,1)
@@ -1306,8 +1305,7 @@ class ReadoutRunPanel(RunPanel):
 
 
 if __name__ == "__main__":
-    app = wx.PySimpleApp(0)
-    wx.InitAllImageHandlers()
+    app = wx.App(False)
     main_frame = RunEditorFrame(None, -1, "")
     app.SetTopWindow(main_frame)
     main_frame.Show()
