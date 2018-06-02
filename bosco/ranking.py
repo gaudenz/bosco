@@ -810,7 +810,7 @@ class SequenceCourseValidator(CourseValidator):
                     punchlist.append(('missing', orig_punchlist[control_pos][1]))
                 else:
                     # reordering needed, but not possible due to missing previous punch
-                    punchlist.append(('missing', orig_punchlist[control_pos][1].sistation.control.code))
+                    punchlist.append(('missing', orig_punchlist[control_pos][1].sistation.control))
 
             result['reordered_punchlist'] = punchlist
 
