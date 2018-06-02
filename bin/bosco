@@ -1024,7 +1024,11 @@ class EditRunPanel(RunPanel):
         
         def update_runfinder():
             if self.finder is not None:
-                current_run = self.searchresults.GetItemData(self.searchresults.GetFirstSelected()) or None
+                first_selected = self.searchresults.GetFirstSelected()
+                if first_selected < 0:
+                    current_run = None
+                else:
+                    current_run = self.searchresults.GetItemData(first_selected)
                 self.searchresults.DeleteAllItems()
                 results = self.finder.get_results()
                 for row, run in enumerate(results):
