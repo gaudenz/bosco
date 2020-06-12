@@ -22,7 +22,7 @@ from copy import copy
 from .base import MyStorm
 from .ranking import Rankable, RankableItem
 
-class AbstractRunner(object, RankableItem):
+class AbstractRunner(RankableItem):
     """Base class for all runner like classes (runners, teams). This
     class defines the interface for all objects that work with any kind
     of runners or teams."""
@@ -98,9 +98,6 @@ class Runner(AbstractRunner, Storm):
         self.comment = comment
         
     def __str__(self):
-        return str(self).encode('utf-8')
-
-    def __unicode__(self):
         return ('%s %s' % (self.given_name, self.surname))
 
     def _get_run(self): 
@@ -145,9 +142,6 @@ class Team(AbstractRunner, Storm):
         self.responsible = responsible
 
     def __str__(self):
-        return str(self).encode('utf-8')
-    
-    def __unicode__(self):
         return self.name
 
     def _get_runs(self):
@@ -198,9 +192,6 @@ class Category(Storm, Rankable):
         self.name = name
 
     def __str__(self):
-        return str(self).encode('utf-8')
-    
-    def __unicode__(self):
         return self.name
 
     def _get_members(self):
@@ -224,9 +215,6 @@ class Country(Storm):
         self.code2 = code2
 
     def __str__(self):
-        return str(self).encode('utf-8')
-    
-    def __unicode__(self):
         return self.code3
 
 
@@ -241,9 +229,6 @@ class Club(Storm):
         self.name = name
 
     def __str__(self):
-        return str(self).encode('utf-8')
-    
-    def __unicode__(self):
         return self.name
 
 

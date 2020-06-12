@@ -262,9 +262,6 @@ class Course(MyStorm, BaseCourse):
             raise UnscoreableException("Can't score a run without a scoreing strategy.")
 
     def __str__(self):
-        return str(self).encode('utf-8')
-    
-    def __unicode__(self):
         return self.code
 
 
@@ -317,9 +314,6 @@ class CombinedCourse(BaseCourse):
         return self._controlcount
 
     def __str__(self):
-        return str(self).encode('utf-8')
-    
-    def __unicode__(self):
         return self._code
 
 class CombinedCourseException(Exception):

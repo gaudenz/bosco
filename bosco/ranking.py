@@ -22,6 +22,7 @@ ranking.py - Classes to produce rankings of objects that implement
 
 from datetime import timedelta, datetime
 from copy import copy
+from functools import total_ordering
 from traceback import print_exc
 import sys, re
 
@@ -47,7 +48,7 @@ class RankableItem:
     def __str__(self):
         return 'override __str__ for a more meaningful value'
 
-class Ranking(object):
+class Ranking:
     """A Ranking objects combines a scoreing strategy, a validation strategy and a
     rankable object (course or category) and computes a ranking. The Ranking object
     is an interable object, which means you can use it much like a list. It returns
@@ -244,7 +245,7 @@ class RelayRanking(Ranking):
         self._update_ranking_dict()
         self._initialized = True
 
-class Rankable(object):
+class Rankable:
     """Defines the interface for rankable objects like courses and categories.
     The following attributes must be available in subclasses:
     - members
@@ -269,7 +270,7 @@ class OpenRuns(Rankable):
     
     members = property(_get_runs)
     
-class Cache(object):
+class Cache:
     """Cache for scoreing and validation results."""
 
     def __init__(self, observer = None):
@@ -327,7 +328,7 @@ class Cache(object):
                 self._observer.unregister(self, obj)
             self._observer = None
 
-class CachingObject(object):
+class CachingObject:
     """Common parent class for all caching objects."""
     
     def __init__(self, cache = None):
@@ -493,7 +494,7 @@ class RelayStarttime(MassstartStarttime):
                 return runners[i-1].run.finish_time
             except RunnerException as e:
                 raise UnscoreableException('Unable to get finish time of previous runner: %s'
-                                           % e.message) 
+                                           % str(e))
         
     def _prev_finish_unordered(self, obj):
         
@@ -1380,26 +1381,27 @@ class Relay12hScoreing(Relay24hScoreing):
         self._to_cache(self.validate, team, result)
         return result
 
-class Relay24hScore(object):
+@total_ordering
+class Relay24hScore:
 
     def __init__(self, runs, time):
         self.runs = runs
         self.time = time
 
-    def __cmp__(self, other):
-        """compares two Relay24hScore objects."""
-        
-        if self.runs > other.runs:
-            return -1
-        elif self.runs < other.runs:
-            return 1
+    def __eq__(self, other):
+        """compares two Relay24hScore objects for equality."""
+
+        return self.runs == other.runs and self.time == other.time
+
+    def __lt__(self, other):
+        """compares two Relay24hScore objects for less than."""
+
+        if self.runs < other.runs:
+            return True
+        elif self.runs == other.runs and self.time > other.time:
+            return True
         else:
-            if self.time < other.time:
-                return -1
-            elif self.time > other.time:
-                return 1
-            else:
-                return 0
+            return False
 
     def __sub__(self, other):
         """Subtracts Relay24hScore objects. This is mainly usefull to calculate

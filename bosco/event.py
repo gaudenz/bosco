@@ -35,7 +35,7 @@ from .formatter import MakoRankingFormatter
 class EventException(Exception):
     pass
 
-class Event(object):
+class Event:
     """Model of all event specific ranking information. The default
     implementation uses SequenceCourseValidator, TimeScoreing and SelfstartStarttime.
     Subclass this class to customize your event."""

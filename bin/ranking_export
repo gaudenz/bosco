@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #
 #    Copyright (C) 2014  Gaudenz Steinlin <gaudenz@soziologie.ch>
 #
@@ -28,7 +28,7 @@ from subprocess import call
 from bosco.observer import TriggerEventObserver
 from bosco.util import load_config, RankingOptionParser
 
-class RankingExporter(object):
+class RankingExporter:
 
     def __init__(self, event, ranking_list, outdir, encoding, interval=None, sync_command=None, observer=None):
 

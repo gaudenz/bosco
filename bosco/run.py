@@ -62,7 +62,7 @@ class Punch(Storm):
             return self.card_punchtime
     punchtime = property(_get_punchtime)
         
-class ShiftedPunch(object):
+class ShiftedPunch:
     """
     Wraps a punch object which has it's punchtime shifted because it's
     part of a course wrapped by a ReorderedCourseWrapper.
@@ -249,8 +249,8 @@ class Run(MyStorm, RankableItem):
                                                Punch.sistation == SIStation.id,
                                                SIStation.control == Control.id,
                                                Not(Control.override == True)).order_by('COALESCE(manual_punchtime, card_punchtime)').values(Column('sequence')))
-        sorted = sorted(copy(punchsequence))
-        return punchsequence == sorted
+
+        return punchsequence == sorted(copy(punchsequence))
 
     def validate(self, validator_class=None, args=None):
         """Validate this run. Validation of runs is normally refered to the course, but

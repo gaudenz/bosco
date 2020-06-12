@@ -63,7 +63,7 @@ class CSVImporter(Importer):
         self.data = []
         
         # Set up CSV reader
-        fh = open(fname, 'rb')
+        fh = open(fname, 'r', encoding=encoding)
         try:
             dialect = Sniffer().sniff(fh.read(1024))
             fh.seek(0)
@@ -86,7 +86,7 @@ class CSVImporter(Importer):
                 pass
             d = {}
             for i, v in enumerate(line):
-                d[labels[i]] = v.decode(encoding).strip()
+                d[labels[i]] = v.strip()
                 
             self.data.append(d)
 
@@ -184,7 +184,7 @@ class SOLVDBImporter(RunnerImporter):
                     sicard = RunnerImporter._get_sicard(r.get('SI_Karte', None), store)
                 except InvalidSICardException as e:
                     print(("Runner %s %s (%s): %s" % 
-                           (r.get('Vorname', ''), r.get('Name', ''), r.get('SOLV-Nr', ''), e.message)))
+                           (r.get('Vorname', ''), r.get('Name', ''), r.get('SOLV-Nr', ''), str(e))))
                     sicard = None
                 except NoSICardException as e:
                     sicard = None
@@ -305,7 +305,7 @@ class SOLVDBImporter(RunnerImporter):
             except (DataError, IntegrityError) as e:
                 print(("Error importing runner %s %s on line %i: %s\n"
                        "Import aborted." %
-                       (r.get('Vorname', ''), r.get('Name', ''), i+2, e.message.decode('utf-8', 'replace'))
+                       (r.get('Vorname', ''), r.get('Name', ''), i+2, str(e).decode('utf-8', 'replace'))
                        ))
                 store.rollback()
                 return
@@ -367,7 +367,7 @@ class Team24hImporter(RunnerImporter):
                 except InvalidSICardException as e:
                     print(("Runner %s %s of Team %s (%s) has an invalid SI-card: %s" %
                            (runner.given_name, runner.surname, team.name, team.number,
-                            e.message)))
+                            str(e))))
                 else:
                     RunnerImporter._add_sicard(runner, sicard, store)
 
@@ -438,7 +438,7 @@ class TeamRelayImporter(RunnerImporter):
                     except InvalidSICardException as e:
                         print(("Runner %s %s of Team %s (%s) has an invalid SI-card: %s" %
                                (runner.given_name, runner.surname, team.name, team.number,
-                                e.message)))
+                                str(e))))
                     else:
                         RunnerImporter._add_sicard(runner, sicard, store)
 
@@ -463,7 +463,7 @@ class TeamRelayImporter(RunnerImporter):
             except (DataError, IntegrityError) as e:
                 print(("Error importing team %s (%s) on line %i: %s\n"
                        "Import aborted." %
-                       (t['Teamname'], t['AnmeldeNummer'], line+2, e.message.decode('utf-8', 'replace'))
+                       (t['Teamname'], t['AnmeldeNummer'], line+2, str(e).decode('utf-8', 'replace'))
                        ))
                 store.rollback()
                 return
@@ -496,7 +496,7 @@ class SIRunImporter(Importer):
         self._replay = replay
         self._interval = interval
         self._verbose = verbose
-        csv = reader(open(fname, 'rb'), delimiter=';')
+        csv = reader(open(fname, 'r', encoding=encoding),  delimiter=';')
         self.__runs = []
         for line in csv:
             try:
@@ -505,7 +505,7 @@ class SIRunImporter(Importer):
                     continue
             except IndexError:
                 pass
-            self.__runs.append([v.decode(encoding) for v in line])
+            self.__runs.append(line)
 
     @staticmethod
     def __datetime(punchtime):

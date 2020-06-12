@@ -42,7 +42,7 @@ def format_timedelta(delta):
     else:
         return "%i:%02i" % (minutes, seconds)
 
-class AbstractFormatter(object):
+class AbstractFormatter:
 
     validation_codes = {Validator.OK               : 'OK',
                         Validator.NOT_COMPLETED    : 'not yet finished',

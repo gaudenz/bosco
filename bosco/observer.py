@@ -24,7 +24,7 @@ from datetime import datetime
 from .run import Punch, Run
 from .runner import Team
 
-class EventObserver(object):
+class EventObserver:
     """Observes an Event for new data (e.g. new punches).
     @warn: This will rollback the store every <intervall> seconds!
     """

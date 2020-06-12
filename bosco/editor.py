@@ -35,7 +35,7 @@ from .course import Control, SIStation, Course
 from .formatter import AbstractFormatter, ReportlabRunFormatter
 from .ranking import ValidationError, UnscoreableException, Validator, OpenRuns
 
-class Observable(object):
+class Observable:
 
     def __init__(self):
         self._observers = []
@@ -194,11 +194,21 @@ class RunFinder(Observable):
         self._notify_observers()
 
 
+class Singleton(type):
+
+    _instances = {}
+
+    def __call__(cls, *args, **kwargs):
+        if cls not in cls._instances:
+            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
+
+        return cls._instances[cls]
+
 
 class RunEditorException(Exception):
     pass
 
-class RunEditor(Observable):
+class RunEditor(Observable, metaclass=Singleton):
     """High level run editor. This class is intended as a model for a
     (graphical) editing front-end.
     The editor only edits one run at a time. Runs can be loaded from the
@@ -212,18 +222,7 @@ class RunEditor(Observable):
                       SIStation.CLEAR:  'clear'}
     max_progress = 7
     
-    # singleton instance
-    __single = None
     __initialized = False
-    
-    def __new__(classtype, *args, **kwargs):
-        """
-        Override class creation to ensure that only one RunEditor is instantiated.
-        """
-       
-        if not isinstance(classtype.__single, classtype):
-            classtype.__single = object.__new__(classtype, *args, **kwargs)
-        return classtype.__single
     
     def __init__(self, store, event):
         """
@@ -869,7 +868,7 @@ class RunEditor(Observable):
         try:
             self._sireader = SIReaderReadout(port)
         except SIReaderException as e:
-            fail_reasons.append(e.message)
+            fail_reasons.append(str(e))
         else:
 
             # check for correct reader configuration
@@ -1028,7 +1027,7 @@ class RunEditor(Observable):
     def set_print_command(self, command):
         self._print_command = command
 
-class RunListFormatter(object):
+class RunListFormatter:
 
     def format_run(self, run):
 
