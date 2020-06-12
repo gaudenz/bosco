@@ -49,14 +49,14 @@ while True:
     try:
         punches = sireader.poll_punch()
         for p in punches:
-            print "Punch received from %s at %s" % (p[0], p[1])
+            print("Punch received from %s at %s" % (p[0], p[1]))
             try:
                 register_punch(sireader.station_code, p[0], p[1])
                 conf.store.commit()
-            except RunException, msg:
+            except RunException as msg:
                 print_exc(file=sys.stderr)
                 conf.store.rollback()
-    except Exception, msg:
+    except Exception as msg:
         conf.store.rollback()
         print_exc(file=sys.stdout)
 

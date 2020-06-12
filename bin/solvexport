@@ -26,9 +26,9 @@ from bosco.runner import Category
 from bosco.formatter import CategorySOLVRankingFormatter, CourseSOLVRankingFormatter, RoundCountRankingFormatter, RelayCategorySOLVRankingFormatter
 from bosco.run import Run
 
-modes = {Category       : RelayCategorySOLVRankingFormatter,
-         Course         : CourseSOLVRankingFormatter,
-         CombinedCourse : CourseSOLVRankingFormatter,
+modes = {Category: RelayCategorySOLVRankingFormatter,
+         Course: CourseSOLVRankingFormatter,
+         CombinedCourse: CourseSOLVRankingFormatter,
          }
 
 if __name__ == '__main__':
@@ -46,7 +46,7 @@ if __name__ == '__main__':
     (options, args, ranking_list, f) = opt.parse_args()
 
     if len(ranking_list) == 0:
-        print "No ranking selected. Aborting."
+        print("No ranking selected. Aborting.")
         sys.exit(1)
 
     for dec, r in ranking_list:

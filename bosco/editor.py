@@ -29,11 +29,11 @@ from storm.locals import *
 
 from sireader import SIReaderReadout, SIReaderException, SIReader
 
-from runner import Team, Runner, SICard, Category, Club
-from run import Run, Punch, RunException
-from course import Control, SIStation, Course
-from formatter import AbstractFormatter, ReportlabRunFormatter
-from ranking import ValidationError, UnscoreableException, Validator, OpenRuns
+from .runner import Team, Runner, SICard, Category, Club
+from .run import Run, Punch, RunException
+from .course import Control, SIStation, Course
+from .formatter import AbstractFormatter, ReportlabRunFormatter
+from .ranking import ValidationError, UnscoreableException, Validator, OpenRuns
 
 class Observable(object):
 
@@ -59,47 +59,47 @@ class RunFinderException(Exception):
 class RunFinder(Observable):
     """Searches for runs and/or runners."""
 
-    _search_config = {'run'      : {'title' : u'Run',
-                                    'joins' : True, # no tables to join, always true 
-                                    'terms' : ((Run.id, 'int'),
+    _search_config = {'run': {'title': 'Run',
+                                    'joins': True, # no tables to join, always true 
+                                    'terms': ((Run.id, 'int'),
                                                ),
                                     },
-                      'sicard'   : {'title' : u'SICard',
-                                    'joins' : True, # no tables to join, alway true
-                                    'terms' : ((Run.sicard, 'int'),
+                      'sicard': {'title': 'SICard',
+                                    'joins': True, # no tables to join, alway true
+                                    'terms': ((Run.sicard, 'int'),
                                                ),
                                     },
-                      'runner'   : {'title': u'Runner',
-                                    'joins' : And(Run.sicard == SICard.id,
+                      'runner': {'title': 'Runner',
+                                    'joins': And(Run.sicard == SICard.id,
                                                   SICard.runner == Runner.id),
-                                    'terms' : ((Runner.given_name, 'partial_string'),
+                                    'terms': ((Runner.given_name, 'partial_string'),
                                                (Runner.surname, 'partial_string'),
                                                (Runner.number, 'exact_string'),
                                                (Runner.solvnr, 'exact_string'),
                                                ),
                                     },
-                      'team'     : {'title': u'Team',
-                                    'joins' : And(Run.sicard == SICard.id,
+                      'team': {'title': 'Team',
+                                    'joins': And(Run.sicard == SICard.id,
                                                SICard.runner == Runner.id,
                                                Runner.team == Team.id),
-                                    'terms' : ((Team.name, 'partial_string'),
+                                    'terms': ((Team.name, 'partial_string'),
                                                (Team.number, 'exact_string'),
                                                ),
                                     },
-                      'category' : {'title': u'Category',
-                                    'joins' : And(Run.sicard == SICard.id,
+                      'category': {'title': 'Category',
+                                    'joins': And(Run.sicard == SICard.id,
                                                   SICard.runner == Runner.id,
                                                   Or(Runner.category == Category.id,
                                                      And(Runner.team == Team.id,
                                                          Team.category == Category.id)
                                                      )
                                                   ),
-                                    'terms' : ((Category.name, 'exact_string'),
+                                    'terms': ((Category.name, 'exact_string'),
                                                ),
                                     },
-                      'course'   : {'title': u'Course',
-                                    'joins' : And(Run.course == Course.id),
-                                    'terms' : ((Course.code, 'exact_string'),
+                      'course': {'title': 'Course',
+                                    'joins': And(Run.course == Course.id),
+                                    'terms': ((Course.code, 'exact_string'),
                                                ),
                                     },
                       }
@@ -122,14 +122,14 @@ class RunFinder(Observable):
             team = runner and runner.team or None
             club = runner and runner.club and runner.club.name or None
             results.append((r.id, 
-                            r.course and r.course.code and unicode(r.course.code) 
+                            r.course and r.course.code and str(r.course.code) 
                               or 'unknown', 
                             r.readout_time and RunEditor._format_time(r.readout_time) or 'unknown',
-                            runner and runner.number and unicode(runner.number) 
+                            runner and runner.number and str(runner.number) 
                               or 'unknown',
-                            runner and unicode(runner) or 'unknown',
-                            team and unicode(team) or club and unicode(club) or 'unknown',
-                            team and unicode(team.category) or runner and unicode(runner.category)
+                            runner and str(runner) or 'unknown',
+                            team and str(team) or club and str(club) or 'unknown',
+                            team and str(team.category) or runner and str(runner.category)
                               or 'unkown'
                             ))
 
@@ -137,21 +137,21 @@ class RunFinder(Observable):
 
     def set_search_term(self, term):
         """Set the search string"""
-        self._term = unicode(term).split()
+        self._term = str(term).split()
         self._update_query()
 
     def get_search_domains(self):
         """
         @return List of (key, description) pairs of valid search domains.
         """
-        return [(k, v['title']) for k,v in self._search_config.items() ]
+        return [(k, v['title']) for k, v in list(self._search_config.items()) ]
 
     def set_search_domain(self, domain):
         """
         @param domain: set of search domains. Valid search domains are those
                        defined in _search_config.
         """
-        if domain in self._search_config.keys():
+        if domain in list(self._search_config.keys()):
             self._domain = domain
             self._update_query()
         else:
@@ -170,12 +170,12 @@ class RunFinder(Observable):
                         pass
                 elif col_type == 'partial_string':
                     try:
-                        condition_parts.append(column.lower().like("%%%s%%" % unicode(t).lower()))
+                        condition_parts.append(column.lower().like("%%%s%%" % str(t).lower()))
                     except (ValueError, TypeError):
                         pass
                 elif col_type == 'exact_string':
                     try:
-                        condition_parts.append(column.lower() == unicode(t).lower())
+                        condition_parts.append(column.lower() == str(t).lower())
                     except (ValueError, TypeError):
                         pass
 
@@ -221,7 +221,7 @@ class RunEditor(Observable):
         Override class creation to ensure that only one RunEditor is instantiated.
         """
        
-        if classtype != type(classtype.__single):
+        if not isinstance(classtype.__single, classtype):
             classtype.__single = object.__new__(classtype, *args, **kwargs)
         return classtype.__single
     
@@ -275,7 +275,7 @@ class RunEditor(Observable):
     
     def _get_runner_name(self):
         try:
-            return unicode(self._run.sicard.runner or '')
+            return str(self._run.sicard.runner or '')
         except AttributeError:
             return ''
     runner_name = property(_get_runner_name)
@@ -305,14 +305,14 @@ class RunEditor(Observable):
 
     def _get_runner_team(self):
         try:
-            return u'%3s: %s' % (self._run.sicard.runner.team.number, self._run.sicard.runner.team.name)
+            return '%3s: %s' % (self._run.sicard.runner.team.number, self._run.sicard.runner.team.name)
         except AttributeError:
             return ''
     runner_team = property(_get_runner_team)
 
     def _get_runner_sicard(self):
         try:
-            return unicode(self._run.sicard.id)
+            return str(self._run.sicard.id)
         except AttributeError:
             return ''
     runner_sicard = property(_get_runner_sicard)
@@ -341,7 +341,7 @@ class RunEditor(Observable):
 
     def _get_run_score(self):
         try:
-            return unicode(self._event.score(self._run)['score'])
+            return str(self._event.score(self._run)['score'])
         except UnscoreableException:
             return ''
     run_score = property(_get_run_score)
@@ -384,7 +384,7 @@ class RunEditor(Observable):
 
     def _get_team_score(self):
         try:
-            return unicode(self._event.score(self._run.sicard.runner.team)['score'])
+            return str(self._event.score(self._run.sicard.runner.team)['score'])
         except (UnscoreableException, AttributeError):
             return ''
     team_score = property(_get_team_score)
@@ -415,7 +415,7 @@ class RunEditor(Observable):
             
         punchlist = []
         for code, p in self._raw_punchlist():
-            if type(p) == Punch:
+            if isinstance(p, Punch):
                 punchlist.append((p.sequence and str(p.sequence) or '',
                                   p.sistation.control and p.sistation.control.code or '',
                                   StationCode(p.sistation.id),
@@ -423,7 +423,7 @@ class RunEditor(Observable):
                                   p.manual_punchtime and RunEditor._format_time(p.manual_punchtime) or '',
                                   str(int(p.ignore)),
                                   str(code)))
-            elif type(p) == Control:
+            elif isinstance(p, Control):
                 punchlist.append(('',
                                   p.code,
                                   '',
@@ -431,7 +431,7 @@ class RunEditor(Observable):
                                   '',
                                   str(int(False)),
                                   code))
-            elif type(p) == SIStation:
+            elif isinstance(p, SIStation):
                 punchlist.append(('',
                                   '',
                                   StationCode(p.id),
@@ -458,13 +458,13 @@ class RunEditor(Observable):
     def get_runnerlist(self):
         runners = [(None, '')]
         for r in self._store.find(Runner).order_by('number'):
-            runners.append((r.id, u'%s: %s' % (r.number, r)))
+            runners.append((r.id, '%s: %s' % (r.number, r)))
         return runners
 
     def get_teamlist(self):
         teams = [(None, '')]
         for t in self._store.find(Team).order_by('number'):
-            teams.append((t.id, u'%3s: %s' % (t.number, t.name)))
+            teams.append((t.id, '%3s: %s' % (t.number, t.name)))
         return teams
 
     def _create_virtual_sicard(self):
@@ -530,7 +530,7 @@ class RunEditor(Observable):
             return
         
         if prev_runner is not None and force is False:
-            raise RunEditorException(u'Runner %s (%s) already has this number.' % (unicode(prev_runner), prev_runner.number))
+            raise RunEditorException('Runner %s (%s) already has this number.' % (str(prev_runner), prev_runner.number))
 
         if not self.has_runner():
             self._run.sicard.runner = Runner()
@@ -677,9 +677,9 @@ class RunEditor(Observable):
         punch = self._raw_punchlist()[punch]
         if punch[0] == 'missing':
             # Create new manual punch with this time
-            if type(punch[1]) == Control:
+            if isinstance(punch[1], Control):
                 si = punch[1].sistations.any()
-            elif type(punch[1]) == SIStation:
+            elif isinstance(punch[1], SIStation):
                 si = punch[1]
             self._run.punches.add(Punch(si,
                                         manual_punchtime = self.parse_time(time)))
@@ -772,11 +772,11 @@ class RunEditor(Observable):
             # some errors (notably LostObjectError) only occur when the object
             # is accessed again, clear cache triggers these
             self._clear_cache()
-        except LostObjectError, e:
+        except LostObjectError as e:
             # run got removed during the transaction
             self._run = None
             self._notify_observers('error', str(e))
-        except Exception, e:
+        except Exception as e:
             print_exc(file=sys.stderr)
             self._notify_observers('error', str(e))
 
@@ -868,7 +868,7 @@ class RunEditor(Observable):
         fail_reasons = []
         try:
             self._sireader = SIReaderReadout(port)
-        except SIReaderException, e:
+        except SIReaderException as e:
             fail_reasons.append(e.message)
         else:
 
@@ -1013,7 +1013,7 @@ class RunEditor(Observable):
 
         # compare punches
         card_data['punches'].sort(key = lambda x: x[1])
-        for i,p in enumerate(punches.order_by('card_punchtime')):
+        for i, p in enumerate(punches.order_by('card_punchtime')):
             if not p.card_punchtime == card_data['punches'][i][1]:
                 return False
 
@@ -1036,9 +1036,9 @@ class RunListFormatter(object):
             if run.sicard.runner is None:
                 return ''
             elif run.sicard.runner.number is None:
-                return unicode(runner)
+                return str(runner)
             else:
-                return unicode('%3s: %s' % (run.sicard.runner.number,
+                return str('%3s: %s' % (run.sicard.runner.number,
                                             run.sicard.runner))
 
         # run validation and score
@@ -1065,8 +1065,8 @@ class RunListFormatter(object):
                 format_runner(run.sicard.runner),
                 str(run.sicard.id),
                 team and team.name or '',
-                str(score.has_key('start') and score['start'] or ''),
-                str(score.has_key('finish') and score['finish'] or ''),
+                str('start' in score and score['start'] or ''),
+                str('finish' in score and score['finish'] or ''),
                 validation,
                 team_validation,
                 str(score['score']))
@@ -1102,7 +1102,7 @@ class TeamEditor(Observable, RunListFormatter):
 
     def _get_score(self):
         try:
-            return unicode(self._event.score(self._team)['score'])
+            return str(self._event.score(self._team)['score'])
         except (UnscoreableException, AttributeError):
             return ''
     score = property(_get_score)

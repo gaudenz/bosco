@@ -55,15 +55,15 @@ class RankingOptionParser(OptionParser):
 
         # process rankings arguments
         if options.list:
-            print 'Available rankings:',
-            for (desc,r) in self._event.list_rankings():
-                print "%s," % desc,
-            print
+            print('Available rankings:', end=' ')
+            for (desc, r) in self._event.list_rankings():
+                print("%s," % desc, end=' ')
+            print()
             sys.exit()
 
         if options.rankings:
             ranking_codes = options.rankings.split(',')
-            ranking_list = [ (desc,r) for desc, r in self._event.list_rankings() if desc in ranking_codes ]
+            ranking_list = [ (desc, r) for desc, r in self._event.list_rankings() if desc in ranking_codes ]
         else:
             ranking_list = self._event.list_rankings()
 
@@ -78,7 +78,7 @@ class RankingFileOptionParser(RankingOptionParser):
 
         # process file arguments
         if len(args) > 1:
-            print "Can't write to more than one file!"
+            print("Can't write to more than one file!")
             sys.exit(1)
         if len(args) == 0:
             f = sys.stdout

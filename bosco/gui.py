@@ -39,7 +39,7 @@ class UpdateableHtmlPanel(wx.html.HtmlWindow):
     def update(self, event):
         """Update the content of the panel."""
         if self._content is not None:
-            self.SetPage(unicode(self._content))
+            self.SetPage(str(self._content))
         else:
             self.SetPage('')
 

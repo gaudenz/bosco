@@ -295,12 +295,12 @@ class RunEditorFrame(wx.Frame):
     def OnTimer(self, event):
         try:
             self.editor.poll_reader()
-        except SIReaderException, msg:
+        except SIReaderException as msg:
             self.ErrorDialog(str(msg), 'Error communicating to the SI-Reader')
         
     def update(self, observable, event, message=None):
         
-        if type(observable) == RunEditor and event == 'reader':
+        if isinstance(observable, RunEditor) and event == 'reader':
             self.statusbar.SetStatusText(observable.status, 0)
             self.statusbar.SetStatusText(observable.port, 1)
             wx.Yield()
@@ -313,7 +313,7 @@ class RunEditorFrame(wx.Frame):
     def ConnectReader(self, event): # wxGlade: RunEditorFrame.<event_handler>
         try:
             self.editor.connect_reader()
-        except RunEditorException, e:
+        except RunEditorException as e:
             self.ErrorDialog(e.message, "Error Connecting SI-Reader")
 
     def ErrorDialog(self, msg, title):
@@ -331,11 +331,11 @@ class RunEditorFrame(wx.Frame):
         dlg.Destroy()
 
     def OpenRuns(self, event):  # wxGlade: RunEditorFrame.<event_handler>
-        print "Event handler 'OpenRuns' not implemented!"
+        print("Event handler 'OpenRuns' not implemented!")
         event.Skip()
 
     def OrphanRuns(self, event):  # wxGlade: RunEditorFrame.<event_handler>
-        print "Event handler 'OrphanRuns' not implemented!"
+        print("Event handler 'OrphanRuns' not implemented!")
         event.Skip()
 # end of class RunEditorFrame
 
@@ -368,7 +368,7 @@ class RunSearchWidget(wx.SearchCtrl):
             self.Disable()
 
     def SetSearchDomain(self, event):
-         for i,item in enumerate(self.GetMenu().GetMenuItems()):
+         for i, item in enumerate(self.GetMenu().GetMenuItems()):
             if item.IsChecked():
                 self._finder.set_search_domain(self._search_domains[i][0])
                 self.SetDescriptiveText("Search in %s" % self._search_domains[i][1])
@@ -518,34 +518,34 @@ class RunPanel(EditingPanel):
         elif len(punchlist) < grid_size:
             self.punches_grid.DeleteRows(numRows = grid_size - len(punchlist))
         for row, p in enumerate(punchlist):
-            self.punches_grid.SetReadOnly(row,0)
-            self.punches_grid.SetReadOnly(row,1)
-            self.punches_grid.SetReadOnly(row,2)
-            self.punches_grid.SetReadOnly(row,3)
-            self.punches_grid.SetCellRenderer(row,3,
+            self.punches_grid.SetReadOnly(row, 0)
+            self.punches_grid.SetReadOnly(row, 1)
+            self.punches_grid.SetReadOnly(row, 2)
+            self.punches_grid.SetReadOnly(row, 3)
+            self.punches_grid.SetCellRenderer(row, 3,
                                               wx.grid.GridCellDateTimeRenderer())
-            self.punches_grid.SetCellRenderer(row,4,
+            self.punches_grid.SetCellRenderer(row, 4,
                                               wx.grid.GridCellDateTimeRenderer())
-            self.punches_grid.SetCellRenderer(row,5, wx.grid.GridCellBoolRenderer())
+            self.punches_grid.SetCellRenderer(row, 5, wx.grid.GridCellBoolRenderer())
             # Using the GridCellBoolEditor causes segfaults after editing this cell
             # self.punches_grid.SetCellEditor(row,5, wx.grid.GridCellBoolEditor())
-            self.punches_grid.SetReadOnly(row,6)
+            self.punches_grid.SetReadOnly(row, 6)
             for col, v in enumerate(p):
                 self.punches_grid.SetCellValue(row, col, v)
                     
                 if p[6] == 'missing':
-                    self.punches_grid.SetCellTextColour(row,col,'Red')
+                    self.punches_grid.SetCellTextColour(row, col, 'Red')
                 elif p[6] == 'additional' or p[6] == 'ignored':
-                    self.punches_grid.SetCellTextColour(row,col,'Gray')
+                    self.punches_grid.SetCellTextColour(row, col, 'Gray')
                 elif p[6] == 'ok':
-                    self.punches_grid.SetCellTextColour(row,col,'Green')
+                    self.punches_grid.SetCellTextColour(row, col, 'Green')
                 else:
-                    self.punches_grid.SetCellTextColour(row,col,'Black')
+                    self.punches_grid.SetCellTextColour(row, col, 'Black')
 
                 if p[6] == 'missing' and col == 5:
-                    self.punches_grid.SetReadOnly(row,col)
+                    self.punches_grid.SetReadOnly(row, col)
                 elif col == 5:
-                    self.punches_grid.SetReadOnly(row,col, False)
+                    self.punches_grid.SetReadOnly(row, col, False)
 
         self.punches_grid.AutoSize()
         self.Layout()
@@ -856,7 +856,7 @@ class EditRunPanel(RunPanel):
         
         try: 
             self.editor.set_manual_start_time(self.manual_start_time.GetValue().strip())
-        except ValueError, msg:
+        except ValueError as msg:
             self.GetGrandParent().ErrorDialog(str(msg), 'invalid time format')
             self.manual_start_time.SetFocus()
 
@@ -866,7 +866,7 @@ class EditRunPanel(RunPanel):
         
         try:
             self.editor.set_manual_finish_time(self.manual_finish_time.GetValue().strip())
-        except ValueError, msg:
+        except ValueError as msg:
             self.GetGrandParent().ErrorDialog(str(msg), 'invalid time format')
             self.manual_finish_time.SetFocus()
 
@@ -876,8 +876,8 @@ class EditRunPanel(RunPanel):
         
         try:
             self.editor.set_runner_number(self.runner_number.GetValue().strip())
-        except RunEditorException, e:
-            dlg = wx.MessageDialog(self, u'%s Only one runner may have this number. Do you want to assign the number to this runner?' % e.message,
+        except RunEditorException as e:
+            dlg = wx.MessageDialog(self, '%s Only one runner may have this number. Do you want to assign the number to this runner?' % e.message,
                                    'duplicate number',
                                    style = wx.YES_NO|wx.ICON_QUESTION)
             answer = dlg.ShowModal()
@@ -912,7 +912,7 @@ class EditRunPanel(RunPanel):
         
         try:
             self.editor.set_runner_dateofbirth(self.runner_dateofbirth.GetValue().strip())
-        except ValueError, msg:
+        except ValueError as msg:
             self.GetGrandParent().ErrorDialog(str(msg), 'invalid date format')
             self.runner_dateofbirth.SetFocus()
     
@@ -925,7 +925,7 @@ class EditRunPanel(RunPanel):
 
         try:
             self.editor.set_runner_club(self.runner_club.GetValue().strip())
-        except ValueError, msg:
+        except ValueError as msg:
             self.GetGrandParent().ErrorDialog(str(msg), 'invalid club')
             self.runner_club.SetFocus()
 
@@ -938,7 +938,7 @@ class EditRunPanel(RunPanel):
     def Commit(self, event): # wxGlade: EditRunPanel.<event_handler>
         try:
             self.editor.commit()
-        except Exception, msg:
+        except Exception as msg:
             self.editor.rollback()
             self.GetGrandParent().ErrorDialog(str(msg), 'Error saving changes')
 
@@ -993,7 +993,7 @@ class EditRunPanel(RunPanel):
             try:
                 self.editor.set_punchtime(punch,
                                           self.punches_grid.GetCellValue(punch, col).strip())
-            except ValueError, msg:
+            except ValueError as msg:
                 self.GetGrandParent().ErrorDialog(str(msg), 'invalid time format')
                 event.Veto()
                 return 
@@ -1020,10 +1020,10 @@ class EditRunPanel(RunPanel):
                 self.searchresults.DeleteAllItems()
                 results = self.finder.get_results()
                 for row, run in enumerate(results):
-                    index = self.searchresults.InsertStringItem(sys.maxint, unicode(run[0]))
+                    index = self.searchresults.InsertStringItem(sys.maxsize, str(run[0]))
                     self.searchresults.SetItemData(index, run[0])
-                    for col,v in enumerate(run[0:]):
-                        self.searchresults.SetStringItem(index, col, unicode(v))
+                    for col, v in enumerate(run[0:]):
+                        self.searchresults.SetStringItem(index, col, str(v))
                     # activate if it's the current run
                     if run[0] == current_run:
                         self.searchresults.SetItemState(index, wx.LIST_STATE_SELECTED, wx.LIST_STATE_SELECTED)
@@ -1034,10 +1034,10 @@ class EditRunPanel(RunPanel):
             # Disable Event handling while updating
             self.SetEvtHandlerEnabled(False)
         
-            if type(observable) == RunFinder:
+            if isinstance(observable, RunFinder):
                 update_runfinder()
 
-            elif type(observable) == RunEditor and event == 'run':
+            elif isinstance(observable, RunEditor) and event == 'run':
                 self.UpdateRun()
                 self.course.SetValue(self.editor.run_course)
                 self.override.SetSelection(self.editor.run_override)
@@ -1073,7 +1073,7 @@ class EditRunPanel(RunPanel):
                 # TODO make this more conditional on when the results actually change...
                 update_runfinder()
 
-            elif type(observable) == RunEditor and event == 'reader':
+            elif isinstance(observable, RunEditor) and event == 'reader':
                 if (self.GetGrandParent().notebook.GetCurrentPage() == self and
                     self.registration.GetValue() and 
                     observable.sicard is not None):
@@ -1091,7 +1091,7 @@ class EditRunPanel(RunPanel):
     def UpdateCombo(combo, choice, choice_list):
         combo.Clear()
         choice_index = 0
-        for i,c in enumerate(choice_list):
+        for i, c in enumerate(choice_list):
             combo.Append(c[1], c[0])
             if c[0] == choice:
                 choice_index = i
@@ -1117,7 +1117,7 @@ class ReadoutRunPanel(RunPanel):
         self.label_6 = wx.StaticText(self, wx.ID_ANY, "Category:")
         self.runner_category = wx.StaticText(self, wx.ID_ANY, "HAM")
         self.runner_name = wx.StaticText(self, wx.ID_ANY, "Gaudenz Steinlin")
-        self.runner_team = wx.StaticText(self, wx.ID_ANY, u"UBOL 3 \"saugr\u00fcn\"")
+        self.runner_team = wx.StaticText(self, wx.ID_ANY, "UBOL 3 \"saugr\u00fcn\"")
         self.runner_sicard = wx.StaticText(self, wx.ID_ANY, "654324")
         self.run_validation = wx.StaticText(self, wx.ID_ANY, "OK")
         self.team_validation = wx.StaticText(self, wx.ID_ANY, "not yet finished")
@@ -1140,7 +1140,7 @@ class ReadoutRunPanel(RunPanel):
         self.__do_layout()
         # end wxGlade
         
-        self.update(self.editor,'progress')
+        self.update(self.editor, 'progress')
         self.update(self.editor, 'run')        
 
     def __set_properties(self):
@@ -1257,7 +1257,7 @@ class ReadoutRunPanel(RunPanel):
             # Disable Event handling while updating
             self.SetEvtHandlerEnabled(False)
         
-            if type(observable) == RunEditor and event == 'run':
+            if isinstance(observable, RunEditor) and event == 'run':
                 self.UpdateRun()
 
                 self.runner_number.SetLabel(self.editor.runner_number)
@@ -1275,12 +1275,12 @@ class ReadoutRunPanel(RunPanel):
                     if self.GetParent().GetPageCount() > 0:
                         self.GetParent().SetSelection(0)
 
-            elif type(observable) == RunEditor and event == 'reader':
+            elif isinstance(observable, RunEditor) and event == 'reader':
                 if (self.GetGrandParent().notebook.GetCurrentPage() == self and
                     observable.sicard is not None):
                     try:
                         observable.load_run_from_card()
-                    except (SIReaderException, SIReaderTimeout, SIReaderCardChanged), msg:
+                    except (SIReaderException, SIReaderTimeout, SIReaderCardChanged) as msg:
                         self.GetGrandParent().ErrorDialog(str(msg), 'Error communicating to the SI-Reader')
                     else:
                         if (self.print_checkbox.GetValue() and
@@ -1288,7 +1288,7 @@ class ReadoutRunPanel(RunPanel):
                             # the current page might change if the run is not complete
                             observable.print_run()
                     
-            elif type(observable) == RunEditor and event == 'progress':
+            elif isinstance(observable, RunEditor) and event == 'progress':
                 p = observable.progress
                 self.progress_bar.SetValue(p[0])
                 self.progress_text.SetLabel(p[1])
@@ -1313,7 +1313,7 @@ if __name__ == "__main__":
     # Connect SI-Reader
     try:
         main_frame.editor.connect_reader()
-    except RunEditorException, e:
+    except RunEditorException as e:
         main_frame.ErrorDialog(e.message, "Error Connecting SI-Reader")
 
     app.MainLoop()

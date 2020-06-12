@@ -50,12 +50,12 @@ class Relay24hTest(unittest.TestCase):
         importer.import_data(self._store)
 
         # import sample runs
-        importer = SIRunImporter(join(dirname(__file__),'import_24h_run.csv'))
+        importer = SIRunImporter(join(dirname(__file__), 'import_24h_run.csv'))
         importer.import_data(self._store)
 
         self._cache = Cache()
-        self._event = Relay24hEvent(starttime_24h = datetime(2008,4,14,19,0),
-                                    starttime_12h = datetime(2008,4,15,7,0),
+        self._event = Relay24hEvent(starttime_24h = datetime(2008, 4, 14, 19, 0),
+                                    starttime_12h = datetime(2008, 4, 15, 7, 0),
                                     speed = 5,
                                     header = {},
                                     duration_24h = timedelta(hours=4, minutes=30),
@@ -82,39 +82,39 @@ class Relay24hTest(unittest.TestCase):
         return self._store.find(Team, Team.number == number).one()
     
     def testRelay24h(self):
-        valid = self._event.validate(self.getTeam(u'119'))
+        valid = self._event.validate(self.getTeam('119'))
 
-        self.assertEquals(valid['status'],
+        self.assertEqual(valid['status'],
                           Validator.OK)
-        self.assertEquals(self._event.validate(self.getTeam(u'121'))['status'],
+        self.assertEqual(self._event.validate(self.getTeam('121'))['status'],
                           Validator.OK)
-        self.assertEquals(self._event.validate(self.getTeam(u'103'))['status'],
+        self.assertEqual(self._event.validate(self.getTeam('103'))['status'],
                           Validator.OK)
-        self.assertEquals(self._event.validate(self.getTeam(u'104'))['status'],
+        self.assertEqual(self._event.validate(self.getTeam('104'))['status'],
                           Validator.DISQUALIFIED)
-        self.assertEquals(self._event.validate(self.getTeam(u'105'))['status'],
+        self.assertEqual(self._event.validate(self.getTeam('105'))['status'],
                           Validator.DISQUALIFIED)
-        self.assertEquals(self._event.validate(self.getTeam(u'106'))['status'],
+        self.assertEqual(self._event.validate(self.getTeam('106'))['status'],
                           Validator.DISQUALIFIED)
-        self.assertEquals(self._event.validate(self.getTeam(u'109'))['status'],
+        self.assertEqual(self._event.validate(self.getTeam('109'))['status'],
                           Validator.OK)
 
-        self.getTeam(u'105').override = Validator.OK
+        self.getTeam('105').override = Validator.OK
         # notify cache that this team has changed
-        self._cache.update(self.getTeam(u'105'))
-        self.assertEquals(self._event.validate(self.getTeam(u'105'))['status'],
+        self._cache.update(self.getTeam('105'))
+        self.assertEqual(self._event.validate(self.getTeam('105'))['status'],
                           Validator.OK)
 
-        self.getTeam(u'119').override = Validator.DISQUALIFIED
-        self._cache.update(self.getTeam(u'119'))
-        self.assertEquals(self._event.validate(self.getTeam(u'119'))['status'],
+        self.getTeam('119').override = Validator.DISQUALIFIED
+        self._cache.update(self.getTeam('119'))
+        self.assertEqual(self._event.validate(self.getTeam('119'))['status'],
                           Validator.DISQUALIFIED)
         
-        self.assertEquals(self._event.score(self.getTeam(u'119'))['score'],
-                          Relay24hScore(41,timedelta(minutes=41*6)))        
-        self.assertEquals(self._event.score(self.getTeam(u'121'))['score'],
-                          Relay24hScore(40,timedelta(minutes=40*6)))
-        self.assertEquals(self._event.score(self.getTeam(u'103'))['score'],
-                          Relay24hScore(38,timedelta(minutes=41*6)))
-        self.assertEquals(self._event.score(self.getTeam(u'109'))['score'],
-                          Relay24hScore(40,timedelta(minutes=40*6)))
+        self.assertEqual(self._event.score(self.getTeam('119'))['score'],
+                          Relay24hScore(41, timedelta(minutes=41*6)))        
+        self.assertEqual(self._event.score(self.getTeam('121'))['score'],
+                          Relay24hScore(40, timedelta(minutes=40*6)))
+        self.assertEqual(self._event.score(self.getTeam('103'))['score'],
+                          Relay24hScore(38, timedelta(minutes=41*6)))
+        self.assertEqual(self._event.score(self.getTeam('109'))['score'],
+                          Relay24hScore(40, timedelta(minutes=40*6)))

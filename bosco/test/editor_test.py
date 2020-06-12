@@ -35,7 +35,7 @@ class RunFinderTest(BoscoTest):
         self._finder.set_search_domain('run')
         for r in self._runs:
             self._finder.set_search_term(r.id)
-            self.assertEquals([self._run_tuple(self._runs.index(r))], 
+            self.assertEqual([self._run_tuple(self._runs.index(r))], 
                               self._finder.get_results()
                               )
 
@@ -45,21 +45,21 @@ class RunFinderTest(BoscoTest):
 
         for r in self._runs:
             self._finder.set_search_term(r.sicard.id)
-            self.assertEquals([self._run_tuple(self._runs.index(r))], 
+            self.assertEqual([self._run_tuple(self._runs.index(r))], 
                               self._finder.get_results()
                               )
 
         self._finder.set_search_term('abc')
-        self.assertEquals([], self._finder.get_results())
+        self.assertEqual([], self._finder.get_results())
 
-        self._finder.set_search_term(u'xyz')
-        self.assertEquals([], self._finder.get_results())
+        self._finder.set_search_term('xyz')
+        self.assertEqual([], self._finder.get_results())
 
         self._finder.set_search_term(0)
-        self.assertEquals([], self._finder.get_results())
+        self.assertEqual([], self._finder.get_results())
 
         self._finder.set_search_term([])
-        self.assertEquals([], self._finder.get_results())
+        self.assertEqual([], self._finder.get_results())
 
     def test_runner(self):
         """Search in runners."""
@@ -70,17 +70,17 @@ class RunFinderTest(BoscoTest):
                   self._run_tuple(2),
                   ]
         self._finder.set_search_term("Hans")
-        self.assertEquals(hanses,
+        self.assertEqual(hanses,
                           self._finder.get_results()
                           )
         self._finder.set_search_term("hans")
-        self.assertEquals(hanses,
+        self.assertEqual(hanses,
                           self._finder.get_results()
                           )
 
         # Search for number
         self._finder.set_search_term("102")
-        self.assertEquals([(self._runs[1].id,
+        self.assertEqual([(self._runs[1].id,
                             "A",
                             "unknown",
                             "102",
@@ -101,15 +101,15 @@ class RunFinderTest(BoscoTest):
                    "HAM",
                    )]
         self._finder.set_search_term("Gugus Dada")
-        self.assertEquals(result,
+        self.assertEqual(result,
                           self._finder.get_results()
                           )
         self._finder.set_search_term("Dada Gugus")
-        self.assertEquals(result,
+        self.assertEqual(result,
                           self._finder.get_results()
                           )
         self._finder.set_search_term("Da Gu")
-        self.assertEquals(result, self._finder.get_results())
+        self.assertEqual(result, self._finder.get_results())
 
     def test_team(self):
         """Search in teams."""
@@ -120,9 +120,9 @@ class RunFinderTest(BoscoTest):
                       ]
 
         self._finder.set_search_term('1')
-        self.assertEquals(team_runs, self._finder.get_results())
+        self.assertEqual(team_runs, self._finder.get_results())
         self._finder.set_search_term('best')
-        self.assertEquals(team_runs, self._finder.get_results())
+        self.assertEqual(team_runs, self._finder.get_results())
 
     def test_category(self):
         """Search in categories."""
@@ -130,25 +130,25 @@ class RunFinderTest(BoscoTest):
         HAM = [self._run_tuple(i)
                for i in range(6)]
         self._finder.set_search_term('HAM')
-        self.assertEquals(HAM, self._finder.get_results())
+        self.assertEqual(HAM, self._finder.get_results())
         self._finder.set_search_term('HA')
-        self.assertEquals([], self._finder.get_results())
+        self.assertEqual([], self._finder.get_results())
         self._finder.set_search_term('D135')
-        self.assertEquals([self._run_tuple(i) for i in range(3)],
+        self.assertEqual([self._run_tuple(i) for i in range(3)],
                           self._finder.get_results())
 
     def test_course(self):
         """Search in courses."""
         self._finder.set_search_domain('course')
         self._finder.set_search_term('A')
-        self.assertEquals([self._run_tuple(i) for i in range(6)],
+        self.assertEqual([self._run_tuple(i) for i in range(6)],
                           self._finder.get_results())
 
     def test_run_without_runner(self):
         """Test that runs without a runner and a course"""
         self._finder.set_search_domain('sicard')
         self._finder.set_search_term(9999)
-        self.assertEquals([self._run_tuple(6)],
+        self.assertEqual([self._run_tuple(6)],
                           self._finder.get_results())
 
     def _run_tuple(self, run_id):
@@ -161,10 +161,10 @@ class RunFinderTest(BoscoTest):
         team = r.sicard.runner and r.sicard.runner.team or None
         runner = r.sicard.runner
         return (r.id,
-                r.course and unicode(r.course.code) or "unknown",
+                r.course and str(r.course.code) or "unknown",
                 "unknown",
-                number and unicode(number) or "unknown",
-                runner and unicode(runner) or "unknown",
-                team and unicode(team) or "unknown",
-                team and unicode(team.category) or runner and unicode(runner.category) 
+                number and str(number) or "unknown",
+                runner and str(runner) or "unknown",
+                team and str(team) or "unknown",
+                team and str(team.category) or runner and str(runner.category) 
                   or "unkown")

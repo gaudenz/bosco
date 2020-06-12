@@ -33,9 +33,9 @@ from storm.exceptions import NotOneError, IntegrityError
 
 from psycopg2 import DataError
 
-from runner import Runner, Team, SICard, Category, Country, Club
-from course import Control, Course, Course, SIStation
-from run import Run, Punch
+from .runner import Runner, Team, SICard, Category, Country, Club
+from .course import Control, Course, Course, SIStation
+from .run import Run, Punch
 
 class Importer:
     """Base class for all Importer classes to import event
@@ -73,7 +73,7 @@ class CSVImporter(Importer):
             csv = reader(fh, delimiter="\t")
 
         # Read labels
-        labels = [ v.strip() for v in csv.next() ]
+        labels = [ v.strip() for v in next(csv) ]
         self._fieldcount = len(labels)
 
         # Read values
@@ -85,7 +85,7 @@ class CSVImporter(Importer):
             except IndexError:
                 pass
             d = {}
-            for i,v in enumerate(line):
+            for i, v in enumerate(line):
                 d[labels[i]] = v.decode(encoding).strip()
                 
             self.data.append(d)
@@ -136,11 +136,11 @@ class RunnerImporter(CSVImporter):
             return 
         elif sicard and sicard.runner:
             if force:
-                print ("Forcing reassignment of SI-Card %s from runner %s %s (%s) "
+                print(("Forcing reassignment of SI-Card %s from runner %s %s (%s) "
                        "to runner %s %s (%s)." %
-                       (sicard.id, sicard.runner.given_name,sicard.runner.surname, 
+                       (sicard.id, sicard.runner.given_name, sicard.runner.surname, 
                         sicard.runner.number, runner.given_name, runner.surname, 
-                        runner.number))
+                        runner.number)))
                 sicard.runner = None
             else:
                 raise AlreadyAssignedSICardException("SI-Card %s is already assigned to runner "
@@ -175,28 +175,28 @@ class SOLVDBImporter(RunnerImporter):
 
         for i, r in enumerate(self.data):
             if self._verbose:
-                print "%i: Adding %s %s" % (i+1, r.get('Vorname', u''), 
-                                            r.get('Name', u''))
+                print("%i: Adding %s %s" % (i+1, r.get('Vorname', ''), 
+                                            r.get('Name', '')))
 
             try:
                 # check if we already know this SI-Card
                 try:
                     sicard = RunnerImporter._get_sicard(r.get('SI_Karte', None), store)
-                except InvalidSICardException, e:
-                    print ("Runner %s %s (%s): %s" % 
-                           (r.get('Vorname', u''), r.get('Name', u''), r.get('SOLV-Nr', u''), e.message))
+                except InvalidSICardException as e:
+                    print(("Runner %s %s (%s): %s" % 
+                           (r.get('Vorname', ''), r.get('Name', ''), r.get('SOLV-Nr', ''), e.message)))
                     sicard = None
-                except NoSICardException, e:
+                except NoSICardException as e:
                     sicard = None
                 else:
                     if sicard.runner and not (sicard.runner.given_name == r.get('Vorname', None) and 
                                               sicard.runner.surname == r.get('Name', None)):
                         # This sicard is already assigned and the names do not match. Don't
                         # assign an sicard to this runner
-                        print ("SI-card %i already assigned to runner %s %s. Can't assign to "
+                        print(("SI-card %i already assigned to runner %s %s. Can't assign to "
                                "runner %s %s on line %i" %
                                (sicard.id, sicard.runner.given_name, sicard.runner.surname,
-                                r.get('Vorname'), r.get('Name'), i+2))
+                                r.get('Vorname'), r.get('Name'), i+2)))
                         sicard = None
 
                 # check if we already know this runner
@@ -212,34 +212,34 @@ class SOLVDBImporter(RunnerImporter):
                     runner_sicard = sicard.runner
 
                 if ((runner_solv or runner_number or runner_sicard) 
-                    and len(set((runner_solv, runner_number, runner_sicard)) - set((None, ))) > 1): 
+                    and len({runner_solv, runner_number, runner_sicard} - {None}) > 1): 
                     # we have matching runners for solvnr, number or sicard
                     # and they are not all the same
-                    print ("SOLV Number %s, Start Number %s or SI-card %s are already in the "
+                    print(("SOLV Number %s, Start Number %s or SI-card %s are already in the "
                            "database and assigned to different runners. Skipping "
                            "entry for %s %s on line %i" %
-                           (r.get('SOLV-Nr', u''), r.get('Startnummer', u''), r.get('SI-Karte', u''), r.get('Vorname', u''), r.get('Name', u''),
-                            i+2))
+                           (r.get('SOLV-Nr', ''), r.get('Startnummer', ''), r.get('SI-Karte', ''), r.get('Vorname', ''), r.get('Name', ''),
+                            i+2)))
                     continue
 
                 if runner_solv:
                     runner = runner_solv
-                    print ("Runner %s %s with SOLV Number %s already exists. "
+                    print(("Runner %s %s with SOLV Number %s already exists. "
                            "Updating information." %
                            (runner.given_name, runner.surname, runner.solvnr)
-                           )
+                           ))
                 elif runner_number:
                     runner = runner_number
-                    print ("Runner %s %s with Start Number %s already exists. "
+                    print(("Runner %s %s with Start Number %s already exists. "
                            "Updating information." %
                            (runner.given_name, runner.surname, runner.number)
-                           )
+                           ))
                 elif runner_sicard:
                     runner = runner_sicard
-                    print ("Runner %s %s with SI-card %s already exists. "
+                    print(("Runner %s %s with SI-card %s already exists. "
                            "Updating information." %
                            (runner.given_name, runner.surname, sicard.id)
-                           )
+                           ))
                 else:
                     runner = store.add(Runner(solvnr=solvnr, number=startnumber))
 
@@ -252,7 +252,7 @@ class SOLVDBImporter(RunnerImporter):
                 else:
                     club = None
                 if not club and clubname is not None:
-                    club = Club(r.get('Verein', u''))
+                    club = Club(r.get('Verein', ''))
 
                 runner.given_name = r.get('Vorname', None)
                 runner.surname = r.get('Name', None)
@@ -292,21 +292,21 @@ class SOLVDBImporter(RunnerImporter):
                     if sicount == 1 and course:
                         store.add(Run(runner.sicards.one(), course))
                     elif sicount != 1:
-                        print (u"Can't add run for runner %s %s on line %i: %s." %
-                               (r.get('Vorname', u''), r.get('Name', u''), i+2, 
+                        print(("Can't add run for runner %s %s on line %i: %s." %
+                               (r.get('Vorname', ''), r.get('Name', ''), i+2, 
                                 sicount == 0 and "No SI-card" or "More than one SI-card")
-                               )
+                               ))
                     elif course is None:
-                        print (u"Can't add run for runner %s %s on line %i: Course not found" % 
-                               (r.get('Vorname', u''), r.get('Name', u''), i+2)
-                               )
+                        print(("Can't add run for runner %s %s on line %i: Course not found" % 
+                               (r.get('Vorname', ''), r.get('Name', ''), i+2)
+                               ))
 
                 store.flush()
-            except (DataError, IntegrityError), e:
-                print (u"Error importing runner %s %s on line %i: %s\n"
-                       u"Import aborted." %
-                       (r.get('Vorname', u''), r.get('Name', u''), i+2, e.message.decode('utf-8', 'replace'))
-                       )
+            except (DataError, IntegrityError) as e:
+                print(("Error importing runner %s %s on line %i: %s\n"
+                       "Import aborted." %
+                       (r.get('Vorname', ''), r.get('Name', ''), i+2, e.message.decode('utf-8', 'replace'))
+                       ))
                 store.rollback()
                 return
 
@@ -314,15 +314,15 @@ class Team24hImporter(RunnerImporter):
     """Import participant data for 24h event from CSV file."""
 
     RUNNER_NUMBERS       = ['A', 'B', 'C', 'D', 'E', 'F']
-    TEAM_NUMBER_FORMAT   = u'%03d'
-    RUNNER_NUMBER_FORMAT = u'%(team)s%(runner)s'
+    TEAM_NUMBER_FORMAT   = '%03d'
+    RUNNER_NUMBER_FORMAT = '%(team)s%(runner)s'
     
     def import_data(self, store):
 
         # Create categories
-        cat_24h = Category(u'24h')
+        cat_24h = Category('24h')
         next_24h = 101
-        cat_12h = Category(u'12h')
+        cat_12h = Category('12h')
         next_12h = 201
 
         for t in self.data:
@@ -361,15 +361,15 @@ class Team24hImporter(RunnerImporter):
                 # Add SI Card if valid
                 try:
                     sicard = RunnerImporter._get_sicard(t['Memcardnr%s' % str(i)], store)
-                except NoSICardException, e:
-                    print ("Runner %s %s of Team %s (%s) has no SI-card." %
-                           (runner.given_name, runner.surname, team.name, team.number))
-                except InvalidSICardException, e:
-                    print ("Runner %s %s of Team %s (%s) has an invalid SI-card: %s" %
+                except NoSICardException as e:
+                    print(("Runner %s %s of Team %s (%s) has no SI-card." %
+                           (runner.given_name, runner.surname, team.name, team.number)))
+                except InvalidSICardException as e:
+                    print(("Runner %s %s of Team %s (%s) has an invalid SI-card: %s" %
                            (runner.given_name, runner.surname, team.name, team.number,
-                            e.message))
+                            e.message)))
                 else:
-                    RunnerImporter._add_sicard(runner,sicard, store)
+                    RunnerImporter._add_sicard(runner, sicard, store)
 
                 # Add runner to team
                 team.members.add(runner)
@@ -386,15 +386,15 @@ class TeamRelayImporter(RunnerImporter):
     # 0 leg needs 0 not '' otherwise the numbers do
     # not sort correctly as they are strings!
     RUNNER_NUMBERS       = ['0', '1', '2', '3'] 
-    RUNNER_NUMBER_FORMAT = u'%(runner)i%(team)02i'
+    RUNNER_NUMBER_FORMAT = '%(runner)i%(team)02i'
     
     def import_data(self, store):
 
         self._categories = {}
-        for line,t in enumerate(self.data):
+        for line, t in enumerate(self.data):
             if self._verbose:
-                print ("%i: Importing team %s (%s):" %
-                       (line+1, t['Teamname'], t['AnmeldeNummer']))
+                print(("%i: Importing team %s (%s):" %
+                       (line+1, t['Teamname'], t['AnmeldeNummer'])))
 
             try:
                 # Create category
@@ -414,17 +414,17 @@ class TeamRelayImporter(RunnerImporter):
                     number = TeamRelayImporter.RUNNER_NUMBER_FORMAT % \
                                     {'team' : int(team.number),
                                      'runner' : i}
-                    if surname == u'' and given_name == u'':
+                    if surname == '' and given_name == '':
                         # don't add runner without any name
                         i += 1
                         num += 1
                         continue
 
                     if self._verbose:
-                        print ("  * Adding runner %s %s (%s)." %
-                               (given_name, surname, number))
+                        print(("  * Adding runner %s %s (%s)." %
+                               (given_name, surname, number)))
 
-                    runner = store.add(Runner(surname,given_name))
+                    runner = store.add(Runner(surname, given_name))
                     runner.sex = RunnerImporter._parse_sex(t['Geschlecht%s' % str(i)])
                     runner.dateofbirth = RunnerImporter._parse_yob(t['Jahrgang%s' % str(i)]) 
                     runner.number = number
@@ -432,15 +432,15 @@ class TeamRelayImporter(RunnerImporter):
                     # Add SI Card if valid
                     try:
                         sicard = RunnerImporter._get_sicard(t['SI-Card%s' % str(i)], store)
-                    except NoSICardException, e:
-                        print ("Runner %s %s of Team %s (%s) has no SI-card." %
-                               (runner.given_name, runner.surname, team.name, team.number))
-                    except InvalidSICardException, e:
-                        print ("Runner %s %s of Team %s (%s) has an invalid SI-card: %s" %
+                    except NoSICardException as e:
+                        print(("Runner %s %s of Team %s (%s) has no SI-card." %
+                               (runner.given_name, runner.surname, team.name, team.number)))
+                    except InvalidSICardException as e:
+                        print(("Runner %s %s of Team %s (%s) has an invalid SI-card: %s" %
                                (runner.given_name, runner.surname, team.name, team.number,
-                                e.message))
+                                e.message)))
                     else:
-                        RunnerImporter._add_sicard(runner,sicard, store)
+                        RunnerImporter._add_sicard(runner, sicard, store)
 
                     # Add open run if SICard
                     try:
@@ -450,7 +450,7 @@ class TeamRelayImporter(RunnerImporter):
                     else:
                         if si is not None:
                             r = store.add(Run(si))
-                            r.set_coursecode(unicode(t['Bahn%s' % i]))
+                            r.set_coursecode(str(t['Bahn%s' % i]))
 
                     # Add runner to team
                     team.members.add(runner)
@@ -460,11 +460,11 @@ class TeamRelayImporter(RunnerImporter):
 
                 # Add team to store
                 store.add(team)
-            except (DataError, IntegrityError), e:
-                print (u"Error importing team %s (%s) on line %i: %s\n"
-                       u"Import aborted." %
+            except (DataError, IntegrityError) as e:
+                print(("Error importing team %s (%s) on line %i: %s\n"
+                       "Import aborted." %
                        (t['Teamname'], t['AnmeldeNummer'], line+2, e.message.decode('utf-8', 'replace'))
-                       )
+                       ))
                 store.rollback()
                 return
                
@@ -563,7 +563,7 @@ class SIRunImporter(Importer):
             run.complete = True
             store.add(run)
             if self._replay is True:
-                print "Commiting Run %s for SI-Card %s" % (course_code, cardnr)
+                print("Commiting Run %s for SI-Card %s" % (course_code, cardnr))
                 store.commit()
                 sleep(self._interval)
 
@@ -583,7 +583,7 @@ class SIRunExporter(SIRunImporter):
         @type punch:  object of class Punch
         """
         if punch is None:
-            return ('','')
+            return ('', '')
         
         return (str(punch.sistation.id),
                 '%s.%06i' % (punch.punchtime.strftime(SIRunImporter.TIMEFORMAT),
@@ -658,11 +658,11 @@ class OCADXMLCourseImporter(Importer):
             
         try:
             length = int(node.findtext(length_tag))
-        except (TypeError,ValueError):
+        except (TypeError, ValueError):
             length = None
         try:
             climb = int(node.findtext(climb_tag))
-        except (TypeError,ValueError):
+        except (TypeError, ValueError):
             if length is not None:
                 # Set climb to 0 if length is given
                 climb = 0
@@ -687,7 +687,7 @@ class OCADXMLCourseImporter(Importer):
         # read control codes
         for path in OCADXMLCourseImporter.CONTROL_PATHS:
             for code_el in self.__tree.findall(path):
-                code = code_el.text.strip() and unicode(code_el.text.strip()) or None
+                code = code_el.text.strip() and str(code_el.text.strip()) or None
                 if not code:
                     raise FileFormatException('Empty Control Code in Control Definition')
                 # search for control in Store
@@ -702,7 +702,7 @@ class OCADXMLCourseImporter(Importer):
             if len(variations) == 1:
                 var = variations[0]
                 # Get Course properties
-                course_code = unicode(c_el.findtext('CourseName').strip())
+                course_code = str(c_el.findtext('CourseName').strip())
                 (length, climb) = OCADXMLCourseImporter.__length(var, 'total')
                 course = Course(course_code, length, climb)
                 store.add(course)
@@ -720,12 +720,11 @@ class OCADXMLCourseImporter(Importer):
                     controls[seq] = (code, length, climb)
 
                 # sort controls by sequence number
-                keys = controls.keys()
-                keys.sort()
+                keys = sorted(list(controls.keys()))
                 
                 for seq in keys:
                     (code, length, climb) = controls[seq]
-                    control = store.find(Control, Control.code == unicode(code)).one()
+                    control = store.find(Control, Control.code == str(code)).one()
                     if not control:
                         raise ControlNotFoundException("Control with code '%s' not found." % code)
                     course.append(control, length, climb)
@@ -752,12 +751,12 @@ class CSVCourseImporter(CSVImporter):
         for c in self.data:
 
             if self._verbose:
-                print "Importing course %s." % c['code']
+                print("Importing course %s." % c['code'])
 
             # create course
             course = store.find(Course, Course.code == c['code']).one()
             if course:
-                print "A course with code %s already exists. Updating course." % c['code']
+                print("A course with code %s already exists. Updating course." % c['code'])
                 for s in course.sequence:
                     store.remove(s)
                 store.remove(course)
@@ -767,7 +766,7 @@ class CSVCourseImporter(CSVImporter):
             for i in range(len(c)-3):
                 code = c[str(i+1)]
                 
-                if code == u'':
+                if code == '':
                     # end of course
                     break
 

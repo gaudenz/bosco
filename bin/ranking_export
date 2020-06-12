@@ -40,7 +40,7 @@ class RankingExporter(object):
         self._sync_command = sync_command
         if observer:
             # register for changes in the ranked rankables
-            for rankable in set([r[1].rankable for r in ranking_list]):
+            for rankable in {r[1].rankable for r in ranking_list}:
                 observer.register(self, rankable)
 
             # wire up cache clearing
@@ -51,16 +51,16 @@ class RankingExporter(object):
         if self._last_update and self._interval:
             time_since_update = datetime.now() - self._last_update
             if time_since_update < timedelta(seconds=self._interval):
-                print "Skipping update, only %2fs since last update." % time_since_update.total_seconds()
+                print("Skipping update, only %2fs since last update." % time_since_update.total_seconds())
                 sys.stdout.flush()
                 # only update every interval period
                 return
         start = datetime.now()
-        print "%s: Ranking update ..." % start.strftime('%F %T'),
+        print("%s: Ranking update ..." % start.strftime('%F %T'), end=' ')
         sys.stdout.flush()
         completed = {}
         for desc, r in self._ranking_list:
-            html = unicode(self._event.format_ranking([r])).encode(self._encoding)
+            html = str(self._event.format_ranking([r])).encode(self._encoding)
             open(path.join(self._outdir, desc.lower().replace(' ', '_') + '.html'), 'wb').write(html)
             completed[desc] = (r.completed_count, r.member_count)
 
@@ -68,19 +68,19 @@ class RankingExporter(object):
         lookup = TemplateLookup(directories=[resource_filename('bosco', self._event._template_dir)])
         template = lookup.get_template('index.html')
 
-        html = unicode(template.render_unicode(header = self._event._header, completed = completed)).encode(self._encoding)
+        html = str(template.render_unicode(header = self._event._header, completed = completed)).encode(self._encoding)
         open(path.join(outdir, 'index.html'), 'wb').write(html)
-        print "%.2fs done." % (datetime.now() - start).total_seconds()
+        print("%.2fs done." % (datetime.now() - start).total_seconds())
         sys.stdout.flush()
         start = datetime.now()
 
         if self._sync_command:
-            print "%s: Running sync command ..." % start.strftime('%F %T'),
+            print("%s: Running sync command ..." % start.strftime('%F %T'), end=' ')
             sys.stdout.flush()
             if call(self._sync_command, shell=True) == 0:
-                print "%.2fs done." % (datetime.now() - start).total_seconds()
+                print("%.2fs done." % (datetime.now() - start).total_seconds())
             else:
-                print "%.2fs failed." % (datetime.now() - start).total_seconds()
+                print("%.2fs failed." % (datetime.now() - start).total_seconds())
         self._last_update = datetime.now()
 
 
@@ -102,11 +102,11 @@ if __name__ == '__main__':
     (options, args, ranking_list) = opt.parse_args()
 
     if len(ranking_list) == 0:
-        print "No ranking selected. Aborting."
+        print("No ranking selected. Aborting.")
         sys.exit(1)
 
     if len(args) > 1:
-        print "Can't export to more than one directory."
+        print("Can't export to more than one directory.")
         sys.exit(1)
     elif len(args) == 0:
         outdir = ''

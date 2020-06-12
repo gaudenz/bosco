@@ -21,8 +21,8 @@ from threading import Timer
 from storm.locals import *
 from datetime import datetime
 
-from run import Punch, Run
-from runner import Team
+from .run import Punch, Run
+from .runner import Team
 
 class EventObserver(object):
     """Observes an Event for new data (e.g. new punches).
@@ -164,9 +164,9 @@ class TriggerEventObserver(EventObserver):
     @warn: This will rollback the store every <intervall> seconds!
     """
 
-    _tables = {Punch : EventObserver._punch_notify,
-               Run   : EventObserver._run_notify,
-               Team  : EventObserver._team_notify,
+    _tables = {Punch: EventObserver._punch_notify,
+               Run: EventObserver._run_notify,
+               Team: EventObserver._team_notify,
                }
 
     def __init__(self, store, interval = 5, rollback = True):
@@ -194,7 +194,7 @@ class TriggerEventObserver(EventObserver):
                                           params = [self._last])
         
             for row in changed:
-                for obj_type in self._tables.keys():
+                for obj_type in list(self._tables.keys()):
                     if row[0] == obj_type.__storm_table__:
                         obj = self._store.get(obj_type, row[2])
                         if obj is not None:

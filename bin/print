@@ -43,13 +43,13 @@ if __name__ == '__main__':
     tempdir = mkdtemp()
     f = open(os.path.join(tempdir, 'print.tex'), 'wb')
 
-    f.write(unicode(conf.event.format_ranking([r for desc, r in ranking_list], type='print')).encode('utf-8'))
+    f.write(str(conf.event.format_ranking([r for desc, r in ranking_list], type='print')).encode('utf-8'))
 
     f.close()
 
     orig_dir = os.getcwd()
     os.chdir(tempdir)
-    call(['pdflatex','--interaction=batchmode', 'print.tex'])
+    call(['pdflatex', '--interaction=batchmode', 'print.tex'])
     os.chdir(orig_dir)
     f = open(os.path.join(tempdir, 'print.pdf'), 'rb')
     outfile.write(f.read())

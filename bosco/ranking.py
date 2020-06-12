@@ -178,8 +178,8 @@ class Ranking(object):
 
         # Sort by number first, then by score and finally by validation status
         # x['item'] is either a Run, Runner or Team
-        from run import Run
-        self._ranking_list.sort(key = lambda x: (type(x['item']) == Run) and x['item'].sicard.runner and (x['item'].sicard.runner.number or '0') or x['item'].number or '0')
+        from .run import Run
+        self._ranking_list.sort(key = lambda x: (isinstance(x['item'], Run)) and x['item'].sicard.runner and (x['item'].sicard.runner.number or '0') or x['item'].number or '0')
         self._ranking_list.sort(key = lambda x: x['scoreing']['score'], reverse = self._reverse)
         self._ranking_list.sort(key = lambda x: x['validation']['status'])
         
@@ -264,7 +264,7 @@ class OpenRuns(Rankable):
         self._control = control
         
     def _get_runs(self):
-        from run import Run
+        from .run import Run
         return self._store.find(Run, Run.complete == False)
     
     members = property(_get_runs)
@@ -475,7 +475,7 @@ class RelayStarttime(MassstartStarttime):
 
     def _prev_finish_ordered(self, obj):
 
-        from runner import RunnerException
+        from .runner import RunnerException
 
         # Get the list of runners for this team
         try:
@@ -491,8 +491,8 @@ class RelayStarttime(MassstartStarttime):
             # is not the case
             try:
                 return runners[i-1].run.finish_time
-            except RunnerException, e:
-                raise UnscoreableException(u'Unable to get finish time of previous runner: %s'
+            except RunnerException as e:
+                raise UnscoreableException('Unable to get finish time of previous runner: %s'
                                            % e.message) 
         
     def _prev_finish_unordered(self, obj):
@@ -502,8 +502,8 @@ class RelayStarttime(MassstartStarttime):
 
         # This makes the whole thing dependant on the exact database layout,
         # but it is a huge perfomance win
-        from course import SIStation
-        from run import Punch
+        from .course import SIStation
+        from .run import Punch
         store = Store.of(obj)
 
 
@@ -511,7 +511,7 @@ class RelayStarttime(MassstartStarttime):
         # before this time
         reftime = obj.finish_time
         if reftime is None:
-            punchlist = [p for p,c in obj.punchlist()]
+            punchlist = [p for p, c in obj.punchlist()]
             if len(punchlist) == 0:
                 # Assume this is the last run of this team
                 reftime = datetime.max
@@ -641,7 +641,7 @@ class SequenceCourseValidator(CourseValidator):
         
         if reorder is not None:
             # make reorder a zero based list, this aligns better with list indexes
-            self._reorder = map(lambda x: x-1, reorder)
+            self._reorder = [x-1 for x in reorder]
         else:
             self._reorder = None
 
@@ -659,7 +659,7 @@ class SequenceCourseValidator(CourseValidator):
         if len(plist) != len(clist):
             return False
         
-        for i,c in enumerate(clist):
+        for i, c in enumerate(clist):
             if not plist[i][1] is c:
                 return False
 
@@ -717,7 +717,7 @@ class SequenceCourseValidator(CourseValidator):
                  'missing' or '' (for special SIStations)
         """
 
-        from course import SIStation
+        from .course import SIStation
         
         if i is None:
             i = len(plist)
@@ -726,7 +726,7 @@ class SequenceCourseValidator(CourseValidator):
             
         if i > 0 and j > 0 and plist[i-1][1] is clist[j-1]:
             result_list = SequenceCourseValidator._diff(C, plist, clist, i-1, j-1)
-            result_list.append(('ok',plist[i-1][0]))
+            result_list.append(('ok', plist[i-1][0]))
         else:
             if j > 0 and (i == 0 or C[i][j-1] >= C[i-1][j]):
                 result_list = SequenceCourseValidator._diff(C, plist, clist, i, j-1)
@@ -749,7 +749,7 @@ class SequenceCourseValidator(CourseValidator):
         except KeyError:
             pass
 
-        from course import SIStation
+        from .course import SIStation
 
         # do basic checks from CourseValidator
         result = super(type(self), self).validate(run)
@@ -767,7 +767,7 @@ class SequenceCourseValidator(CourseValidator):
         # add ignored and special punches into diff_list
         ignorelist = run.punchlist(ignored=True)
         i = 0
-        for p,c in ignorelist:
+        for p, c in ignorelist:
             while i < len(diff_list):
                 if (diff_list[i][0] == 'missing'
                     or p.punchtime > diff_list[i][1].punchtime):
@@ -784,7 +784,7 @@ class SequenceCourseValidator(CourseValidator):
 
         if self._reorder:
 
-            from run import ShiftedPunch
+            from .run import ShiftedPunch
 
             # remove any additional punches from the validated punchlist
             orig_punchlist = [(status, punch) for status, punch in result['punchlist'] if status in ('ok', 'missing')]
@@ -883,7 +883,7 @@ class RelayScoreing(AbstractRelayScoreing):
         @param event: Event object used to validate and score individual runs.
         @type event:  instance of a class derived from Event
         """
-        super(RelayScoreing, self).__init__(event,cache)
+        super(RelayScoreing, self).__init__(event, cache)
         self._legs = legs
         self._speed = 0
         self._courses = []
@@ -909,7 +909,7 @@ class RelayScoreing(AbstractRelayScoreing):
         result = []
         for l in self._legs:
             for v in l['variants']:
-                if v in runs.keys():
+                if v in list(runs.keys()):
                     result.append(runs[v])
                     break
             else:
@@ -928,7 +928,7 @@ class RelayScoreing(AbstractRelayScoreing):
         except KeyError:
             pass
 
-        from runner import RunnerException
+        from .runner import RunnerException
 
         result = {'override':False}
         # check for override
@@ -1005,7 +1005,7 @@ class RelayScoreing(AbstractRelayScoreing):
         # this automatically takes mass starts into account
 
         runs = self._runs(team)
-        for i,l in enumerate(self._legs):
+        for i, l in enumerate(self._legs):
             default = l['defaulttime']
 
             if runs[i] is not None and self._event.validate(runs[i])['status'] == Validator.OK:
@@ -1087,7 +1087,7 @@ class Relay24hScoreing(AbstractRelayScoreing):
     DAY     = re.compile('^[LS][DE][1-4]$')
     FINISH  = re.compile('^FF[1-6]$')
 
-    POOLNAMES = ['start','night', 'day','finish']
+    POOLNAMES = ['start', 'night', 'day', 'finish']
     
     def __init__(self, starttime, speed, duration, event, method = 'runcount',
                  blocks = 'finish', cache = None):
@@ -1155,7 +1155,7 @@ class Relay24hScoreing(AbstractRelayScoreing):
         remaining = copy(members)
         next_runner = 0
         status = Validator.OK
-        for i,r in enumerate(runs):
+        for i, r in enumerate(runs):
             while not r['runner'] == remaining[next_runner]:
                 if i < len(members):
                     # not every runner has run at least once
@@ -1217,9 +1217,8 @@ class Relay24hScoreing(AbstractRelayScoreing):
                     
 
         # check for proper order of finish courses
-        finish_pool = [ c for c in self._courses if self.FINISH.match(c) ]
-        finish_pool.sort()
-        for i,c in enumerate(finish_pool):
+        finish_pool = sorted([ c for c in self._courses if self.FINISH.match(c) ])
+        for i, c in enumerate(finish_pool):
             if i >= len(remaining_runs):
                 # no more runs
                 break
@@ -1322,7 +1321,7 @@ class Relay24hScoreing(AbstractRelayScoreing):
             runtime = timedelta(0)
             
         if self._method == 'runcount':
-            result = Relay24hScore(len(valid_runs),runtime)
+            result = Relay24hScore(len(valid_runs), runtime)
         elif self._method in ['lkm', 'speed']:
             lkm = 0
             for r in valid_runs:
@@ -1334,7 +1333,7 @@ class Relay24hScoreing(AbstractRelayScoreing):
         else:
             raise UnscoreableException("Unknown scoreing method '%s'." % self._method)
         
-        ret = {'score':result,
+        ret = {'score': result,
                'finishtime': finish_time,
                'information': {'method': self._method,
                                'blocks': self._blocks},
@@ -1447,7 +1446,7 @@ class ControlPunchtimeScoreing(AbstractScoreing, Validator):
         except KeyError:
             pass
 
-        punchlist = [c for p,c in run.punchlist()]
+        punchlist = [c for p, c in run.punchlist()]
         result = Validator.NOT_COMPLETED
         for c in self._controls:
             if c in punchlist:
@@ -1470,8 +1469,8 @@ class ControlPunchtimeScoreing(AbstractScoreing, Validator):
             pass
         
         try:
-            (controls, punchtimes) = zip(*[(p.sistation.control, p.punchtime)
-                                           for p in run.punches])
+            (controls, punchtimes) = list(zip(*[(p.sistation.control, p.punchtime)
+                                           for p in run.punches]))
             
             result = datetime.min
             for c in self._controls:

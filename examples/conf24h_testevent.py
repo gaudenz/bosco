@@ -41,14 +41,14 @@ cache = Cache()
 observer = TriggerEventObserver(store)
 
 # EventRanking object
-starttime = datetime(2008,4,30,21,55)
-_cat24h = store.find(Category, Category.name == u'24h').one()
-_cat12h = store.find(Category, Category.name == u'12h').one()
-_last_ctrls = [store.find(Control, Control.code == u'200').one(),
-               store.find(Control, Control.code == u'199').one()]
+starttime = datetime(2008, 4, 30, 21, 55)
+_cat24h = store.find(Category, Category.name == '24h').one()
+_cat12h = store.find(Category, Category.name == '12h').one()
+_last_ctrls = [store.find(Control, Control.code == '200').one(),
+               store.find(Control, Control.code == '199').one()]
 
 event = Relay24hEvent(starttime_24h = starttime,
-                      starttime_12h = datetime(2008,4,30,22,50),
+                      starttime_12h = datetime(2008, 4, 30, 22, 50),
                       speed = 6,
                       extra_rankings = [('24h_lkm',
                                          {'obj':_cat24h,
@@ -56,9 +56,9 @@ event = Relay24hEvent(starttime_24h = starttime,
                                           }
                                          ),
                                         ('24h_speed',
-                                         {'obj':_cat24h,
-                                          'scoreing_args':{'method':'speed'},
-                                          'reverse':True,
+                                         {'obj': _cat24h,
+                                          'scoreing_args': {'method':'speed'},
+                                          'reverse': True,
                                           }
                                          ),
                                         ('12h_lkm',
@@ -103,7 +103,7 @@ event = Relay24hEvent(starttime_24h = starttime,
                                           }
                                          ),
                                         ('warning',
-                                         {'obj':OpenRuns(store),
+                                         {'obj': OpenRuns(store),
                                           'scoreing_args': {'control_list': _last_ctrls,
                                                            },
                                           }

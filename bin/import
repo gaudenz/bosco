@@ -51,7 +51,7 @@ if __name__ == '__main__':
         if options.format == 'solv':
             importer = SOLVDBImporter(filename, options.encoding, verbose=options.verbose)
         else:
-            print 'Unknown runner import format identifier!'
+            print('Unknown runner import format identifier!')
             sys.exit(1)
     elif command == 'teams':
         # Import teams
@@ -60,7 +60,7 @@ if __name__ == '__main__':
         elif options.format == 'relay':
             importer = TeamRelayImporter(filename, options.encoding, verbose=options.verbose)
         else:
-            print 'Unknown Team format identifier!'
+            print('Unknown Team format identifier!')
             sys.exit(1)
     elif command == 'runs':
         # Import runs
@@ -72,10 +72,10 @@ if __name__ == '__main__':
         elif options.format == 'csv':
             importer = CSVCourseImporter(filename, options.encoding, verbose=options.verbose)
         else:
-            print 'Unknown Course format identifier!'
+            print('Unknown Course format identifier!')
             sys.exit(1)
     else:
-        print "Unknown command '%s'" % command
+        print("Unknown command '%s'" % command)
         sys.exit(1)
         
     importer.import_data(conf.store)

@@ -53,7 +53,7 @@ class RotatingRankingViewer(wx.Frame):
 
         # take next ranking from the list and show
         (ranking, self._duration) = self._rankings.pop(0)
-        self._panel.SetPage(unicode(ranking))
+        self._panel.SetPage(str(ranking))
         
         # add at the end of the stack
         self._rankings.append((ranking, self._duration))
@@ -80,27 +80,27 @@ if __name__ == '__main__':
     (options, args) = opt.parse_args()
 
     if options.list:
-        print 'Available rankings:', 
+        print('Available rankings:', end=' ') 
         for r in conf.event.list_rankings():
-            print r[0],
-        print
+            print(r[0], end=' ')
+        print()
         sys.exit()
 
     if options.rankings:
         ranking_codes = options.rankings.split(',')
-        ranking_list = [ r for (desc,r) in conf.event.list_rankings() if desc in ranking_codes ]
+        ranking_list = [ r for (desc, r) in conf.event.list_rankings() if desc in ranking_codes ]
     else:
-        ranking_list = [ r for (desc,r) in conf.event.list_rankings() ]
+        ranking_list = [ r for (desc, r) in conf.event.list_rankings() ]
 
     ranking_times = options.time.split(',')
     if len(ranking_times) == 1:
         ranking_times *= len(ranking_list)
     if not len(ranking_times) == len(ranking_list):
-        print "Ranking times and ranking codes must be the same length!"
+        print("Ranking times and ranking codes must be the same length!")
         sys.exit(1)
 
     ranking_tuples = []
-    for i,r in enumerate(ranking_list):
+    for i, r in enumerate(ranking_list):
         ranking_tuples.append((conf.event.format_ranking([r]), int(ranking_times[i])))
 
     # add EventObserver to cache for automatic updates

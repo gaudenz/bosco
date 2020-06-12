@@ -40,12 +40,12 @@ class Relay24h2008Test(EventTest):
         self.import_refdata(join(dirname(__file__), 'relay_24h_ubol_2008.pck'))
         
         self.store = Store(create_database('postgres:bosco_test'))
-        cat24h = self.store.find(Category, Category.name == u'24h').one()
-        cat12h = self.store.find(Category, Category.name == u'12h').one()
+        cat24h = self.store.find(Category, Category.name == '24h').one()
+        cat12h = self.store.find(Category, Category.name == '12h').one()
 
         # Set up event object
-        self.event = Relay24hEvent(starttime_24h = datetime(2008,5,10,19,00),
-                              starttime_12h = datetime(2008,5,11,7,0),
+        self.event = Relay24hEvent(starttime_24h = datetime(2008, 5, 10, 19, 00),
+                              starttime_12h = datetime(2008, 5, 11, 7, 0),
                               speed = 6,
                               extra_rankings = [('24h_lkm',
                                                  {'obj':cat24h,
@@ -53,9 +53,9 @@ class Relay24h2008Test(EventTest):
                                                   }
                                                  ),
                                                 ('24h_speed',
-                                                 {'obj':cat24h,
-                                                  'scoreing_args':{'method':'speed'},
-                                                  'reverse':True,
+                                                 {'obj': cat24h,
+                                                  'scoreing_args': {'method':'speed'},
+                                                  'reverse': True,
                                                   }
                                                  ),
                                                 ('12h_lkm',

@@ -19,8 +19,8 @@
 from storm.locals import *
 from copy import copy
 
-from base import MyStorm
-from ranking import Rankable, RankableItem
+from .base import MyStorm
+from .ranking import Rankable, RankableItem
 
 class AbstractRunner(object, RankableItem):
     """Base class for all runner like classes (runners, teams). This
@@ -40,7 +40,7 @@ class Runner(AbstractRunner, Storm):
     given_name = Unicode()
     surname = Unicode()
     dateofbirth = Date()
-    sex = Enum(map = {'male':u'male', 'female':u'female'})
+    sex = Enum(map = {'male':'male', 'female':'female'})
     _nation_id = Int(name='nation')
     nation = Reference(_nation_id, 'Country.id')
     solvnr = Unicode()
@@ -66,7 +66,7 @@ class Runner(AbstractRunner, Storm):
     team = Reference(_team_id, 'Team.id')
     sicards = ReferenceSet(id, 'SICard._runner_id')
 
-    def __init__(self, surname=u'', given_name=u'', sicard = None, category = None, number = None,
+    def __init__(self, surname='', given_name='', sicard = None, category = None, number = None,
                  dateofbirth=None, sex=None, nation=None, solvnr=None, startblock=None, 
                  starttime=None, club=None, address1=None, address2=None, zipcode=None, 
                  city=None, address_country=None, email=None, startfee=None, paid=None, 
@@ -98,10 +98,10 @@ class Runner(AbstractRunner, Storm):
         self.comment = comment
         
     def __str__(self):
-        return unicode(self).encode('utf-8')
+        return str(self).encode('utf-8')
 
     def __unicode__(self):
-        return (u'%s %s' % (self.given_name, self.surname))
+        return ('%s %s' % (self.given_name, self.surname))
 
     def _get_run(self): 
         runs = []
@@ -118,9 +118,9 @@ class Runner(AbstractRunner, Storm):
                 # if there is only one complete run, return this run
                 return complete_runs[0]
             else:
-                raise RunnerException(u'%s runs for runner %s (%s)' % (len(runs), self, self.number))
+                raise RunnerException('%s runs for runner %s (%s)' % (len(runs), self, self.number))
         else:
-            raise RunnerException(u'No run found for runner %s (%s)' % (self, self.number))
+            raise RunnerException('No run found for runner %s (%s)' % (self, self.number))
     run = property(_get_run)
         
 class Team(AbstractRunner, Storm):
@@ -145,7 +145,7 @@ class Team(AbstractRunner, Storm):
         self.responsible = responsible
 
     def __str__(self):
-        return unicode(self).encode('utf-8')
+        return str(self).encode('utf-8')
     
     def __unicode__(self):
         return self.name
@@ -153,7 +153,7 @@ class Team(AbstractRunner, Storm):
     def _get_runs(self):
         runs = []
         # import this here to avoid a circular import
-        from run import Run
+        from .run import Run
         for m in self.members:
             for si in m.sicards:
                 runs.extend(list(si.runs))
@@ -198,7 +198,7 @@ class Category(Storm, Rankable):
         self.name = name
 
     def __str__(self):
-        return unicode(self).encode('utf-8')
+        return str(self).encode('utf-8')
     
     def __unicode__(self):
         return self.name
@@ -224,7 +224,7 @@ class Country(Storm):
         self.code2 = code2
 
     def __str__(self):
-        return unicode(self).encode('utf-8')
+        return str(self).encode('utf-8')
     
     def __unicode__(self):
         return self.code3
@@ -241,7 +241,7 @@ class Club(Storm):
         self.name = name
 
     def __str__(self):
-        return unicode(self).encode('utf-8')
+        return str(self).encode('utf-8')
     
     def __unicode__(self):
         return self.name

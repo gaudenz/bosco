@@ -42,18 +42,18 @@ class RunnerTest(unittest.TestCase):
         Test that a runner is added to the store if a store is given to the
         constructor.
         """
-        r = Runner(u'Bernasconi', u'Maria')
-        self.assertEquals(Store.of(r), None)
+        r = Runner('Bernasconi', 'Maria')
+        self.assertEqual(Store.of(r), None)
         self._store.add(r)
-        self.assertEquals(Store.of(r), self._store)
+        self.assertEqual(Store.of(r), self._store)
 
     def testDoubleSICard(self):
         """
         Test that creating two SICard objects with the same id raises an error.
         """
 
-        r1 = self._store.add(Runner(u'Hans', u'Muster', SICard(987655)))
-        r2 = self._store.add(Runner(u'Bernasconi', u'Maria', SICard(987655)))
+        r1 = self._store.add(Runner('Hans', 'Muster', SICard(987655)))
+        r2 = self._store.add(Runner('Bernasconi', 'Maria', SICard(987655)))
         self.assertRaises(IntegrityError, self._store.flush)
 
     def testMultipleSICards(self):
@@ -62,10 +62,10 @@ class RunnerTest(unittest.TestCase):
         """
         
         s1 = SICard(987655)
-        r = self._store.add(Runner(u'Hans', u'Muster', s1))
+        r = self._store.add(Runner('Hans', 'Muster', s1))
         s2 = SICard(765444)
         r.sicards.add(s2)
-        self.failUnless(s1 in r.sicards and s2 in r.sicards)
+        self.assertTrue(s1 in r.sicards and s2 in r.sicards)
 
     def testReassignFails(self):
         """
@@ -73,8 +73,8 @@ class RunnerTest(unittest.TestCase):
         """
 
         si = SICard(987655)
-        r1 = self._store.add(Runner(u'Hans', u'Muster', si))
-        r2 = self._store.add(Runner(u'Bernasconi', u'Maria', SICard(765444)))
+        r1 = self._store.add(Runner('Hans', 'Muster', si))
+        r2 = self._store.add(Runner('Bernasconi', 'Maria', SICard(765444)))
         self._store.flush()
         self.assertRaises(RunnerException, r2.sicards.add, si)
 
@@ -84,8 +84,8 @@ class RunnerTest(unittest.TestCase):
         should work.
         """
         si = SICard(987655)
-        r1 = self._store.add(Runner(u'Hans', u'Muster', si))
-        r2 = self._store.add(Runner(u'Bernasconi', u'Maria', SICard(765444)))
+        r1 = self._store.add(Runner('Hans', 'Muster', si))
+        r2 = self._store.add(Runner('Bernasconi', 'Maria', SICard(765444)))
         r1.sicards.remove(si)
         try:
             r2.sicards.add(si)
@@ -93,7 +93,7 @@ class RunnerTest(unittest.TestCase):
         except RunnerException:
             self.fail("RunnerException raised although SI-card reassignment should "
                       "work.")
-        self.failUnless(si in r2.sicards)
+        self.assertTrue(si in r2.sicards)
 
     def testReassigSame(self):
         """
@@ -101,13 +101,13 @@ class RunnerTest(unittest.TestCase):
         works.
         """
         si = SICard(987655)
-        r = self._store.add(Runner(u'Hans', u'Muster', si))
+        r = self._store.add(Runner('Hans', 'Muster', si))
         try:
             r.sicards.add(si)
             self._store.flush()
         except RunnerException:
             self.fail("RunnerException raised although SI-card reassignment should "
                       "work.")
-        self.failUnless(si in r.sicards)
+        self.assertTrue(si in r.sicards)
 
         

@@ -25,8 +25,8 @@ from storm.locals import *
 
 from datetime import timedelta
 
-from ranking import Rankable, ValidationError, UnscoreableException
-from base import MyStorm
+from .ranking import Rankable, ValidationError, UnscoreableException
+from .base import MyStorm
 
 class SIStation(Storm):
     """SI Control Station. Each si station bleongs to a control, but each
@@ -95,7 +95,7 @@ class Control(MyStorm):
         @type sistation:  SIStation object or int
         """
         
-        if type(sistation) == int:
+        if isinstance(sistation, int):
             station_nr = sistation
             sistation = self._store.get(SIStation, sistation)
             if sistation is None:
@@ -192,7 +192,7 @@ class Course(MyStorm, BaseCourse):
                         if it does not yet exist.
         @type control:  Control object or unicode
         """
-        if type(control) is unicode:
+        if isinstance(control, str):
             controlcode = control
             control = self._store.find(Control, Control.code == controlcode).one()
             if control is None:
@@ -262,7 +262,7 @@ class Course(MyStorm, BaseCourse):
             raise UnscoreableException("Can't score a run without a scoreing strategy.")
 
     def __str__(self):
-        return unicode(self).encode('utf-8')
+        return str(self).encode('utf-8')
     
     def __unicode__(self):
         return self.code
@@ -289,7 +289,7 @@ class CombinedCourse(BaseCourse):
         self._code = code
         self.course_list = []
         for c in course_list:
-            if type(c) == Course:
+            if isinstance(c, Course):
                 self.course_list.append(c)
             else:
                 if store is None:
@@ -317,7 +317,7 @@ class CombinedCourse(BaseCourse):
         return self._controlcount
 
     def __str__(self):
-        return unicode(self).encode('utf-8')
+        return str(self).encode('utf-8')
     
     def __unicode__(self):
         return self._code

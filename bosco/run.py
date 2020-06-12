@@ -28,10 +28,10 @@ from storm.exceptions import NoStoreError
 from storm.expr import Column, Func, LeftJoin
 import re
 
-from base import MyStorm
-from course import SIStation, Course, Control
-from runner import SICard
-from ranking import RankableItem, ValidationError, UnscoreableException
+from .base import MyStorm
+from .course import SIStation, Course, Control
+from .runner import SICard
+from .ranking import RankableItem, ValidationError, UnscoreableException
 
 class Punch(Storm):
     __storm_table__ = 'punch'
@@ -136,7 +136,7 @@ class Run(MyStorm, RankableItem):
                         or if punches is non empty.
         """
         
-        if type(card) == int:
+        if isinstance(card, int):
             cardnr = card
             card = store.get(SICard, card)
             if not card:
@@ -147,7 +147,7 @@ class Run(MyStorm, RankableItem):
         if store is not None:
             self._store = store
 
-        if type(course) == unicode:
+        if isinstance(course, str):
             self.set_coursecode(course)
         else:
             self.course = course
@@ -186,10 +186,10 @@ class Run(MyStorm, RankableItem):
     def add_punchlist(self, punchlist):
         """Adds a list of (stationnumber, punchtime) tupeles to the run."""
         errors = ''
-        for i,p in enumerate(punchlist):
+        for i, p in enumerate(punchlist):
             try:
                 self.add_punch(p, i+1)
-            except RunException, msg:
+            except RunException as msg:
                 errors = '%s%s\n' % (errors, msg)
                 
         if not errors == '':
@@ -249,8 +249,7 @@ class Run(MyStorm, RankableItem):
                                                Punch.sistation == SIStation.id,
                                                SIStation.control == Control.id,
                                                Not(Control.override == True)).order_by('COALESCE(manual_punchtime, card_punchtime)').values(Column('sequence')))
-        sorted = copy(punchsequence)
-        sorted.sort()
+        sorted = sorted(copy(punchsequence))
         return punchsequence == sorted
 
     def validate(self, validator_class=None, args=None):

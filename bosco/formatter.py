@@ -27,12 +27,12 @@ from reportlab.platypus import *
 from reportlab.lib.styles import getSampleStyleSheet
 
 from datetime import datetime
-from StringIO import StringIO
+from io import StringIO
 from csv import writer
 
-from ranking import Validator, ValidationError, UnscoreableException
-from course import SIStation, Control
-from run import Punch, Run
+from .ranking import Validator, ValidationError, UnscoreableException
+from .course import SIStation, Control
+from .run import Punch, Run
 
 def format_timedelta(delta):
     (hours, seconds) = divmod(delta.seconds, 3600)
@@ -122,7 +122,7 @@ class AbstractSOLVRankingFormatter(AbstractRankingFormatter):
             return self.validation_codes[r['validation']['status']]
 
     def _encode(self, s):
-        return unicode(s).encode(self._encoding, 'xmlcharrefreplace')
+        return str(s).encode(self._encoding, 'xmlcharrefreplace')
 
     def _control_code(self, control):
         try:
@@ -281,7 +281,7 @@ class RoundCountRankingFormatter(AbstractSOLVRankingFormatter):
         for ranking in self.rankings:
             lines = []
             for r in ranking:
-                if type(r['item']) == Run:
+                if isinstance(r['item'], Run):
                     runner = r['item'].sicard.runner
                     run = r['item']
                 else:
@@ -290,10 +290,10 @@ class RoundCountRankingFormatter(AbstractSOLVRankingFormatter):
                 number = runner and runner.number or 0
                 lines.append([r['rank'] or '',
                               run.sicard.id,
-                              self._encode(runner and runner.category or u''),
+                              self._encode(runner and runner.category or ''),
                               self._encode(number), # change index below if position of this element changes
-                              self._encode(runner and runner.given_name or u''),
-                              self._encode(runner and runner.surname or u''),
+                              self._encode(runner and runner.given_name or ''),
+                              self._encode(runner and runner.surname or ''),
 
                               self._print_score(r),
                               ])
@@ -411,7 +411,7 @@ class AbstractRunFormatter(AbstractFormatter):
         except UnscoreableException:
             lastpunch = start = self._run.start_time or raw_punchlist[0][1].punchtime
         for code, p in raw_punchlist:
-            if type(p) == Punch:
+            if isinstance(p, Punch):
                 punchtime = p.manual_punchtime or p.card_punchtime
                 punchlist.append((p.sequence and str(p.sequence) or '',
                                   p.sistation.control and p.sistation.control.code or '',
@@ -424,7 +424,7 @@ class AbstractRunFormatter(AbstractFormatter):
                                   str(code)))
                 if code == 'ok':
                     lastpunch = punchtime
-            elif type(p) == Control:
+            elif isinstance(p, Control):
                 punchlist.append(('',
                                   p.code,
                                   '',
@@ -434,7 +434,7 @@ class AbstractRunFormatter(AbstractFormatter):
                                   '',
                                   str(int(False)),
                                   code))
-            elif type(p) == SIStation:
+            elif isinstance(p, SIStation):
                 punchlist.append(('',
                                   '',
                                   str(p.id),
@@ -462,7 +462,7 @@ class ReportlabRunFormatter(AbstractRunFormatter):
     def __str__(self):
         try:
             validation = self._event.validate(self._run)
-        except ValidationError, validation_error:
+        except ValidationError as validation_error:
             validation = None
         try:
             score = self._event.score(self._run)
@@ -480,10 +480,10 @@ class ReportlabRunFormatter(AbstractRunFormatter):
         elements.append(Paragraph(("%(event)s / %(map)s / %(place)s / %(date)s / %(organiser)s" %
                                    self._header),
                                   styles['Normal']))
-        elements.append(Spacer(0,10))
+        elements.append(Spacer(0, 10))
 
         runner = self._run.sicard.runner
-        elements.append(Paragraph("%s %s" % (unicode(runner), runner.number and 
+        elements.append(Paragraph("%s %s" % (str(runner), runner.number and 
                                              ("(%s)" % runner.number) or ''), 
                                   styles['Heading1']))
         elements.append(Paragraph("SI-Card: %s" % str(self._run.sicard.id), 
@@ -491,7 +491,7 @@ class ReportlabRunFormatter(AbstractRunFormatter):
         course = self._run.course
         elements.append(Paragraph("<b>%s</b>" % (course and course.code or 'unknown course'), 
                                   styles['Normal']))
-        elements.append(Spacer(0,10))
+        elements.append(Spacer(0, 10))
 
         if validation and validation['status'] == Validator.OK:
             elements.append(Paragraph('<b>Laufzeit %s</b>' % score['score'], styles['Normal']))
@@ -501,20 +501,20 @@ class ReportlabRunFormatter(AbstractRunFormatter):
         else:
             elements.append(Paragraph('<b>Validation error: %s</b>' % validation_error.message,
                                       styles['Normal']))
-        elements.append(Spacer(0,10))
+        elements.append(Spacer(0, 10))
 
         (punchtable, tablestyles) = self._format_punchlist()
 
-        tablestyles = [('ALIGN', (0,0), (-1,-1), 'RIGHT'),
-                       ('FONT', (0,0), (-1,-1), 'Helvetica'),
-                       ('TOPPADDING', (0,0), (-1,-1), 0),
-                       ('BOTTOMPADDING', (0,0), (-1,-1), 0),
+        tablestyles = [('ALIGN', (0, 0), (-1, -1), 'RIGHT'),
+                       ('FONT', (0, 0), (-1, -1), 'Helvetica'),
+                       ('TOPPADDING', (0, 0), (-1, -1), 0),
+                       ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
                        ] + tablestyles
         t = Table(punchtable, )
         t.setStyle(TableStyle(tablestyles))
         t.hAlign = 'LEFT'
         elements.append(t)
-        elements.append(Spacer(0,20))
+        elements.append(Spacer(0, 20))
 
         elements.append(Paragraph("printed by Bosco, Free Orienteering Software, "
                                   "http://bosco.durcheinandertal.ch", styles['Normal']))
@@ -529,7 +529,7 @@ class ReportlabRunFormatter(AbstractRunFormatter):
         # format into triples (control, time, time_to_last)
         punch_triples = []
         ctrl_nr = 1
-        for i,p in enumerate(punchlist):
+        for i, p in enumerate(punchlist):
             if p[8] in ('ok', 'missing'):
                 control = "%i (%s)" % (ctrl_nr, p[1])
                 ctrl_nr += 1
@@ -548,9 +548,9 @@ class ReportlabRunFormatter(AbstractRunFormatter):
             if i > 0 and i % cols == 0:
                 # new row
                 table.extend(row_items)
-                row_items = ([],[],[])
+                row_items = ([], [], [])
                 rowcount = len(table)
-                styles.append(('TOPPADDING', (0,rowcount), (-1,rowcount), 20))
+                styles.append(('TOPPADDING', (0, rowcount), (-1, rowcount), 20))
 
             for j in range(3):
                 row_items[j].append(punch_triples[i][j])
