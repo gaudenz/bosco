@@ -96,16 +96,16 @@ class Runner(AbstractRunner, Storm):
         self.preferred_category = preferred_category
         self.doping_declaration = doping_declaration
         self.comment = comment
-        
+
     def __str__(self):
         return ('%s %s' % (self.given_name, self.surname))
 
-    def _get_run(self): 
+    def _get_run(self):
         runs = []
         for si in self.sicards:
             for r in si.runs:
                 runs.append(r)
-                
+
         if len(runs) == 1:
             return runs[0]
         elif len(runs) > 1:
@@ -119,10 +119,10 @@ class Runner(AbstractRunner, Storm):
         else:
             raise RunnerException('No run found for runner %s (%s)' % (self, self.number))
     run = property(_get_run)
-        
+
 class Team(AbstractRunner, Storm):
     __storm_table__ = 'team'
-    
+
     id = Int(primary=True)
     number = Unicode()
     name = Unicode()

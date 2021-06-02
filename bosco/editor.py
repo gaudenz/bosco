@@ -39,7 +39,7 @@ class Observable:
 
     def __init__(self):
         self._observers = []
-        
+
     def add_observer(self, observer):
         self._observers.append(observer)
 
@@ -121,11 +121,11 @@ class RunFinder(Observable):
             runner = r.sicard.runner
             team = runner and runner.team or None
             club = runner and runner.club and runner.club.name or None
-            results.append((r.id, 
-                            r.course and r.course.code and str(r.course.code) 
-                              or 'unknown', 
+            results.append((r.id,
+                            r.course and r.course.code and str(r.course.code)
+                              or 'unknown',
                             r.readout_time and RunEditor._format_time(r.readout_time) or 'unknown',
-                            runner and runner.number and str(runner.number) 
+                            runner and runner.number and str(runner.number)
                               or 'unknown',
                             runner and str(runner) or 'unknown',
                             team and str(team) or club and str(club) or 'unknown',
@@ -221,9 +221,9 @@ class RunEditor(Observable, metaclass=Singleton):
                       SIStation.CHECK:  'check',
                       SIStation.CLEAR:  'clear'}
     max_progress = 7
-    
+
     __initialized = False
-    
+
     def __init__(self, store, event):
         """
         @param store: Storm store of the runs
@@ -232,12 +232,12 @@ class RunEditor(Observable, metaclass=Singleton):
         @note:        Later "instantiations" of this singleton discard all arguments.
         """
         if self.__initialized == True:
-            return 
-        
+            return
+
         Observable.__init__(self)
         self._store = store
         self._event = event
-        
+
         self._run = None
         self.progress = None
         self._is_changed = False
@@ -271,7 +271,7 @@ class RunEditor(Observable, metaclass=Singleton):
 
     def has_run(self):
         return self._run is not None
-    
+
     def _get_runner_name(self):
         try:
             return str(self._run.sicard.runner or '')
@@ -290,7 +290,7 @@ class RunEditor(Observable, metaclass=Singleton):
     runner_club = property(lambda obj: obj._run and obj._run.sicard.runner and
                            obj._run.sicard.runner.club and
                            obj._run.sicard.runner.club.name or '')
-    
+
     def _get_runner_number(self):
         try:
             return self._run.sicard.runner.number or ''
@@ -299,7 +299,7 @@ class RunEditor(Observable, metaclass=Singleton):
     runner_number = property(_get_runner_number)
 
     runner_category = property(lambda obj: obj._run and obj._run.sicard.runner and
-                               obj._run.sicard.runner.category and 
+                               obj._run.sicard.runner.category and
                                obj._run.sicard.runner.category.name or '')
 
     def _get_runner_team(self):
@@ -322,7 +322,7 @@ class RunEditor(Observable, metaclass=Singleton):
         except AttributeError:
             return ''
     run_id = property(_get_run_id)
-    
+
     def _get_run_course(self):
         try:
             return self._run.course.code
@@ -367,7 +367,7 @@ class RunEditor(Observable, metaclass=Singleton):
         na = 'NA'
         if self._run is None:
             return ''
-        
+
         try:
             team = self._run.sicard.runner.team
         except AttributeError:
@@ -387,14 +387,14 @@ class RunEditor(Observable, metaclass=Singleton):
         except (UnscoreableException, AttributeError):
             return ''
     team_score = property(_get_team_score)
-    
+
     def _raw_punchlist(self):
         try:
             punchlist = self._event.validate(self._run)['punchlist']
         except ValidationError:
             if self._run is None:
                 return []
-            
+
             # create pseudo validation result
             punchlist = [ ('ignored', p) for p in self._run.punches.order_by(Func('COALESCE', Punch.manual_punchtime, Punch.card_punchtime))]
 
@@ -403,7 +403,7 @@ class RunEditor(Observable, metaclass=Singleton):
             punchlist.append(('missing',
                               self._store.get(SIStation, SIStation.FINISH)))
         return punchlist
-        
+
     def _get_punchlist(self):
 
         def StationCode(si):
@@ -411,7 +411,7 @@ class RunEditor(Observable, metaclass=Singleton):
                 return RunEditor._station_codes[si]
             else:
                 return str(si)
-            
+
         punchlist = []
         for code, p in self._raw_punchlist():
             if isinstance(p, Punch):
@@ -453,7 +453,7 @@ class RunEditor(Observable, metaclass=Singleton):
                 self._event.clear_cache(self._run.sicard.runner.team)
         except (AttributeError, KeyError):
             pass
-        
+
     def get_runnerlist(self):
         runners = [(None, '')]
         for r in self._store.find(Runner).order_by('number'):
@@ -507,7 +507,7 @@ class RunEditor(Observable, metaclass=Singleton):
             si = self._create_virtual_sicard()
             self._run.sicard = si
             runner.sicards.add(si)
-            
+
         self.commit()
 
     def set_runner_number(self, n, force = False):
@@ -518,7 +518,7 @@ class RunEditor(Observable, metaclass=Singleton):
                 self._run.sicard.runner.number = None
                 self.commit()
             return
-        
+
         # numbers must be unique. See if there is already another runner
         # with this number
         prev_runner = self._store.find(Runner, Runner.number == n).one()
@@ -527,22 +527,22 @@ class RunEditor(Observable, metaclass=Singleton):
         if prev_runner and prev_runner is self._run.sicard.runner:
             # same runner as current runner, nothing to be done
             return
-        
+
         if prev_runner is not None and force is False:
             raise RunEditorException('Runner %s (%s) already has this number.' % (str(prev_runner), prev_runner.number))
 
         if not self.has_runner():
             self._run.sicard.runner = Runner()
-            
+
         if prev_runner is not None:
             # unset number on previous runner, force is True by now
             prev_runner.number = None
-            
+
         self._run.sicard.runner.number = n
         self.commit()
 
     def set_runner_category(self, cat_name):
-        
+
         if not self.has_runner():
             self._run.sicard.runner = Runner()
 
@@ -550,7 +550,7 @@ class RunEditor(Observable, metaclass=Singleton):
         self._run.sicard.runner.category = cat
         self.set_course(cat_name)
         self.commit()
-            
+
     def set_runner_given_name(self, n):
         try:
             self._run.sicard.runner.given_name = n
@@ -579,7 +579,7 @@ class RunEditor(Observable, metaclass=Singleton):
         if self._run.sicard.runner is None:
             self._run.sicard.runner = Runner()
 
-        self._run.sicard.runner.dateofbirth = d    
+        self._run.sicard.runner.dateofbirth = d
         self.commit()
 
     def set_runner_team(self, team):
@@ -589,7 +589,7 @@ class RunEditor(Observable, metaclass=Singleton):
 
         if self._run.sicard.runner is None:
             self._run.sicard.runner = Runner()
-            
+
         self._run.sicard.runner.team = team
         self.commit()
 
@@ -607,7 +607,7 @@ class RunEditor(Observable, metaclass=Singleton):
 
         self._run.sicard.runner.club = club
         self.commit()
-    
+
     def set_course(self, course):
         if course == '':
             course = None
@@ -670,7 +670,7 @@ class RunEditor(Observable, metaclass=Singleton):
     def set_manual_finish_time(self, time):
         self._run.manual_finish_time = self.parse_time(time)
         self.commit()
-    
+
     def set_punchtime(self, punch, time):
 
         punch = self._raw_punchlist()[punch]
@@ -689,7 +689,7 @@ class RunEditor(Observable, metaclass=Singleton):
             punch[1].manual_punchtime = self.parse_time(time)
 
         self.commit()
-        
+
     def set_ignore(self, punch, ignore):
         punch = self._raw_punchlist()[punch][1]
         if ignore == '' or ignore == '0':
@@ -763,7 +763,7 @@ class RunEditor(Observable, metaclass=Singleton):
         self._store.remove(self._run)
         self._run = None
         self.commit()
-        
+
     def commit(self):
         """Commit changes to the database."""
         try:
@@ -784,7 +784,7 @@ class RunEditor(Observable, metaclass=Singleton):
     def rollback(self):
         """Rollback all changes."""
         self._store.rollback()
-        
+
         if self._run is not None:
             try:
                 tmp = self._run.sicard
@@ -793,7 +793,7 @@ class RunEditor(Observable, metaclass=Singleton):
                 # Store.of(self._run) still returns the store because it
                 # may reference objects in the store. Use this hack instead.
                 self._run = None
-            
+
             # But notify observers that the object may have changed and clear
             # the cache
             self._clear_cache()
@@ -806,7 +806,7 @@ class RunEditor(Observable, metaclass=Singleton):
             return '%s (at %s baud)' % (self._sireader.port,
                                         self._sireader.baudrate)
     port = property(_get_port)
-    
+
     def _get_status(self):
         if self._sireader is None:
             return ''
@@ -888,7 +888,7 @@ class RunEditor(Observable, metaclass=Singleton):
 
         if len(fail_reasons) > 0:
             raise RunEditorException("\n".join(fail_reasons))
-        
+
     def poll_reader(self):
         """Polls the sireader for changes."""
         if self._sireader is not None:
@@ -907,7 +907,7 @@ class RunEditor(Observable, metaclass=Singleton):
 
     def load_run_from_card(self):
         """Read out card data and create or load a run based on this data."""
-        
+
         if self.sicard is None:
             return
 
@@ -920,7 +920,7 @@ class RunEditor(Observable, metaclass=Singleton):
             self.rollback()
             self.progress = None
             self.progress = 'Reading card data...'
-        
+
             card_data = self._sireader.read_sicard()
 
             # find complete runs with this sicard
@@ -934,7 +934,7 @@ class RunEditor(Observable, metaclass=Singleton):
                     self._run = r
                     self._sireader.ack_sicard()
                     return
-        
+
             # search for incomplete run with this sicard
             self.progress = 'Searching for open run...'
             try:
@@ -967,7 +967,7 @@ class RunEditor(Observable, metaclass=Singleton):
 
             # mark run as complete
             self._run.complete = True
-            
+
             if self._run.course is None:
                 self.progress = 'Searching matching course ...'
                 # Search Course for this run
@@ -988,15 +988,15 @@ class RunEditor(Observable, metaclass=Singleton):
             self.progress = 'Commiting run to database...'
             self.commit()
             self._sireader.ack_sicard()
-                
+
         finally:
             # roll back and re-raise the exception
             self.rollback()
             self.progress = None
-        
+
         self.progress = None
-        
-        
+
+
     def _compare_run(self, run, card_data):
         """
         Compares run to card_data
@@ -1081,7 +1081,7 @@ class TeamEditor(Observable, RunListFormatter):
         Observable.__init__(self)
         self._store = store
         self._event = event
-        
+
         self._team = None
 
     def get_teamlist(self):
@@ -1110,7 +1110,7 @@ class TeamEditor(Observable, RunListFormatter):
 
         if self._team is None:
             return []
-        
+
         runs = self._team.runs
         runs.sort(key = lambda x: x.finish_time or datetime.max)
         result = []

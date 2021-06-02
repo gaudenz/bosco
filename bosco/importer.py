@@ -61,7 +61,7 @@ class CSVImporter(Importer):
 
         # List of dicts
         self.data = []
-        
+
         # Set up CSV reader
         fh = open(fname, 'r', encoding=encoding)
         try:
@@ -87,7 +87,7 @@ class CSVImporter(Importer):
             d = {}
             for i, v in enumerate(line):
                 d[labels[i]] = v.strip()
-                
+
             self.data.append(d)
 
 class RunnerImporter(CSVImporter):
@@ -133,7 +133,7 @@ class RunnerImporter(CSVImporter):
 
         if sicard and sicard.runner == runner:
             # this card is already assigned to this runner
-            return 
+            return
         elif sicard and sicard.runner:
             if force:
                 print(("Forcing reassignment of SI-Card %s from runner %s %s (%s) "
@@ -145,9 +145,9 @@ class RunnerImporter(CSVImporter):
             else:
                 raise AlreadyAssignedSICardException("SI-Card %s is already assigned to runner "
                                                      "%s %s (%s). Not assigning any card to "
-                                                     "runner %s %s (%s)." % 
+                                                     "runner %s %s (%s)." %
                                                      (sicard.id, sicard.runner.given_name,
-                                                      sicard.runner.surname, 
+                                                      sicard.runner.surname,
                                                       sicard.runner.number, runner.given_name, 
                                                       runner.surname, runner.number))
 
@@ -158,8 +158,8 @@ class RunnerImporter(CSVImporter):
         if sex is None:
             return None
         sex = sex.lower()
-        return (sex == 'm' and 'male' 
-                or sex == 'f' and 'female' 
+        return (sex == 'm' and 'male'
+                or sex == 'f' and 'female'
                 or None)
 
 class SOLVDBImporter(RunnerImporter):
@@ -175,7 +175,7 @@ class SOLVDBImporter(RunnerImporter):
 
         for i, r in enumerate(self.data):
             if self._verbose:
-                print("%i: Adding %s %s" % (i+1, r.get('Vorname', ''), 
+                print("%i: Adding %s %s" % (i+1, r.get('Vorname', ''),
                                             r.get('Name', '')))
 
             try:
@@ -183,7 +183,7 @@ class SOLVDBImporter(RunnerImporter):
                 try:
                     sicard = RunnerImporter._get_sicard(r.get('SI_Karte', None), store)
                 except InvalidSICardException as e:
-                    print(("Runner %s %s (%s): %s" % 
+                    print(("Runner %s %s (%s): %s" %
                            (r.get('Vorname', ''), r.get('Name', ''), r.get('SOLV-Nr', ''), str(e))))
                     sicard = None
                 except NoSICardException as e:
@@ -211,7 +211,7 @@ class SOLVDBImporter(RunnerImporter):
                 if sicard:
                     runner_sicard = sicard.runner
 
-                if ((runner_solv or runner_number or runner_sicard) 
+                if ((runner_solv or runner_number or runner_sicard)
                     and len({runner_solv, runner_number, runner_sicard} - {None}) > 1): 
                     # we have matching runners for solvnr, number or sicard
                     # and they are not all the same
@@ -275,7 +275,7 @@ class SOLVDBImporter(RunnerImporter):
                 dop = r.get('Dop.Stat', None)
                 if dop is not None:
                     runner.doping_declaration = bool(int(dop))
-            
+
                 # Add category if present
                 categoryname = r.get('Angemeldete_Kategorie', None)
                 if categoryname:
@@ -293,7 +293,7 @@ class SOLVDBImporter(RunnerImporter):
                         store.add(Run(runner.sicards.one(), course))
                     elif sicount != 1:
                         print(("Can't add run for runner %s %s on line %i: %s." %
-                               (r.get('Vorname', ''), r.get('Name', ''), i+2, 
+                               (r.get('Vorname', ''), r.get('Name', ''), i+2,
                                 sicount == 0 and "No SI-card" or "More than one SI-card")
                                ))
                     elif course is None:
@@ -316,7 +316,7 @@ class Team24hImporter(RunnerImporter):
     RUNNER_NUMBERS       = ['A', 'B', 'C', 'D', 'E', 'F']
     TEAM_NUMBER_FORMAT   = '%03d'
     RUNNER_NUMBER_FORMAT = '%(team)s%(runner)s'
-    
+
     def import_data(self, store):
 
         # Create categories
@@ -346,7 +346,7 @@ class Team24hImporter(RunnerImporter):
                     # birth
                     i += 1
                     continue
-                
+
                 runner = Runner(t['Memfamilyname%s' % str(i)],
                                 t['Memfirstname%s' % str(i)])
                 if t['Memsex%s' % str(i)] == 'M':
@@ -373,7 +373,7 @@ class Team24hImporter(RunnerImporter):
 
                 # Add runner to team
                 team.members.add(runner)
-                
+
                 num += 1
                 i += 1
 
@@ -385,9 +385,9 @@ class TeamRelayImporter(RunnerImporter):
 
     # 0 leg needs 0 not '' otherwise the numbers do
     # not sort correctly as they are strings!
-    RUNNER_NUMBERS       = ['0', '1', '2', '3'] 
+    RUNNER_NUMBERS       = ['0', '1', '2', '3']
     RUNNER_NUMBER_FORMAT = '%(runner)i%(team)02i'
-    
+
     def import_data(self, store):
 
         self._categories = {}
@@ -467,7 +467,7 @@ class TeamRelayImporter(RunnerImporter):
                        ))
                 store.rollback()
                 return
-               
+
 
 class SIRunImporter(Importer):
     """Import SICard readout data from a backup file.
@@ -490,7 +490,7 @@ class SIRunImporter(Importer):
     CHECK  = 5
     CLEAR  = 6
     BASE   = 7
-    
+
     def __init__(self, fname, replay = False, interval = 10, encoding = 'utf-8',
                  verbose = False):
         self._replay = replay
@@ -518,12 +518,12 @@ class SIRunImporter(Importer):
         match = SIRunImporter.timestamp_re.match(punchtime)
         if match is None:
             raise RunImportException('Invalid time format: %s' % punchtime)
-        
+
         (year, month, day, hour, minute, second, dummy, microsecond) = \
                match.groups()
         if microsecond is None:
             microsecond = 0
-        
+
         return datetime(int(year), int(month), int(day), int(hour),
                         int(minute), int(second), int(microsecond))
 
@@ -532,25 +532,25 @@ class SIRunImporter(Importer):
         Adds a punch to the list of punches.
 
         """
-        
+
         time = self.__datetime(timestring)
         if time is not None:
             self._punches.append((station, time))
         else:
             raise RunImportException('Empty punchtime for station "%s".' % station)
-            
+
     def import_data(self, store):
 
         for line in self.__runs:
             course_code = line[SIRunImporter.COURSE]
             cardnr = line[SIRunImporter.CARDNR]
-            
+
             self._punches = []
             i = SIRunImporter.BASE
             while i < len(line):
                 self.add_punch(int(line[i]), line[i+1])
                 i += 2
-            
+
             run = Run(int(cardnr),
                       course = course_code,
                       punches = self._punches,
@@ -569,7 +569,7 @@ class SIRunImporter(Importer):
 
 class SIRunExporter(SIRunImporter):
     """Export Run data to a backup file."""
-    
+
     def __init__(self, fname, verbose = False):
         self.__file = open(fname, 'ab')
         self._verbose = verbose
@@ -584,12 +584,12 @@ class SIRunExporter(SIRunImporter):
         """
         if punch is None:
             return ('', '')
-        
+
         return (str(punch.sistation.id),
                 '%s.%06i' % (punch.punchtime.strftime(SIRunImporter.TIMEFORMAT),
                             punch.punchtime.microsecond)
                 )
-    
+
     def export_run(self, run):
 
         line = [''] * SIRunImporter.BASE
@@ -612,7 +612,7 @@ class SIRunExporter(SIRunImporter):
         self.__csv.writerow(line)
         self.__file.flush()
         fsync(self.__file)
-        
+
 class OCADXMLCourseImporter(Importer):
     """Import Course Data from an OCAD XML File produced by OCAD 9."""
 
@@ -633,7 +633,7 @@ class OCADXMLCourseImporter(Importer):
         self._start = start
         self._finish = finish
         self._verbose = False
-        
+
         version = self.__tree.find('./IOFVersion').attrib['version']
         if not version in OCADXMLCourseImporter.KNOWN_VERSIONS:
             raise FileFormatException("Unknown IOFVersion '%s'" % version)
@@ -655,7 +655,7 @@ class OCADXMLCourseImporter(Importer):
             climb_tag = 'ClimbToFinish'
         else:
             return (None, None)
-            
+
         try:
             length = int(node.findtext(length_tag))
         except (TypeError, ValueError):
@@ -671,9 +671,9 @@ class OCADXMLCourseImporter(Importer):
 
         return (length, climb)
 
-        
+
     def import_data(self, store):
-        
+
         # create SI Stations for start and finish if requested
         if self._start:
             station = store.get(SIStation, SIStation.START)
@@ -721,7 +721,7 @@ class OCADXMLCourseImporter(Importer):
 
                 # sort controls by sequence number
                 keys = sorted(list(controls.keys()))
-                
+
                 for seq in keys:
                     (code, length, climb) = controls[seq]
                     control = store.find(Control, Control.code == str(code)).one()
@@ -765,7 +765,7 @@ class CSVCourseImporter(CSVImporter):
             # add controls
             for i in range(len(c)-3):
                 code = c[str(i+1)]
-                
+
                 if code == '':
                     # end of course
                     break

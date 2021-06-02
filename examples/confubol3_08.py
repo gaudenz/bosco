@@ -27,7 +27,7 @@ from event import RelayEvent
 from course import Course, Control
 from runner import Category
 from observer import TriggerEventObserver
-                    
+
 # Database URI and store
 db_uri = 'postgres:ubol3'
 store = Store(create_database(db_uri))
@@ -42,20 +42,20 @@ cache = Cache()
 observer = TriggerEventObserver(store)
 
 event = RelayEvent(legs = [{'name':        '0',
-                            'variants':    ('0', ), 
-                            'starttime':   datetime(2008, 5, 1, 11, 50), 
+                            'variants':    ('0', ),
+                            'starttime':   datetime(2008, 5, 1, 11, 50),
                             'defaulttime': timedelta(minutes=5)},
                            {'name':        '1',
-                            'variants':    ('1', ), 
-                            'starttime':   datetime(2008, 5, 1, 11, 55), 
+                            'variants':    ('1', ),
+                            'starttime':   datetime(2008, 5, 1, 11, 55),
                             'defaulttime': None},
                            {'name':        '2',
-                            'variants':    ('2', ), 
-                            'starttime':   datetime(2008, 5, 1, 13, 10), 
+                            'variants':    ('2', ),
+                            'starttime':   datetime(2008, 5, 1, 13, 10),
                             'defaulttime': None},
                            {'name':        '3',
-                            'variants':    ('3', ), 
-                            'starttime':   datetime(2008, 5, 1, 14, 10), 
+                            'variants':    ('3', ),
+                            'starttime':   datetime(2008, 5, 1, 14, 10),
                             'defaulttime': None}
                            ],
                    header = {'event'     : 'Jura 3er-Staffel 2008',
@@ -74,5 +74,3 @@ event = RelayEvent(legs = [{'name':        '0',
                    store = store,
                    cache = cache
                    )
-
-                    

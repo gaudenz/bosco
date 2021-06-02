@@ -62,7 +62,7 @@ class Event:
         @param cache:          Cache to use for this object
         @param store:          Store to retrieve possible rankings
         """
-        
+
         self._strategies = {}
         self._cache = cache
         self._header = header
@@ -85,7 +85,7 @@ class Event:
             return tuple([(k, Event._var_key(v)) for k, v in list(var.items())])
         else:
             return var
-    
+
     @staticmethod
     def _key(cls, args):
         """make a hashable key out of cls and args"""
@@ -105,36 +105,36 @@ class Event:
             self._cache.update(obj)
         else:
             self._cache.clear()
-        
+
     def validate(self, obj, validator_class = None, args = None):
         # Don't define args={}, default arguments are created at function definition time
         # and you would end up modifing the default args below! You must create a new
         # empty dictionary on every invocation!
-        
+
         """
         Get a validator
-        @param obj:             object to validate, 
+        @param obj:             object to validate,
         @param validator_class: validation class used
         @param args:            dict of keyword arguments for the validation strategy object
         @return:                validation result from validator_class.validate(obj)
         @see:                   Validator for more information about validation classes
         """
-        
+
         from .run import Run
         from .runner import Runner
 
         if obj is None:
             raise ValidationError("Can't validate objects of type %s" % type(obj))
-        
+
         if validator_class is None:
             validator_class = SequenceCourseValidator
-            
+
         if args is None:
             args = {}
-            
+
         if 'cache' not in args:
             args['cache'] = self._cache
-            
+
         if issubclass(validator_class, CourseValidator):
             if isinstance(obj, Runner):
                 # validate run of this runner
@@ -150,7 +150,7 @@ class Event:
             self._strategies[self._key(validator_class, args)] = validator_class(**args)
 
         return self._strategies[self._key(validator_class, args)].validate(obj)
-    
+
     def score(self, obj, scoreing_class = None, args = None):
         """
         Get the score of an object
@@ -163,10 +163,10 @@ class Event:
         """
 
         from .runner import Runner
-        
+
         if obj is None:
             raise UnscoreableException("Can't score objects of type %s" % type(obj))
-        
+
         if args is None:
             args = {}
 
@@ -177,7 +177,7 @@ class Event:
             scoreing_class = TimeScoreing
             if 'starttime_strategy' not in args:
                 args['starttime_strategy'] = SelfstartStarttime(args['cache'])
-                
+
         if self._key(scoreing_class, args) not in self._strategies:
             # create scoreing instance
             if not 'cache' in args:
@@ -187,7 +187,7 @@ class Event:
         if isinstance(obj, Runner):
             # Score run of this runner
             obj = obj.run
-            
+
         return self._strategies[self._key(scoreing_class, args)].score(obj)
 
     def ranking(self, obj, scoreing_class = None, validation_class = None,
@@ -207,7 +207,7 @@ class Event:
             validation_class = validation_class or ControlPunchtimeScoreing
             validation_args = validation_args or scoreing_args
             reverse = True
-            
+
         return Ranking(obj, self, scoreing_class, validation_class,
                        scoreing_args, validation_args, reverse)
 
@@ -239,7 +239,7 @@ class Event:
 
     def list_courses(self):
         """
-        @return: list of all courses in the event 
+        @return: list of all courses in the event
         """
         return list(self._store.find(Course))
 
@@ -329,7 +329,7 @@ class RelayEvent(Event):
                     if c in self._starttimes[cat]:
                         raise EventException('Multiple legs with the same course are not supported in RelayEvent!')
                     self._starttimes[cat][c] = l['starttime']
-        
+
                     # set validation and scoreing strategies
                     # TODO: This is a temporary workaround until everything is adapted to "new-style" validation
                     course = self._store.find(Course, Course.code == c).one()
@@ -351,7 +351,7 @@ class RelayEvent(Event):
 
         if args is None:
             args = {}
-            
+
         if isinstance(obj, Team) and validator_class is None:
             validator_class = RelayScoreing
             cat = obj.category.name
@@ -386,7 +386,7 @@ class RelayEvent(Event):
 
         if not 'cache' in args:
             args['cache'] = self._cache
-        
+
         if isinstance(obj, Run) and scoreing_class is None:
             if obj.course is None:
                 raise UnscoreableException("Can't score a relay leg without a course.")
@@ -420,7 +420,7 @@ class RelayEvent(Event):
 
         # if scoreing_class is not None use specified scoreing_class
         return Event.score(self, obj, scoreing_class, args)
-    
+
     def ranking(self, obj, scoreing_class = None, validation_class = None,
                 scoreing_args = None, validation_args = None, reverse = False):
         """
@@ -468,7 +468,7 @@ class Relay24hEvent(Event):
                  print_template = '24h.tex',
                  html_template = '24h.html',
                  cache = None, store = None):
-        
+
         Event.__init__(self, header, extra_rankings, template_dir, print_template,
                        html_template,
                        cache, store)
@@ -480,7 +480,7 @@ class Relay24hEvent(Event):
                            '12h':duration_12h}
         self._strategy  = {'24h':Relay24hScoreing,
                            '12h':Relay12hScoreing}
-        
+
     def _get_team_strategy(self, team, args):
         cat =  team.category.name
         args['event'] = self
@@ -497,41 +497,41 @@ class Relay24hEvent(Event):
             cat = run.sicard.runner.team.category.name
         except AttributeError:
             return (None, args)
-        
+
         if 'starttime_strategy' not in args:
             args['starttime_strategy'] = RelayStarttime(self._starttime[cat],
                                                         ordered = False,
                                                         cache = self._cache)
         return (TimeScoreing, args)
-        
+
     def validate(self, obj, validator_class = None, args = None):
 
         from .runner import Team
 
         if args is None:
             args = {}
-        
+
         if isinstance(obj, Team) and validator_class is None:
             (validator_class, args) = self._get_team_strategy(obj, args)
 
         return Event.validate(self, obj, validator_class, args)
-            
+
 
     def score(self, obj, scoreing_class = None, args = None):
 
         from .runner import Team
         from .run import Run
-        
+
         if args is None:
             args = {}
-            
+
         if isinstance(obj, Team) and scoreing_class is None:
             (scoreing_class, args) = self._get_team_strategy(obj, args)
         elif isinstance(obj, Run) and scoreing_class is None:
             (scoreing_class, args) = self._get_run_strategy(obj, args)
 
         return Event.score(self, obj, scoreing_class, args)
-    
+
 class RoundCountEvent(Event):
 
     def __init__(self, course, mindiff = timedelta(0), header = {}, extra_rankings = [],
@@ -552,7 +552,7 @@ class RoundCountEvent(Event):
 
         if args is None:
             args = {}
-        
+
         if 'mindiff' not in args:
             args['mindiff'] = self._mindiff
 
@@ -577,5 +577,5 @@ class RoundCountEvent(Event):
 
         if scoreing_class is None:
             scoreing_class = RoundCountScoreing
-        
+
         return super(RoundCountEvent, self).score(obj, scoreing_class, args)

@@ -38,7 +38,7 @@ class SIStation(Storm):
     CLEAR       = 3
     CHECK       = 4
     SPECIAL_MAX = 4
-    
+
     __storm_table__ = 'sistation'
 
     id = Int(primary=True)
@@ -52,7 +52,7 @@ class Control(MyStorm):
     """A control point. Control points are part of one or several courses.
        The possible orders of the control points in a course is defined
        with the ControlSequence relation."""
-       
+
     __storm_table__ = 'control'
 
     id = Int(primary=True)
@@ -73,7 +73,7 @@ class Control(MyStorm):
                           sistation is given as int. The newly created object is
                           automatically added to this store.
         """
-        
+
         self.code = code
         if store is not None:
             self._store = store
@@ -94,13 +94,13 @@ class Control(MyStorm):
                           a corresponding SIStation object is created if necessary.
         @type sistation:  SIStation object or int
         """
-        
+
         if isinstance(sistation, int):
             station_nr = sistation
             sistation = self._store.get(SIStation, sistation)
             if sistation is None:
                 sistation = SIStation(station_nr)
-                
+
         self.sistations.add(sistation)
 
 class ControlSequence(Storm):
@@ -109,7 +109,7 @@ class ControlSequence(Storm):
        controls with the same sequence_number on the same course. The
        interpretation of the sequence number is up to the validate method
        of the course. The sequence number may be None."""
-       
+
     __storm_table__ = 'controlsequence'
 
     id = Int(primary=True)
@@ -140,7 +140,7 @@ class Course(MyStorm, BaseCourse):
        of controls as a course without any validation.
 
        The distance and altitude attributes are in meters and may be None."""
-    
+
     __storm_table__ = 'course'
 
     id = Int(primary=True)
@@ -149,8 +149,8 @@ class Course(MyStorm, BaseCourse):
     climb = Int()
     members = ReferenceSet(id, 'Run._course_id')
     controls = ReferenceSet(id, ControlSequence._course_id,
-                            ControlSequence._control_id, 
-                            Control.id, 
+                            ControlSequence._control_id,
+                            Control.id,
                             order_by=ControlSequence.sequence_number)
     sequence = ReferenceSet(id, 'ControlSequence._course_id',
                             order_by=ControlSequence.sequence_number)
@@ -165,7 +165,7 @@ class Course(MyStorm, BaseCourse):
         @param climb:         Altitude differences in meters
         @type climb:          int
         """
-        
+
         self.code = code
         self.length = length
         self.climb = climb
@@ -197,8 +197,8 @@ class Course(MyStorm, BaseCourse):
             control = self._store.find(Control, Control.code == controlcode).one()
             if control is None:
                 control = Control(controlcode, store = self._store)
-            
-                
+
+
         self.sequence.add(ControlSequence(control, self.__max_index() + 1,
                                           length, climb))
 
@@ -217,7 +217,7 @@ class Course(MyStorm, BaseCourse):
         @return: 'Leistungskilometer': length/1000.0+climb/100.0
         """
         return self.length/1000.0 + self.climb/100.0
-    
+
     def expected_time(self, speed):
         """Returns the expected time for this course.
         @param speed: expected speed in minutes per kilometer
@@ -291,7 +291,7 @@ class CombinedCourse(BaseCourse):
             else:
                 if store is None:
                     raise CombinedCourseException("Can't add course '%s' without a store." % c)
-                
+
                 course = store.find(Course, Course.code == c).one()
                 if course is None:
                     raise CombinedCourseException("Can't find course with code '%s'." % c)

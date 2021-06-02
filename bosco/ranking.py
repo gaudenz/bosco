@@ -37,7 +37,7 @@ class RankableItem:
 
     def start(self):
         raise UnscoreableException('You have to override start to rank this object with this scoreing strategy.')
-    
+
     def finish(self):
         raise UnscoreableException('You have to override finish to rank this object with this scoreing strategy.')
 
@@ -160,7 +160,7 @@ class Ranking:
                 score = self._event.score(m, self._scoreing_class, args)
             except UnscoreableException:
                 score = {'score': timedelta(0)}
-                
+
             try:
                 # copy arguments as they might get modified
                 args = None if self.validator_args is None else self.validator_args.copy()
@@ -168,7 +168,7 @@ class Ranking:
             except ValidationError:
                 print_exc(file=sys.stderr)
                 continue
-                
+
             self._member_count += 1
             if valid['status'] != Validator.NOT_COMPLETED:
                 self._completed_count += 1
@@ -183,7 +183,7 @@ class Ranking:
         self._ranking_list.sort(key = lambda x: (isinstance(x['item'], Run)) and x['item'].sicard.runner and (x['item'].sicard.runner.number or '0') or x['item'].number or '0')
         self._ranking_list.sort(key = lambda x: x['scoreing']['score'], reverse = self._reverse)
         self._ranking_list.sort(key = lambda x: x['validation']['status'])
-        
+
         rank = 1
         winner_score = self._ranking_list[0]['scoreing']['score']
         for i, m in enumerate(self._ranking_list):
@@ -204,7 +204,7 @@ class Ranking:
         self._ranking_dict = {}
         for obj in self._ranking_list:
             self._ranking_dict[obj['item']] = obj
- 
+
     def update(self):
         """
         Update the ranking. Rankings are not updated automatically.
@@ -263,13 +263,13 @@ class OpenRuns(Rankable):
         """
         self._store = store
         self._control = control
-        
+
     def _get_runs(self):
         from .run import Run
         return self._store.find(Run, Run.complete == False)
-    
+
     members = property(_get_runs)
-    
+
 class Cache:
     """Cache for scoreing and validation results."""
 
@@ -281,7 +281,7 @@ class Cache:
         """
         self._cache = {}
         self._observer = observer
-        
+
     def __getitem__(self, key):
         (obj, func) = key
         return self._cache[obj][func]
@@ -305,7 +305,7 @@ class Cache:
 
     def clear(self):
         self._cache = {}
-        
+
     def update(self, obj):
         del self[obj]
 
@@ -330,7 +330,7 @@ class Cache:
 
 class CachingObject:
     """Common parent class for all caching objects."""
-    
+
     def __init__(self, cache = None):
         """
         @param cache: scoreing cache
@@ -359,8 +359,7 @@ class CachingObject:
         """
         if self._cache:
             self._cache[(obj, func)] = result
-        
-    
+
 class AbstractScoreing(CachingObject):
     """Defines a strategy for scoring objects (runs, runners, teams). The scoreing 
     strategy is tightly coupled to the objects it scores.
@@ -381,7 +380,7 @@ class AbstractScoreing(CachingObject):
     string or None
     """
     information = None
-    
+
 class TimeScoreing(AbstractScoreing):
     """Builds the score from difference of start and finish times. The start time is
     calculated by the start time strategy object. The finish time is the time of the
@@ -396,11 +395,11 @@ class TimeScoreing(AbstractScoreing):
         """
         AbstractScoreing.__init__(self, cache)
         self._starttime_strategy = starttime_strategy
-    
+
     def _start(self, obj):
         """Returns the start time as a datetime object."""
         return self._starttime_strategy.starttime(obj)
-    
+
     def score(self, obj):
         """Returns a timedelta object as the score by calling start and finish on 
         the object."""
@@ -421,13 +420,13 @@ class TimeScoreing(AbstractScoreing):
         if result['score'] < timedelta(0):
             raise UnscoreableException('Scoreing Error, negative runtime: %(finish)s - %(start)s = %(score)s'
                                        % result)
-        
+
         self._to_cache(self.score, obj, result)
         return result
 
 class Starttime(CachingObject):
     """Basic start time strategy. """
-    
+
     def starttime(self, obj):
         return obj.manual_start_time
 
@@ -445,10 +444,10 @@ class MassstartStarttime(Starttime):
         @param starttime: Mass start time
         @type starttime:  datetime
         """
-        
+
         CachingObject.__init__(self, cache)
         self._starttime = starttime
-        
+
     def starttime(self, obj):
         start = Starttime.starttime(self, obj)
         if start:
@@ -469,7 +468,7 @@ class RelayStarttime(MassstartStarttime):
                           order defined by their number.
         @type ordered:    boolean
         """
-        
+
         MassstartStarttime.__init__(self, massstart_time, cache)
         self._prev_finish = (ordered and self._prev_finish_ordered
                              or self._prev_finish_unordered)
@@ -495,9 +494,9 @@ class RelayStarttime(MassstartStarttime):
             except RunnerException as e:
                 raise UnscoreableException('Unable to get finish time of previous runner: %s'
                                            % str(e))
-        
+
     def _prev_finish_unordered(self, obj):
-        
+
         # Get the team for this run
         team = obj.sicard.runner.team
 
@@ -519,7 +518,7 @@ class RelayStarttime(MassstartStarttime):
             else:
                 # last real punch of this run
                 reftime = obj.punchlist()[-1][0].punchtime
-        
+
         prev_finish = store.execute(
             """SELECT MAX(COALESCE(run.manual_finish_time, run.card_finish_time))
                   FROM team JOIN runner ON team.id = runner.team
@@ -536,7 +535,7 @@ class RelayStarttime(MassstartStarttime):
 #                                      FROM run
 #                                         JOIN sicard ON run.sicard = sicard.id
 #                                         JOIN runner ON sicard.runner = runner.id
-#                                      WHERE run.id = %s)             
+#                                      WHERE run.id = %s)
 #                     AND COALESCE(run.manual_finish_time, run.card_finish_time) < %s
 #                     AND run.complete = true""",
 #            params = (obj.id,
@@ -551,7 +550,7 @@ class RelayStarttime(MassstartStarttime):
         start = Starttime.starttime(self, obj)
         if start:
             return start
-        
+
         prev_finish = self._prev_finish(obj)
         if prev_finish is None:
             return self._starttime
@@ -559,12 +558,12 @@ class RelayStarttime(MassstartStarttime):
             return prev_finish
 
 class RelayMassstartStarttime(RelayStarttime):
-    
+
     def starttime(self, obj):
         start = Starttime.starttime(self, obj)
         if start:
             return start
-        
+
         prev_finish = self._prev_finish(obj)
         if prev_finish is None:
             return self._starttime
@@ -596,7 +595,7 @@ class CourseValidator(Validator):
     def __init__(self, course, cache = None):
         Validator.__init__(self, cache)
         self._course = course
-        
+
     def validate(self, run):
         """Check if run is a valid run for this course. This only checks if the run
         is complete has a start punch and a finish punch. It does not check any controls!
@@ -639,7 +638,7 @@ class SequenceCourseValidator(CourseValidator):
     def __init__(self, course, reorder = None, cache = None):
 
         CourseValidator.__init__(self, course, cache)
-        
+
         if reorder is not None:
             # make reorder a zero based list, this aligns better with list indexes
             self._reorder = [x-1 for x in reorder]
@@ -659,13 +658,13 @@ class SequenceCourseValidator(CourseValidator):
         """
         if len(plist) != len(clist):
             return False
-        
+
         for i, c in enumerate(clist):
             if not plist[i][1] is c:
                 return False
 
         return True
-            
+
     @staticmethod
     def _build_lcs_matrix(plist, clist):
         """Builds the matrix of lcs subsequence lengths.
@@ -674,13 +673,13 @@ class SequenceCourseValidator(CourseValidator):
                       overriden must be removed!
         @return:      matrix of lcs subsequence lengths.
         """
-        
+
         m = len(plist)
         n = len(clist)
-        
+
         # build (m+1) * (n+1) matrix
         C = [[0] * (n+1) for i in range(m+1) ]
-        
+
         i = j = 1
         for i in range(1, m+1):
             for j in range(1, n+1):
@@ -700,7 +699,7 @@ class SequenceCourseValidator(CourseValidator):
             i = len(plist)
         if j is None:
             j = len(clist)
-            
+
         if i == 0 or j == 0:
             return []
         elif plist[i-1][1] is clist[j-1]:
@@ -710,7 +709,7 @@ class SequenceCourseValidator(CourseValidator):
                 return SequenceCourseValidator._backtrack(C, plist, clist, i, j-1)
             else:
                 return SequenceCourseValidator._backtrack(C, plist, clist, i-1, j)
-        
+
     @staticmethod
     def _diff(C, plist, clist, i = None, j = None):
         """
@@ -719,12 +718,12 @@ class SequenceCourseValidator(CourseValidator):
         """
 
         from .course import SIStation
-        
+
         if i is None:
             i = len(plist)
         if j is None:
             j = len(clist)
-            
+
         if i > 0 and j > 0 and plist[i-1][1] is clist[j-1]:
             result_list = SequenceCourseValidator._diff(C, plist, clist, i-1, j-1)
             result_list.append(('ok', plist[i-1][0]))
@@ -741,7 +740,7 @@ class SequenceCourseValidator(CourseValidator):
             else:
                 result_list = []
         return result_list
-                
+
     def validate(self, run):
         """Validate the run if it is valid for this course."""
 
@@ -754,7 +753,7 @@ class SequenceCourseValidator(CourseValidator):
 
         # do basic checks from CourseValidator
         result = super(type(self), self).validate(run)
-        
+
         punchlist = run.punchlist()
 
         if SequenceCourseValidator._exact_match(punchlist, self._controllist):
@@ -776,7 +775,7 @@ class SequenceCourseValidator(CourseValidator):
                 else:
                     break
             diff_list.insert(i, ('ignored', p))
-            
+
         if result['status'] == Validator.OK and result['override'] is False:
             if 'missing' in dict(diff_list):
                 result['status'] = Validator.MISSING_CONTROLS
@@ -826,7 +825,7 @@ class AbstractRelayScoreing(AbstractScoreing, Validator):
     def __init__(self, event, cache = None):
         AbstractScoreing.__init__(self, cache)
         self._event = event
-        
+
     def _runs(self, team):
         """
         Return a sorted list of all completed runs of a team that have a course out of a given set.
@@ -859,7 +858,7 @@ class AbstractRelayScoreing(AbstractScoreing, Validator):
                 else:
                     runs[-1]['score'] = self._event.score(r)['score']
                     runs[-1]['expected_time'] = r.course.expected_time(self._speed)
-                
+
             runs.sort(key=lambda x:x['finish'] or datetime.max)
             self._to_cache(self._runs, team, runs)
             return runs
@@ -906,7 +905,7 @@ class RelayScoreing(AbstractRelayScoreing):
 
         runs =  dict([(r.course.code, r) for r in team.runs
                       if r.course is not None])
-        
+
         result = []
         for l in self._legs:
             for v in l['variants']:
@@ -919,7 +918,7 @@ class RelayScoreing(AbstractRelayScoreing):
 
         self._to_cache(self._runs, team, result)
         return result
-        
+
     def validate(self, team):
         """Validates a relay team.
         @see: Validator
@@ -950,7 +949,7 @@ class RelayScoreing(AbstractRelayScoreing):
                     else:
                         result['status'] = Validator.DISQUALIFIED
                         break
-                except RunnerException: 
+                except RunnerException:
                     # no run or multiple runs for this runner
                     if l['defaulttime'] is not None:
                         i += 1
@@ -965,7 +964,7 @@ class RelayScoreing(AbstractRelayScoreing):
                     # run does not have a course
                     result['status'] = Validator.DISQUALIFIED
                     break
-            
+
                 valid = self._event.validate(run)['status']
                 if code in l['variants'] and (l['defaulttime'] is not None or valid == Validator.OK):
                     # everything is OK
@@ -982,7 +981,7 @@ class RelayScoreing(AbstractRelayScoreing):
                     # wrong course
                     result['status'] = Validator.DISQUALIFIED
                     break
-                
+
             if not 'status' in result:
                 # if no status is assigned everything is OK
                 result['status'] = Validator.OK
@@ -994,7 +993,7 @@ class RelayScoreing(AbstractRelayScoreing):
         """Score a relay team.
         @see: AbstractScoreing
         """
-        
+
         try:
             return self._from_cache(self.score, team)
         except KeyError:
@@ -1025,7 +1024,7 @@ class RelayScoreing(AbstractRelayScoreing):
                     break
                 else:
                     time += default
-                
+
         # if len(runs) == 0:
         #     raise UnscoreableException(u'Unable to score team %s (%s): no '
         #                                u'valid run.' %
@@ -1047,12 +1046,12 @@ class RelayScoreing(AbstractRelayScoreing):
         #                 break
         #             if default is None or incomplete:
         #                 # missing run for this leg and no default time
-        #                 # continue scoreing to get leg info 
+        #                 # continue scoreing to get leg info
         #                 valid = False
         #         else:
         #             time += default
         #             legs.append(None)
-                
+
         #     if r.course.code not in l['variants']:
         #         # missing leg
         #         missing += 1
@@ -1077,7 +1076,7 @@ class RelayScoreing(AbstractRelayScoreing):
 
         self._to_cache(self.score, team, result)
         return result
-    
+
 class Relay24hScoreing(AbstractRelayScoreing):
     """This class is both a validation strategy and a scoreing strategy. The strategies
     are combined because they use some common private functions. This class validates
@@ -1089,7 +1088,7 @@ class Relay24hScoreing(AbstractRelayScoreing):
     FINISH  = re.compile('^FF[1-6]$')
 
     POOLNAMES = ['start', 'night', 'day', 'finish']
-    
+
     def __init__(self, starttime, speed, duration, event, method = 'runcount',
                  blocks = 'finish', cache = None):
         """
@@ -1147,11 +1146,11 @@ class Relay24hScoreing(AbstractRelayScoreing):
             return self._from_cache(self._loop_over_runs, team)
         except KeyError:
             pass
-        
+
         # collect team members and runs
         members = [ r.id for r in  team.members.order_by('number')]
         runs = self._runs(team)
-        
+
         # check runner order
         remaining = copy(members)
         next_runner = 0
@@ -1170,10 +1169,10 @@ class Relay24hScoreing(AbstractRelayScoreing):
                 if next_runner >= len(remaining):
                     # wrap around
                     next_runner = 0
-                    
+
             if len(remaining) == 0:
                 break
-            
+
             next_runner  = (next_runner+1)%len(remaining)
 
         result = (status, len(members) - len(remaining))
@@ -1185,7 +1184,7 @@ class Relay24hScoreing(AbstractRelayScoreing):
     def _check_order(self, team):
         """Checks if the order of the runners is correct."""
         return self._loop_over_runs(team)[0]
-        
+
     def _omitted_runners(self, team):
         """Count the runners that were omitted during the event and gave up."""
         return self._loop_over_runs(team)[1]
@@ -1215,7 +1214,7 @@ class Relay24hScoreing(AbstractRelayScoreing):
                 return {'status': Validator.DISQUALIFIED,
                         'unfinished pool': self.POOLNAMES[i],
                         'run': r['course']}
-                    
+
 
         # check for proper order of finish courses
         finish_pool = sorted([ c for c in self._courses if self.FINISH.match(c) ])
@@ -1223,14 +1222,14 @@ class Relay24hScoreing(AbstractRelayScoreing):
             if i >= len(remaining_runs):
                 # no more runs
                 break
-            
+
             if c != remaining_runs[i]['course']:
                 return {'status': Validator.DISQUALIFIED,
                         'unfinished pool': self.POOLNAMES[3],
                         'run': remaining_runs[i]['course']}
 
         return {'status': Validator.OK}
-    
+
     def validate(self, team):
         """Validate the runs of this team according to the rules
         of the 24h orienteering event.
@@ -1264,7 +1263,7 @@ class Relay24hScoreing(AbstractRelayScoreing):
                 result = self._check_pools(team)
             else:
                 result['runner order'] =  False
-            
+
         result['information'] = {'blocks': self._blocks}
         self._to_cache(self.validate, team, result)
         return result
@@ -1284,9 +1283,9 @@ class Relay24hScoreing(AbstractRelayScoreing):
             return self._from_cache(self.score, team)
         except KeyError:
             pass
-        
+
         runs = self._runs(team)
-        
+
         failed = []
         for r in runs:
             status = r['validation']
@@ -1294,7 +1293,7 @@ class Relay24hScoreing(AbstractRelayScoreing):
                           Validator.DID_NOT_FINISH,
                           Validator.DISQUALIFIED]:
                 failed.append(r)
-                
+
         fail_penalty = timedelta(0)
         for f in failed:
             penalty = (f['expected_time']
@@ -1303,12 +1302,12 @@ class Relay24hScoreing(AbstractRelayScoreing):
                 # no negative penalty
                 penalty = timedelta(0)
             fail_penalty += penalty
- 
+
         give_up_penalty = (self._omitted_runners(team)-1) * timedelta(minutes=30)
         if give_up_penalty < timedelta(0):
             # correct penalty if no runner gave up
             give_up_penalty = timedelta(0)
-        
+
         finish_time = (self._starttime + self._duration
                        - fail_penalty - give_up_penalty)
 
@@ -1320,7 +1319,7 @@ class Relay24hScoreing(AbstractRelayScoreing):
             runtime = max(valid_runs, key=lambda x: x['finish'])['finish'] - self._starttime
         else:
             runtime = timedelta(0)
-            
+
         if self._method == 'runcount':
             result = Relay24hScore(len(valid_runs), runtime)
         elif self._method in ['lkm', 'speed']:
@@ -1333,7 +1332,7 @@ class Relay24hScoreing(AbstractRelayScoreing):
                 result = lkm > 0 and Relay24hScore((runtime.seconds/60.0)/lkm, runtime) or Relay24hScore(0, runtime)
         else:
             raise UnscoreableException("Unknown scoreing method '%s'." % self._method)
-        
+
         ret = {'score': result,
                'finishtime': finish_time,
                'information': {'method': self._method,
@@ -1372,12 +1371,12 @@ class Relay12hScoreing(Relay24hScoreing):
             return self._from_cache(self.validate, team)
         except KeyError:
             pass
-        
+
         # only check pools
         result = self._check_pools(team)
 
         result['information'] = {'blocks':self._blocks}
-        
+
         self._to_cache(self.validate, team, result)
         return result
 
@@ -1415,7 +1414,7 @@ class Relay24hScore:
         return Relay24hScore(self.runs * other, self.time * other)
 
     def __str__(self):
-        return "Runs: %s, Time: %s" % (self.runs, self.time) 
+        return "Runs: %s, Time: %s" % (self.runs, self.time)
 
 class ControlPunchtimeScoreing(AbstractScoreing, Validator):
     """Scores according to the (expected) absolute punchtime at a given control.
@@ -1423,7 +1422,7 @@ class ControlPunchtimeScoreing(AbstractScoreing, Validator):
     finish and to show incomming runners.
     To make effective use of this you need a rankable with all open runs as members.
     RankableItems scored with this strategy should be open runs.
-    This is a combined scoreing and validation strategy. 
+    This is a combined scoreing and validation strategy.
     """
 
     def __init__(self, control_list, distance_to_finish = 0,
@@ -1454,7 +1453,7 @@ class ControlPunchtimeScoreing(AbstractScoreing, Validator):
             if c in punchlist:
                 result = Validator.OK
                 break
-        
+
         ret = {'status': result}
         self._to_cache(self.validate, run, ret)
         return ret
@@ -1469,11 +1468,11 @@ class ControlPunchtimeScoreing(AbstractScoreing, Validator):
             return self._from_cache(self.score, run)
         except KeyError:
             pass
-        
+
         try:
             (controls, punchtimes) = list(zip(*[(p.sistation.control, p.punchtime)
                                            for p in run.punches]))
-            
+
             result = datetime.min
             for c in self._controls:
                 try:
@@ -1482,7 +1481,7 @@ class ControlPunchtimeScoreing(AbstractScoreing, Validator):
                     break
                 except ValueError:
                     pass
-            
+
         except ValueError:
             # no punches in this run
             result = datetime.min
@@ -1490,7 +1489,7 @@ class ControlPunchtimeScoreing(AbstractScoreing, Validator):
         ret = {'score':result}
         self._to_cache(self.score, run, ret)
         return ret
-    
+
 class RoundCountScoreing(AbstractScoreing, CourseValidator):
     """This scoreing strategy computes the score as the count of complete runs of a course.
     This is mostly usefull for non orienteering events where runners have to run as much rounds
