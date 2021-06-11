@@ -103,6 +103,8 @@ class RunPanel(EditingPanel):
                     self.punches_grid.SetReadOnly(row, col, False)
 
         self.punches_grid.AutoSize()
+        # Ensure a scroll bar is added to the parent Panel if needed
+        self.punches_grid.GetParent().Layout()
         self.Layout()
 
 
