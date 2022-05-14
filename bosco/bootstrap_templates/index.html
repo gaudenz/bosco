@@ -1,13 +1,15 @@
 
 <%inherit file="base.html"/>
 
+<div class="row justify-content-md-center">
+  <div class="col col-lg-4">
 <h3>Ranglisten</h3>
-<ul class="nav nav-pills nav-stacked">
+<nav class="nav flex-column">
   % for r in header['rankings']:
-  <li><a href="${r.lower().replace(' ', '_')}.html">
-      <span class="badge pull-right">${completed[r][0]}/${completed[r][1]}</span>
-      ${r}
-  </a></li>
+  <a class="nav-item nav-link float-left" href="${r.lower().replace(' ', '_')}.html">
+      ${r}<span class="badge badge-secondary float-right">${completed[r][0]}/${completed[r][1]}</span>
+  </a>
   % endfor
-</ul>
-
+</nav>
+  </div>
+</div>

@@ -12,21 +12,10 @@ blocks_de = {'start' :'Start',
 
 <%inherit file="base.html"/>
 
-      <div class="row">
-        <div class="col-xs-4">
-          <p class="text-left"><strong>${header['organiser']}</strong></p>
-        </div>
-        <div class="col-xs-4">
-          <p class="text-center"><strong>${header['map']}</strong></p>
-        </div>
-        <div class="col-xs-4">
-          <p class="pull-right"><strong>${header['place']}, ${header['date']}</strong></p>
-        </div>
-      </div>
-      <p class="pull-right text-muted text-right">Letzte Aktualisierung:<br/>${now}</p>
-
 %for ranking in rankings:
     <% ranking.update() %>
+    <div class="row">
+      <div class="col-8">
     <h3>
     %if type(ranking.rankable) == OpenRuns:
       Vorwarnung<small>Läufer beim letzten Posten</small>
@@ -40,9 +29,13 @@ blocks_de = {'start' :'Start',
       <small>${ranking.rankable.length/1000.0}km, ${ranking.rankable.climb}m, ${ranking.rankable.controlcount()} Po., 
         ${ranking.completed_count}/${ranking.member_count}</small>
       %endif
-    %endif
-      </h3>
-
+      %endif
+    </h3>
+    </div>
+      <div class="col-4">
+        <p class="text-muted text-right">Letzte Aktualisierung:<br/>${now}</p>
+      </div>
+    </div>
       <table class="table table-condensed table-striped">
         <thead>
           <tr>
