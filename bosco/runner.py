@@ -18,6 +18,7 @@
 
 from storm.locals import *
 from copy import copy
+from itertools import chain
 
 from .base import MyStorm
 from .ranking import Rankable, RankableItem
@@ -180,7 +181,20 @@ class SICard(Storm):
     def __init__(self, nr):
         self.id = nr
 
-class Category(Storm, Rankable):
+
+class BaseCategory(Rankable):
+    """ Common base class for Category and CombinedCategory.
+    """
+
+    @property
+    def members(self):
+        return chain(self.runners, self.teams)
+
+    def __str__(self):
+        return self.name
+
+
+class Category(Storm, BaseCategory):
     __storm_table__ = 'category'
 
     id = Int(primary=True)
@@ -191,14 +205,62 @@ class Category(Storm, Rankable):
     def __init__(self, name):
         self.name = name
 
-    def __str__(self):
-        return self.name
 
-    def _get_members(self):
-        l = list(self.runners)
-        l.extend(list(self.teams))
-        return l
-    members = property(_get_members)
+class CombinedCategoryException(Exception):
+    pass
+
+
+class CombinedCategory(BaseCategory):
+    """ Combine multiple categories
+    This class combines multiple categories to generate a joint ranking of all
+    runns of all the combined categories. This is primarily usefull for rankings
+    of relay legs with different variants. This class is not derived from
+    Category and this is not a Storm object and not stored in the database.
+    """
+
+    def __init__(self, categories, name, store):
+        """
+        @param categories:    List of categories to combine
+        @type categories:     List of either instances of Category or unicode
+                              category codes
+        @param name:          Name of this category. This is only for display
+                              purposes.
+        @type name:           Unicode
+        @param store:         Storm store which contains the categories
+                              referenced by category codes in the category list.
+                              May be None if the category list only contains
+                              Category objects.
+        """
+
+        # Build list of categories
+        self.categories = []
+        for c in categories:
+            if isinstance(c, Category):
+                self.categories.append(c)
+            else:
+                if store is None:
+                    raise CombinedCategoryException(
+                        f"Can't add category '{c}' without a store."
+                    )
+
+                category = store.find(Category, Category.name == c).one()
+                if category is None:
+                    raise CombinedCategoryException(
+                        f"Can't find category with name '{c}'."
+                    )
+                self.categories.append(category)
+
+        # Add properties to mimic a Category object
+        self.name = name
+
+    @property
+    def runners(self):
+        return chain(*map(lambda x: getattr(x, 'runners'), self.categories))
+
+    @property
+    def teams(self):
+        return chain(*map(lambda x: getattr(x, 'teams'), self.categories))
+
 
 class Country(Storm):
     __storm_table__ = 'country'

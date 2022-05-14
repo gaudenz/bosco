@@ -22,7 +22,10 @@ event.py - Event configuration. All front-end programs should use
 from datetime import timedelta
 
 from .course import Course, CombinedCourse
-from .runner import (Category, RunnerException)
+from .runner import BaseCategory
+from .runner import Category
+from .runner import CombinedCategory
+from .runner import RunnerException
 from .ranking import (SequenceCourseValidator, TimeScoreing, SelfstartStarttime,
                      RelayStarttime, RelayMassstartStarttime, MassstartStarttime,
                      Ranking, RelayRanking, CourseValidator, OpenRuns,
@@ -297,7 +300,7 @@ class MassstartEvent(Event):
 class RelayEvent(Event):
     """Event class for a traditional relay."""
 
-    def __init__(self, legs, header={}, extra_rankings=[],
+    def __init__(self, legs, header={}, extra_rankings=[], combined_categories=None,
                  template_dir = 'templates',
                  print_template = 'relay.tex',
                  html_template = 'relay.html',
@@ -310,11 +313,13 @@ class RelayEvent(Event):
                      * 'starttime': start time for all non replaced runners, type datetime
                      * 'defaulttime': time scored if no runner of the team successfully
                        completes this leg, type timedelta or None if there is no defaulttime
+        @param combined_categories: List of CombinedCategory objects.
         @see:        Event for other arguments
         """
 
         # assign legs first as this is needed to list all rankings in Event.__init__
         self._legs = legs
+        self._combined_categories = combined_categories or []
 
         Event.__init__(self, header, extra_rankings, template_dir, print_template,
                        html_template, cache, store)
@@ -427,7 +432,7 @@ class RelayEvent(Event):
         @see: Event.ranking
         """
 
-        if isinstance(obj, Category):
+        if isinstance(obj, BaseCategory):
             return RelayRanking(obj, self, scoreing_class, validation_class,
                                 scoreing_args, validation_args, reverse)
 
@@ -436,12 +441,37 @@ class RelayEvent(Event):
 
     def list_rankings(self):
         l = []
+        legs_added = set()
         for c in self.list_categories():
             for leg in self._legs[c.name]:
-                l.append((leg['name'], self.ranking(CombinedCourse(leg['variants'], leg['name'], self._store))))
+                if not leg['name'] in legs_added:
+                    legs_added.add(leg['name'])
+                    l.append((leg['name'],
+                              self.ranking(CombinedCourse(
+                                  leg['variants'],
+                                  leg['name'],
+                                  self._store,
+                              ))))
             for i, leg in enumerate(self._legs[c.name]):
                 l.append(('%s %s' % (c.name, leg['name']), self.ranking(c, scoreing_args = {'legs': i+1},
-                                                                        validation_args = {'legs': i+1}))) 
+                                                                        validation_args = {'legs': i+1})))
+
+        # Add extra rankings
+        l.extend([(e[0], self.ranking(**e[1])) for e in self._extra_rankings ])
+
+        for c in self._combined_categories:
+            # Loop over the legs of the first category. Assume all categories
+            # combined have the same legs.
+            for i, leg in enumerate(self._legs[c.categories[0].name]):
+                l.append((
+                    f'{c.name} {leg["name"]}',
+                    self.ranking(
+                        c,
+                        scoreing_args = {'legs': i+1},
+                        validation_args={'legs': i+1},
+                    ),
+                ))
+
         return l
     
     def list_legs(self, category):
