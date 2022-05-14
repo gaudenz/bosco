@@ -10,6 +10,8 @@ from bosco.course import Control
 from bosco.course import Course
 from bosco.course import SIStation
 from bosco.editor import RunFinder
+from bosco.editor import RunnerFinder
+from bosco.editor import TeamFinder
 from bosco.event import RelayEvent
 from bosco.event import Relay24hEvent
 from bosco.importer import OCADXMLCourseImporter
@@ -245,7 +247,9 @@ class TestEvent:
         )
         self._runs[9].complete = True
 
-        self._finder = RunFinder(self._store)
+        self._run_finder = RunFinder(self._store)
+        self._runner_finder = RunnerFinder(self._store)
+        self._team_finder = TeamFinder(self._store)
 
     @staticmethod
     def _convert_punchlist(punchlist):

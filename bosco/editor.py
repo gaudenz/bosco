@@ -18,13 +18,14 @@ editor.py - High level editing classes.
 """
 import sys
 
+from abc import ABCMeta, abstractmethod
 from datetime import datetime, date
 from time import sleep
 from subprocess import Popen, PIPE
 from traceback import print_exc
 
 from storm.exceptions import NotOneError, LostObjectError
-from storm.expr import Func
+from storm.expr import Func, LeftJoin
 from storm.locals import *
 
 from sireader import SIReaderReadout, SIReaderException, SIReader
@@ -53,116 +54,44 @@ class Observable:
         for o in self._observers:
             o.update(self, event, message)
 
-class RunFinderException(Exception):
+class ItemFinderException(Exception):
     pass
 
-class RunFinder(Observable):
-    """Searches for runs and/or runners."""
 
-    _search_config = {'run': {'title': 'Run',
-                                    'joins': True, # no tables to join, always true 
-                                    'terms': ((Run.id, 'int'),
-                                               ),
-                                    },
-                      'sicard': {'title': 'SICard',
-                                    'joins': True, # no tables to join, alway true
-                                    'terms': ((Run.sicard, 'int'),
-                                               ),
-                                    },
-                      'runner': {'title': 'Runner',
-                                    'joins': And(Run.sicard == SICard.id,
-                                                  SICard.runner == Runner.id),
-                                    'terms': ((Runner.given_name, 'partial_string'),
-                                               (Runner.surname, 'partial_string'),
-                                               (Runner.number, 'exact_string'),
-                                               (Runner.solvnr, 'exact_string'),
-                                               ),
-                                    },
-                      'team': {'title': 'Team',
-                                    'joins': And(Run.sicard == SICard.id,
-                                               SICard.runner == Runner.id,
-                                               Runner.team == Team.id),
-                                    'terms': ((Team.name, 'partial_string'),
-                                               (Team.number, 'exact_string'),
-                                               ),
-                                    },
-                      'category': {'title': 'Category',
-                                    'joins': And(Run.sicard == SICard.id,
-                                                  SICard.runner == Runner.id,
-                                                  Or(Runner.category == Category.id,
-                                                     And(Runner.team == Team.id,
-                                                         Team.category == Category.id)
-                                                     )
-                                                  ),
-                                    'terms': ((Category.name, 'exact_string'),
-                                               ),
-                                    },
-                      'course': {'title': 'Course',
-                                    'joins': And(Run.course == Course.id),
-                                    'terms': ((Course.code, 'exact_string'),
-                                               ),
-                                    },
-                      }
+class ItemFinder(Observable, metaclass=ABCMeta):
+    """Searches for items"""
 
     def __init__(self, store):
-        super(RunFinder, self).__init__()
+        super().__init__()
         self._store = store
         self._term = ''
         self._query = None
-        self.set_search_domain('runner')
 
-    def get_results(self, limit = False, start = 0):
+    @abstractmethod
+    def _format_result(self, r):
+        pass
+
+    def get_results(self, limit=False, start=0):
         """Returns the results of the current search."""
         if self._query is None:
             return []
 
-        results = []
-        for r in self._query.order_by(Run.id):
-            runner = r.sicard.runner
-            team = runner and runner.team or None
-            club = runner and runner.club and runner.club.name or None
-            results.append((r.id,
-                            r.course and r.course.code and str(r.course.code)
-                              or 'unknown',
-                            r.readout_time and RunEditor._format_time(r.readout_time) or 'unknown',
-                            runner and runner.number and str(runner.number)
-                              or 'unknown',
-                            runner and str(runner) or 'unknown',
-                            team and str(team) or club and str(club) or 'unknown',
-                            team and str(team.category) or runner and str(runner.category)
-                              or 'unkown'
-                            ))
-
-        return results
+        return map(
+            self._format_result,
+            self._query.order_by(self._item_class.id),
+        )
 
     def set_search_term(self, term):
         """Set the search string"""
         self._term = str(term).split()
         self._update_query()
 
-    def get_search_domains(self):
-        """
-        @return List of (key, description) pairs of valid search domains.
-        """
-        return [(k, v['title']) for k, v in list(self._search_config.items()) ]
-
-    def set_search_domain(self, domain):
-        """
-        @param domain: set of search domains. Valid search domains are those
-                       defined in _search_config.
-        """
-        if domain in list(self._search_config.keys()):
-            self._domain = domain
-            self._update_query()
-        else:
-            raise RunFinderException("Search domain %s is invalid." % domain)
-
     def _update_query(self):
         """Updates the internal search query."""
         term_condition = []
         for t in self._term:
             condition_parts = []
-            for column, col_type in self._search_config[self._domain]['terms']:
+            for column, col_type in self._search_config['terms']:
                 if col_type == 'int':
                     try:
                         condition_parts.append(column == int(t))
@@ -186,12 +115,133 @@ class RunFinder(Observable):
             # An empty list of conditions should return no results
             term_condition.append(False)
 
-        self._query = self._store.find(Run,
-                                       And(self._search_config[self._domain]['joins'],
-                                           *term_condition
-                                           )
-                                       )
+        self._query = self._store.using(
+            self._item_class,
+            *self._search_config['joins'],
+        ).find(
+            self._item_class,
+            And(*term_condition),
+        )
         self._notify_observers()
+
+
+# Alias of the Category class to be able to join Teams to Categories at the same
+# time as joining Runners to Categories.
+TeamCategory = ClassAlias(Category)
+
+class RunFinder(ItemFinder):
+    """Searches for runs."""
+
+    _item_class = Run
+
+    _search_config = {
+        'joins': (
+            LeftJoin(SICard, Run.sicard == SICard.id),
+            LeftJoin(Runner, SICard.runner == Runner.id),
+            LeftJoin(Course, Run.course == Course.id),
+            LeftJoin(Category, Runner.category == Category.id),
+            LeftJoin(Team, Runner.team == Team.id),
+            LeftJoin(TeamCategory, Team.category == TeamCategory.id),
+        ),
+        'terms': (
+            (Run.id, 'int'),
+            (SICard.id, 'int'),
+            (Runner.given_name, 'partial_string'),
+            (Runner.surname, 'partial_string'),
+            (Runner.number, 'exact_string'),
+            (Runner.solvnr, 'exact_string'),
+            (Team.name, 'partial_string'),
+            (Team.number, 'exact_string'),
+            (Category.name, 'exact_string'),
+            (Course.code, 'exact_string'),
+            (TeamCategory.name, 'exact_string'),
+        ),
+    }
+
+    def _format_result(self, r):
+
+        runner = r.sicard.runner
+        team = runner and runner.team or None
+        club = runner and runner.club and runner.club.name or None
+
+        return (
+            r.id,
+            r.course and r.course.code and str(r.course.code)
+            or 'unknown',
+            r.readout_time and RunEditor._format_time(r.readout_time) or 'unknown',
+            runner and runner.number and str(runner.number)
+            or 'unknown',
+            runner and str(runner) or 'unknown',
+            team and str(team) or club and str(club) or 'unknown',
+            team and str(team.category) or runner and str(runner.category)
+            or 'unkown'
+        )
+
+
+class RunnerFinder(ItemFinder):
+    """Search for Runners."""
+
+    _item_class = Runner
+
+    _search_config = {
+        'joins': (
+            LeftJoin(SICard, SICard.runner == Runner.id),
+            LeftJoin(Category, Runner.category == Category.id),
+            LeftJoin(Team, Runner.team == Team.id),
+            LeftJoin(TeamCategory, Team.category == TeamCategory.id),
+        ),
+        'terms': (
+            (SICard.id, 'int'),
+            (Runner.given_name, 'partial_string'),
+            (Runner.surname, 'partial_string'),
+            (Runner.number, 'exact_string'),
+            (Runner.solvnr, 'exact_string'),
+            (Team.name, 'partial_string'),
+            (Team.number, 'exact_string'),
+            (Category.name, 'exact_string'),
+            (TeamCategory.name, 'exact_string'),
+        ),
+    }
+
+    def _format_result(self, r):
+
+        team = r.team or None
+        club = r.club and r.club.name or None
+
+        return (
+            r.id,
+            str(r.number),
+            str(r),
+            team and str(team) or club and str(club) or 'unknown',
+            team and str(team.category) or r and str(r.category)
+            or 'unkown'
+        )
+
+
+class TeamFinder(ItemFinder):
+    """Search for teams."""
+
+    _item_class = Team
+
+    _search_config = {
+        'joins': (
+            LeftJoin(Category, Team.category == Category.id),
+        ),
+        'terms': (
+            (Team.name, 'partial_string'),
+            (Team.number, 'exact_string'),
+            (Category.name, 'exact_string'),
+        ),
+    }
+
+    def _format_result(self, t):
+
+        return (
+            t.id,
+            str(t.number),
+            str(t),
+            str(t.category),
+        )
 
 
 class Singleton(type):
