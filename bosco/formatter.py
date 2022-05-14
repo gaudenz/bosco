@@ -558,4 +558,51 @@ class ReportlabRunFormatter(AbstractRunFormatter):
         # add last row
         table.extend(row_items)
         return (table, styles)
-        
+
+
+class MakoRunFormatter(AbstractRunFormatter):
+    """
+    Format runs using the Mako templating engine
+    """
+
+    def __init__(self, run, header, event, template_file, template_dir):
+        """
+        @param run            Run to format
+        @type run             Run
+        @param header:        gerneral information for the ranking header
+        @type header:         dict
+        @param event          Event object
+        @param template_file: File name for the template
+        @param template_dir:  template directory (inside the bosco module)
+        """
+        super().__init__(run, header, event)
+        lookup = TemplateLookup(directories=[pkg_resources.resource_filename('bosco', template_dir)])
+        self._template = lookup.get_template(template_file)
+
+    def __str__(self):
+
+        try:
+            validation = self._event.validate(self._run)
+        except ValidationError as validation_error:
+            validation = None
+        try:
+            score = self._event.score(self._run)
+        except UnscoreableException:
+            score = None
+
+        if validation and validation['status'] == Validator.OK:
+            result = f'<b>Laufzeit: {score and score["score"] or ""}</b>'
+        elif validation:
+            code = type(self).validation_codes[validation['status']]
+            result = f'<b>{code}</b>'
+        else:
+            result = f'<b>Validation error: {validation_error.message}</b>'
+
+        return self._template.render_unicode(
+            header=self._header,
+            run=self._run,
+            runner=self._run.sicard.runner,
+            result=result,
+            score=score,
+            punchlist=self._punchlist(with_finish=True),
+        )

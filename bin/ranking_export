@@ -26,6 +26,7 @@ from datetime import datetime, timedelta
 from subprocess import call
 
 from bosco.observer import TriggerEventObserver
+from bosco.course import BaseCourse
 from bosco.util import load_config, RankingOptionParser
 
 class RankingExporter:
@@ -63,6 +64,15 @@ class RankingExporter:
             html = str(self._event.format_ranking([r])).encode(self._encoding)
             open(path.join(self._outdir, desc.lower().replace(' ', '_') + '.html'), 'wb').write(html)
             completed[desc] = (r.completed_count, r.member_count)
+            if isinstance(r.rankable, BaseCourse):
+                for run in r:
+                    html = str(self._event.format_run(run['item']))
+                    with open(
+                            path.join(self._outdir, f'{run["item"].id}.html'),
+                            'w',
+                            encoding=self._encoding
+                    ) as f:
+                        f.write(html)
 
         # Build index page
         lookup = TemplateLookup(directories=[resource_filename('bosco', self._event._template_dir)])

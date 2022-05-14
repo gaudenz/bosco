@@ -34,6 +34,7 @@ from .ranking import (SequenceCourseValidator, TimeScoreing, SelfstartStarttime,
                      ValidationError, UnscoreableException, Validator, RoundCountScoreing)
 
 from .formatter import MakoRankingFormatter
+from .formatter import MakoRunFormatter
 
 class EventException(Exception):
     pass
@@ -46,6 +47,7 @@ class Event:
     def __init__(self, header = {}, extra_rankings = [],
                  template_dir = 'templates',
                  print_template = 'course.tex', html_template = 'course.html',
+                 run_html_template='run.html',
                  cache = None, store = None):
         """
         @param header:         gerneral information for the ranking header.
@@ -62,6 +64,7 @@ class Event:
         @param template_dir:   templates directory
         @param print_template: template for printing (latex)
         @param html_template:  template for html output (screen display)
+        @param run_html_template template for html output for runs
         @param cache:          Cache to use for this object
         @param store:          Store to retrieve possible rankings
         """
@@ -74,6 +77,7 @@ class Event:
         self._template = {}
         self._template['print'] = print_template
         self._template['html'] = html_template
+        self._run_template = {'html': run_html_template}
         self._store = store
 
         # add list of rankings to header
@@ -224,6 +228,23 @@ class Event:
 
         return MakoRankingFormatter(rankings, self._header,
                                     self._template[type], self._template_dir)
+
+    def format_run(self, run, output_type = 'html'):
+        """
+        @param run:     Run to format
+        @type run:      objects of class Run
+        @param type:    'html' (default) or 'print'
+        @return:        RunFormatter object for the run
+        """
+
+        return MakoRunFormatter(
+            run,
+            self._header,
+            self,
+            self._run_template[output_type],
+            self._template_dir,
+        )
+
     def list_rankings(self):
         """
         @return: list of possible rankings
@@ -259,6 +280,7 @@ class MassstartEvent(Event):
                  template_dir = 'templates',
                  print_template = 'relay.tex',
                  html_template = 'relay.html',
+                 run_html_template = 'run.html',
                  cache = None, store = None):
         """
         @param categories: dict keyed with category names containing category definitions:
@@ -274,7 +296,7 @@ class MassstartEvent(Event):
         self.categories = categories
         self._strict = strict
         super(MassstartEvent, self).__init__(header, extra_rankings, template_dir, print_template,
-                                            html_template, cache, store)
+                                             html_template, run_html_template, cache, store)
 
     def score(self, obj, scoreing_class = None, args = None):
 
@@ -304,6 +326,7 @@ class RelayEvent(Event):
                  template_dir = 'templates',
                  print_template = 'relay.tex',
                  html_template = 'relay.html',
+                 run_html_template='run.html',
                  cache = None, store = None):
         """
         @param legs: dict keyed with category names containing relay category definitions:
@@ -322,7 +345,7 @@ class RelayEvent(Event):
         self._combined_categories = combined_categories or []
 
         Event.__init__(self, header, extra_rankings, template_dir, print_template,
-                       html_template, cache, store)
+                       html_template, run_html_template, cache, store)
 
         # create dict of starttimes with course codes as key
         # used for easier access to the starttimes
@@ -497,10 +520,11 @@ class Relay24hEvent(Event):
                  template_dir = 'templates',
                  print_template = '24h.tex',
                  html_template = '24h.html',
+                 run_html_template = 'run.html',
                  cache = None, store = None):
 
         Event.__init__(self, header, extra_rankings, template_dir, print_template,
-                       html_template,
+                       html_template, run_html_template,
                        cache, store)
 
         self._starttime = {'24h':starttime_24h,
@@ -567,6 +591,7 @@ class RoundCountEvent(Event):
     def __init__(self, course, mindiff = timedelta(0), header = {}, extra_rankings = [],
                  template_dir = 'templates',
                  print_template = 'course.tex', html_template = 'course.html',
+                 run_html_template = 'run.html',
                  cache = None, store = None):
         """
         @param mindiff:        Minimal time difference between two valid punches
@@ -574,7 +599,7 @@ class RoundCountEvent(Event):
         """
 
         super(RoundCountEvent, self).__init__(header, extra_rankings, template_dir, 
-                                              print_template, html_template, cache, store)
+                                              print_template, html_template, run_html_template, cache, store)
         self._course = self._store.find(Course, Course.code == course).one()
         self._mindiff = mindiff
 

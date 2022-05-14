@@ -131,7 +131,7 @@ blocks_de = {'start' :'Start',
       team = runner and runner.team or None
     %>
     <td>${r['rank'] and ('%3i.' % r['rank']) or ''}</td>
-    <td>${r['item']}</td>
+    <td><a href="${r['item'].id}.html">${r['item']}</a></td>
     <td>${runner and runner.dateofbirth and runner.dateofbirth.strftime('%y') or ''}</td>
     <td>${runner and runner.number or ''}</td>
     <td>${team and team.name or runner and runner.club and runner.club.name or ''}</td>
