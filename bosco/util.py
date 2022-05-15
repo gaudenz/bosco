@@ -74,7 +74,13 @@ class RankingFileOptionParser(RankingOptionParser):
 
     def parse_args(self):
 
-        (options, args, ranking_list) = RankingOptionParser.parse_args(self)
+        self.add_option(
+            '-e', '--encoding', action='store', default='iso-8859-1',
+            help='Output encoding. This defaults to iso-8859-1 because the '
+                 'SOLV website is unable to handle more modern encodings.',
+        )
+
+        (options, args, ranking_list) = super().parse_args()
 
         # process file arguments
         if len(args) > 1:
@@ -83,6 +89,6 @@ class RankingFileOptionParser(RankingOptionParser):
         if len(args) == 0:
             f = sys.stdout
         else:
-            f = open(args[0], 'wb')
+            f = open(args[0], 'w', encoding=options.encoding)
 
         return (options, args, ranking_list, f)

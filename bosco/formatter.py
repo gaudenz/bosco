@@ -103,14 +103,13 @@ class AbstractSOLVRankingFormatter(AbstractRankingFormatter):
                         Validator.DISQUALIFIED     : 'disq',
                         Validator.DID_NOT_START    : 'n. gest'}
 
-    def __init__(self, ranking, reftime, encoding = 'utf-8', control_replacements = None, control_exclude = None,
+    def __init__(self, ranking, reftime, control_replacements = None, control_exclude = None,
                  lineterminator = '\n'):
         """
         @reftime: reference time for the event (usually first starttime)
         """
         AbstractRankingFormatter.__init__(self, ranking)
         self._reftime = reftime
-        self._encoding = encoding
         self._control_replacements = control_replacements if control_replacements is not None else {}
         self._control_exclude = control_exclude if control_exclude is not None else ()
         self._lineterminator = lineterminator
@@ -120,9 +119,6 @@ class AbstractSOLVRankingFormatter(AbstractRankingFormatter):
             return str(r['scoreing']['score'])
         else:
             return self.validation_codes[r['validation']['status']]
-
-    def _encode(self, s):
-        return str(s).encode(self._encoding, 'xmlcharrefreplace')
 
     def _control_code(self, control):
         try:
@@ -158,14 +154,14 @@ class CourseSOLVRankingFormatter(AbstractSOLVRankingFormatter):
                              ])
             for r in ranking:
                 line = [r['rank'] or '',
-                        self._encode(r['item'].sicard.runner.surname),
-                        self._encode(r['item'].sicard.runner.given_name),
+                        r['item'].sicard.runner.surname,
+                        r['item'].sicard.runner.given_name,
                         r['item'].sicard.runner.dateofbirth and r['item'].sicard.runner.dateofbirth.strftime('%y') or '',
                         r['item'].sicard.runner.sex,
                         '', # FedNR (?)
                         '', # Zip
                         '', # Town
-                        r['item'].sicard.runner.team and self._encode(r['item'].sicard.runner.team.name) or '', # Club
+                        r['item'].sicard.runner.team and r['item'].sicard.runner.team.name or '', # Club
                         '', # NationIOF
                         '', # Start Nr
                         '', # eCardNr
@@ -187,7 +183,7 @@ class CourseSOLVRankingFormatter(AbstractSOLVRankingFormatter):
                 for status, p in punchlist:
                     if status == 'missing' and not p.code in self._control_exclude:
                         # p is an object of class Control
-                        line.extend([self._encode(self._control_code(p)), ''])
+                        line.extend([self._control_code(p), ''])
                     if not status == 'ok':
                         # ignore additional punches
                         continue
@@ -195,10 +191,10 @@ class CourseSOLVRankingFormatter(AbstractSOLVRankingFormatter):
                         and p.sistation.id > SIStation.SPECIAL_MAX
                         and not p.sistation.control.code in self._control_exclude):
                         try:
-                            line.extend([self._encode(self._control_code(p.sistation.control)),
+                            line.extend([self._control_code(p.sistation.control),
                                          p.punchtime - r['scoreing']['start']])
                         except (TypeError, KeyError):
-                            line.extend([self._encode(self._control_code(p.sistation.control)),
+                            line.extend([self._control_code(p.sistation.control),
                                          ''])
 
                 output.writerow(line)
@@ -216,7 +212,7 @@ class CategorySOLVRankingFormatter(AbstractSOLVRankingFormatter):
             
             for r in ranking:
                 line = [r['rank'] or '',
-                        self._encode(r['item']),
+                        r['item'],
                         self._print_score(r),
                         ]
                     
@@ -238,8 +234,8 @@ class RelayCategorySOLVRankingFormatter(AbstractSOLVRankingFormatter):
 
             for r in ranking:
                 line = [r['rank'] or '',
-                        self._encode(r['item'].number),
-                        self._encode(r['item']),
+                        r['item'].number,
+                        r['item'],
                         '', # TODO: put nation of team into database
                         self._print_score(r),
                         r['scoreing']['behind'] or '',
@@ -252,10 +248,10 @@ class RelayCategorySOLVRankingFormatter(AbstractSOLVRankingFormatter):
                     if leg_run is not None:
                         run = leg_run['item']
                         runner = run.sicard.runner
-                        line.extend([self._encode(runner.surname) or '',
-                                     self._encode(runner.given_name) or '',
+                        line.extend([runner.surname or '',
+                                     runner.given_name or '',
                                      runner.dateofbirth and runner.dateofbirth.year or '',
-                                     self._encode(run.course.code),
+                                     run.course.code,
                                      leg_run['rank'] or '',
                                      self._print_score(leg_run),
                                      leg_run['scoreing']['behind'] or '',
@@ -290,10 +286,10 @@ class RoundCountRankingFormatter(AbstractSOLVRankingFormatter):
                 number = runner and runner.number or 0
                 lines.append([r['rank'] or '',
                               run.sicard.id,
-                              self._encode(runner and runner.category or ''),
-                              self._encode(number), # change index below if position of this element changes
-                              self._encode(runner and runner.given_name or ''),
-                              self._encode(runner and runner.surname or ''),
+                              runner and runner.category or '',
+                              number, # change index below if position of this element changes
+                              runner and runner.given_name or '',
+                              runner and runner.surname or '',
 
                               self._print_score(r),
                               ])
@@ -402,26 +398,31 @@ class AbstractRunFormatter(AbstractFormatter):
 
         return punchlist
 
-    def _punchlist(self, with_finish = False):
+    def _punchlist(self, with_finish=False):
 
         raw_punchlist = self._raw_punchlist()
         punchlist = []
         try:
             lastpunch = start = self._event.score(self._run)['start']
         except UnscoreableException:
-            lastpunch = start = self._run.start_time or raw_punchlist[0][1].punchtime
+            lastpunch = start = self._run.start_time or None
+
         for code, p in raw_punchlist:
             if isinstance(p, Punch):
                 punchtime = p.manual_punchtime or p.card_punchtime
-                punchlist.append((p.sequence and str(p.sequence) or '',
-                                  p.sistation.control and p.sistation.control.code or '',
-                                  str(p.sistation.id),
-                                  p.card_punchtime and str(p.card_punchtime) or '',
-                                  p.manual_punchtime and str(p.manual_punchtime) or '',
-                                  punchtime and format_timedelta(punchtime - start) or '',
-                                  punchtime and format_timedelta(punchtime - lastpunch) or '',
-                                  str(int(p.ignore)),
-                                  str(code)))
+                punchlist.append((
+                    p.sequence and str(p.sequence) or '',
+                    p.sistation.control and p.sistation.control.code or '',
+                    str(p.sistation.id),
+                    p.card_punchtime and str(p.card_punchtime) or '',
+                    p.manual_punchtime and str(p.manual_punchtime) or '',
+                    (punchtime and start
+                     and format_timedelta(punchtime - start) or ''),
+                    (punchtime and lastpunch
+                     and format_timedelta(punchtime - lastpunch) or ''),
+                    str(int(p.ignore)),
+                    str(code),
+                ))
                 if code == 'ok':
                     lastpunch = punchtime
             elif isinstance(p, Control):
@@ -451,8 +452,8 @@ class AbstractRunFormatter(AbstractFormatter):
                               '',
                               self._run.card_finish_time and str(self._run.card_finish_time) or '',
                               self._run.manual_finish_time and str(self._run.manual_finish_time) or '',
-                              punchtime and format_timedelta(punchtime - start) or '',
-                              punchtime and format_timedelta(punchtime - lastpunch) or '',
+                              punchtime and start and format_timedelta(punchtime - start) or '',
+                              punchtime and lastpunch and format_timedelta(punchtime - lastpunch) or '',
                               str(int(False)),
                               'finish'))
         return punchlist
