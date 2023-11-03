@@ -13,6 +13,7 @@ setup(
              'bin/import',
              'bin/print',
              'bin/ranking_viewer',
+             'bin/ranking_export',
              'bin/solvexport',
              'bin/speaker',
              ],
