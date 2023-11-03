@@ -466,7 +466,7 @@ class AbstractRunFormatter(AbstractFormatter):
         if with_finish:
             punchtime = self._run.manual_finish_time or self._run.card_finish_time
             punchlist.append(('',
-                              'Finish',
+                              _('Finish'),
                               '',
                               self._run.card_finish_time and str(self._run.card_finish_time) or '',
                               self._run.manual_finish_time and str(self._run.manual_finish_time) or '',
@@ -553,7 +553,7 @@ class ReportlabRunFormatter(AbstractRunFormatter):
                 control = "%i (%s)" % (ctrl_nr, p[1])
                 ctrl_nr += 1
             elif p[8] == 'finish':
-                control = "Finish"
+                control = _('Finish')
             elif p[8] in ('additional', 'ignored'):
                 control = "+ (%s)" % (p[1] != '' and p[1] or p[2])
             punch_triples.append((control, p[5] or 'missing', p[6]))
