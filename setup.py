@@ -15,8 +15,6 @@ setup(
              'bin/ranking_viewer',
              'bin/solvexport',
              'bin/speaker',
-             'bin/test',
-             'bin/wwfexport',
              ],
     package_data={'bosco': ['templates/*.html',
                             'templates/*.tex',
