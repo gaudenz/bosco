@@ -18,11 +18,18 @@
 util.py - Utility functions
 """
 
-import os, sys
+import gettext
+import os
+import sys
+
 from imp import find_module, load_module
 from optparse import OptionParser
 
 def load_config(name='conf'):
+    # Install gettext functions, do this first so that it's available to
+    # modules imported from config
+    gettext.install('bosco', 'locale')
+
     oldpath = sys.path
     try:
         sys.path = [os.getcwd(), ]

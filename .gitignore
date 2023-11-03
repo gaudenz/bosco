@@ -5,3 +5,6 @@ src/conf.py
 # Python distutils generated files
 MANIFEST
 dist
+
+# Gettext compiled message catalogs
+locale/*/LC_MESSAGES/bosco.mo

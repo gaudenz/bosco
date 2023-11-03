@@ -42,14 +42,24 @@ def format_timedelta(delta):
     else:
         return "%i:%02i" % (minutes, seconds)
 
-class AbstractFormatter:
+class AbstractFormatterMeta(type):
 
-    validation_codes = {Validator.OK               : 'OK',
-                        Validator.NOT_COMPLETED    : 'not yet finished',
-                        Validator.MISSING_CONTROLS : 'missing controls',
-                        Validator.DID_NOT_FINISH   : 'did not finish',
-                        Validator.DISQUALIFIED     : 'disqualified',
-                        Validator.DID_NOT_START    : 'did not start'}
+    # This can't be a static variable as the gettext infrastructure might not
+    # set up at time of import. This is defined in a metaclass as the @property
+    # and @classmethod decorators don't work together.
+    @property
+    def validation_codes(cls):
+        return {Validator.OK               : _('OK'),
+                Validator.NOT_COMPLETED    : _('not yet finished'),
+                Validator.MISSING_CONTROLS : _('missing controls'),
+                Validator.DID_NOT_FINISH   : _('did not finish'),
+                Validator.DISQUALIFIED     : _('disqualified'),
+                Validator.DID_NOT_START    : _('did not start')}
+
+
+class AbstractFormatter(metaclass=AbstractFormatterMeta):
+    pass
+
 
 class AbstractRankingFormatter(AbstractFormatter):
     """Formats a ranking. str(rankingRormatter) returns the formatted ranking."""
@@ -89,19 +99,27 @@ class MakoRankingFormatter(AbstractRankingFormatter):
     def __str__(self):
 
         return self._template.render_unicode(header = self._header,
-                                             validation_codes = self.validation_codes,
+                                             validation_codes = type(self).validation_codes,
                                              now = datetime.now().strftime('%c'),
                                              rankings = self.rankings)
 
-class AbstractSOLVRankingFormatter(AbstractRankingFormatter):
-    """Formats the Ranking for exporting to the SOLV result site."""
+class AbstractSOLVRankingFormatterMeta(AbstractFormatterMeta):
 
-    validation_codes = {Validator.OK               : 'OK',
-                        Validator.NOT_COMPLETED    : '',
-                        Validator.MISSING_CONTROLS : 'fehl',
-                        Validator.DID_NOT_FINISH   : 'aufg',
-                        Validator.DISQUALIFIED     : 'disq',
-                        Validator.DID_NOT_START    : 'n. gest'}
+    # Override validation code strings according to the "specification" of the
+    # SOLV ranking format
+    @property
+    def validation_codes(self):
+        return {Validator.OK               : 'OK',
+                Validator.NOT_COMPLETED    : '',
+                Validator.MISSING_CONTROLS : 'fehl',
+                Validator.DID_NOT_FINISH   : 'aufg',
+                Validator.DISQUALIFIED     : 'disq',
+                Validator.DID_NOT_START    : 'n. gest'}
+
+
+class AbstractSOLVRankingFormatter(AbstractRankingFormatter,
+                                   metaclass=AbstractSOLVRankingFormatterMeta):
+    """Formats the Ranking for exporting to the SOLV result site."""
 
     def __init__(self, ranking, reftime, control_replacements = None, control_exclude = None,
                  lineterminator = '\n'):
@@ -118,7 +136,7 @@ class AbstractSOLVRankingFormatter(AbstractRankingFormatter):
         if r['validation']['status'] == Validator.OK:
             return str(r['scoreing']['score'])
         else:
-            return self.validation_codes[r['validation']['status']]
+            return type(self).validation_codes[r['validation']['status']]
 
     def _control_code(self, control):
         try:
@@ -497,7 +515,7 @@ class ReportlabRunFormatter(AbstractRunFormatter):
         if validation and validation['status'] == Validator.OK:
             elements.append(Paragraph('<b>Laufzeit %s</b>' % score['score'], styles['Normal']))
         elif validation:
-            elements.append(Paragraph('<b>%s</b>' % AbstractFormatter.validation_codes[validation['status']], 
+            elements.append(Paragraph('<b>%s</b>' % type(self).validation_codes[validation['status']],
                                       styles['Normal']))
         else:
             elements.append(Paragraph('<b>Validation error: %s</b>' % validation_error.message,
