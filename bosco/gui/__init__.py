@@ -134,6 +134,18 @@ sicard = PyEmbeddedImage(
     "QmCC")
 
 
+def fix_searchctrl_min_size(ctrl):
+    """ Fix MinSize of SearchCtrl widgets on GTK3
+    Something is wrong with the bestsize of the SearchCtrl, so for now
+    let's set it based on the size of a TextCtrl.
+    """
+    if 'gtk3' in wx.PlatformInfo:
+        txt = wx.TextCtrl(ctrl.GetParent())
+        bs = txt.GetBestSize()
+        txt.DestroyLater()
+        ctrl.SetMinSize((200, bs.height+4))
+
+
 class ReportsPanel(wxglade.ReportsPanel):
     def __init__(self, *args, **kwargs):
 
@@ -272,6 +284,8 @@ class RunPanel(wxglade.RunPanel):
     def __init__(self, *args, **kwargs):
 
         super().__init__(*args, **kwargs)
+
+        fix_searchctrl_min_size(self.searchbox)
 
         # set searchresult column headers
         self.searchresults.InsertColumn(0, "ID")
