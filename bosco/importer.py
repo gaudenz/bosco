@@ -392,6 +392,13 @@ class TeamRelayImporter(RunnerImporter):
 
         self._categories = {}
         for line, t in enumerate(self.data):
+            if not (t['Kategorie'] and t['Teamname']):
+                if self._verbose:
+                    print(
+                        f'{line+1}: Skipping team withtout a category or name.',
+                    )
+                continue
+
             if self._verbose:
                 print(("%i: Importing team %s (%s):" %
                        (line+1, t['Teamname'], t['AnmeldeNummer'])))
@@ -399,7 +406,14 @@ class TeamRelayImporter(RunnerImporter):
             try:
                 # Create category
                 if t['Kategorie'] not in self._categories:
-                    self._categories[t['Kategorie']] = Category(t['Kategorie'])
+                    cat = store.find(
+                        Category, Category.name == t['Kategorie']
+                    ).one()
+
+                    if cat:
+                        self._categories[t['Kategorie']] = cat
+                    else:
+                        self._categories[t['Kategorie']] = Category(t['Kategorie'])
 
                 # Create the team
                 team = Team(t['AnmeldeNummer'],
@@ -425,7 +439,7 @@ class TeamRelayImporter(RunnerImporter):
                                (given_name, surname, number)))
 
                     runner = store.add(Runner(surname, given_name))
-                    runner.sex = RunnerImporter._parse_sex(t['Geschlecht%s' % str(i)])
+                    runner.sex = RunnerImporter._parse_sex(t.get('Geschlecht%s' % str(i), None))
                     runner.dateofbirth = RunnerImporter._parse_yob(t['Jahrgang%s' % str(i)]) 
                     runner.number = number
 
