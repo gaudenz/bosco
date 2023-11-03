@@ -19,6 +19,7 @@ from bosco.editor import RunEditor
 from bosco.editor import RunEditorException
 from bosco.editor import RunFinder
 from bosco.editor import TeamEditor
+from bosco.editor import TeamFinder
 from bosco.gui import wxglade
 from bosco.util import load_config
 
@@ -174,6 +175,10 @@ class ReportsPanel(wxglade.ReportsPanel):
         self.update()
 
 
+class RunnerPanel(wxglade.RunnerPanel):
+    pass
+
+
 class TeamPanel(wxglade.TeamPanel):
     def __init__(self, *args, **kwargs):
 
@@ -182,42 +187,88 @@ class TeamPanel(wxglade.TeamPanel):
         self.editor = TeamEditor(conf.store, conf.event)
         self.editor.add_observer(self)
 
-        # set teamlist into selector
-        for t in self.editor.get_teamlist():
-            self.team_combo.Append(t[1], t[0])
+        self._finder = TeamFinder(conf.store)
+        self._finder.add_observer(self)
+
+        fix_searchctrl_min_size(self.searchbox)
+
+        self.Bind(wx.EVT_SEARCHCTRL_SEARCH_BTN, self.SetSearchTerm,
+                  self.searchbox)
+        self.Bind(wx.EVT_TEXT, self.SetSearchTerm,
+                  self.searchbox)
 
         self.update(self.editor, None)
 
     def update(self, observable, event, message=None):
-        busy = wx.BusyCursor()
+        def update_itemfinder():
+            first_selected = self.searchresults.GetFirstSelected()
+            if first_selected < 0:
+                current_item = None
+            else:
+                current_item = self.searchresults.GetItemData(
+                    first_selected,
+                )
+            self.searchresults.DeleteAllItems()
+            results = self._finder.get_results()
+            for item in results:
+                index = self.searchresults.InsertItem(
+                    sys.maxsize,
+                    str(item[0]),
+                )
+                self.searchresults.SetItemData(index, item[0])
+                for col, v in enumerate(item[0:]):
+                    self.searchresults.SetItem(index, col, str(v))
+                    # activate if it's the current run
+                    if item[0] == current_item:
+                        self.searchresults.SetItemState(
+                            index,
+                            wx.LIST_STATE_SELECTED,
+                            wx.LIST_STATE_SELECTED,
+                        )
 
         try:
-            self.SetValidationLabel(self.validation, self.editor.validation)
+            busy = wx.BusyCursor()
 
-            self.score.SetLabel(self.editor.score)
+            # Disable Event handling while updating
+            self.SetEvtHandlerEnabled(False)
 
-            runs = self.editor.runs
-            grid_size = self.run_grid.GetNumberRows()
-            if len(runs) > grid_size:
-                self.run_grid.AppendRows(numRows=len(runs) - grid_size)
-            elif len(runs) < grid_size:
-                self.run_grid.DeleteRows(numRows=grid_size - len(runs))
+            if type(observable) == TeamFinder:
+                update_itemfinder()
 
-            for row, r in enumerate(runs):
-                for col, v in enumerate(r):
-                    self.run_grid.SetCellValue(row, col, v)
+            else:
 
-            self.run_grid.AutoSize()
-            self.Layout()
+                self.SetValidationLabel(self.validation, self.editor.validation)
+
+                self.score.SetLabel(self.editor.score)
+
+                runs = self.editor.runs
+                grid_size = self.run_grid.GetNumberRows()
+                if len(runs) > grid_size:
+                    self.run_grid.AppendRows(numRows=len(runs) - grid_size)
+                elif len(runs) < grid_size:
+                    self.run_grid.DeleteRows(numRows=grid_size - len(runs))
+
+                for row, r in enumerate(runs):
+                    for col, v in enumerate(r):
+                        self.run_grid.SetCellValue(row, col, v)
+
+                self.run_grid.AutoSize()
+                self.Layout()
         finally:
+            # Enable Event handling after updating
+            self.SetEvtHandlerEnabled(True)
+
+            # delete the busy cursor even if an exception occurs
             del busy
 
-    def ChangeTeam(self, event):
-        team = self.team_combo.GetClientData(self.team_combo.GetSelection())
-        self.editor.load(team)
+    def SetTeam(self, event):
+        self.editor.load(self.searchresults.GetItemData(event.Index))
+
+    def SetSearchTerm(self, event):
+        self._finder.set_search_term(event.GetString())
 
 
-class EditRunPanel(wxglade.EditRunPanel):
+class RunPanel(wxglade.RunPanel):
     def __init__(self, *args, **kwargs):
 
         super().__init__(*args, **kwargs)
@@ -254,7 +305,7 @@ class EditRunPanel(wxglade.EditRunPanel):
         self.runner_club.Bind(wx.EVT_KILL_FOCUS, self.SetRunnerClub)
 
         # To avoid updates if the field is not changed and the focus just
-        # entersthe field and leaves it again without the user changeing any
+        # enters the field and leaves it again without the user changeing any
         # text, track if the field was changed: self.ResetFieldChanged sets
         # self.field_changed = False and self.FieldChanged  which is called on
         # any EVT_TEXT event sets it to True. All the callbacks called on
@@ -286,6 +337,8 @@ class EditRunPanel(wxglade.EditRunPanel):
             self.editor.get_runnerlist(),
         )
         self.UpdateCombo(self.runner_team, None, self.editor.get_teamlist())
+
+        self.Layout()
 
     @staticmethod
     def GetComboData(combo):
@@ -588,6 +641,8 @@ class EditRunPanel(wxglade.EditRunPanel):
                 # change...
                 update_runfinder()
 
+                self.Layout()
+
             elif type(observable) == RunEditor and event == 'reader':
                 if (
                     self.GetGrandParent().notebook.GetCurrentPage() == self
@@ -713,14 +768,16 @@ class RunEditorFrame(wxglade.RunEditorFrame):
         self.notebook = wx.Notebook(self, wx.ID_ANY, style=0)
 
         # Create notebook pages
-        self.edit_run_page = EditRunPanel(self.notebook, wx.ID_ANY)
-        self.readout_run_page = ReadoutRunPanel(self.notebook, wx.ID_ANY)
+        self.run_page = RunPanel(self.notebook, wx.ID_ANY)
+        self.runner_page = RunnerPanel(self.notebook, wx.ID_ANY)
         self.team_page = TeamPanel(self.notebook, wx.ID_ANY)
+        self.readout_run_page = ReadoutRunPanel(self.notebook, wx.ID_ANY)
         self.reports_page = ReportsPanel(self.notebook, wx.ID_ANY)
 
-        self.notebook.AddPage(self.edit_run_page, 'Edit Run')
+        self.notebook.AddPage(self.run_page, 'Run')
+        self.notebook.AddPage(self.runner_page, 'Runner')
+        self.notebook.AddPage(self.team_page, 'Team')
         self.notebook.AddPage(self.readout_run_page, 'Read SI-Card')
-        self.notebook.AddPage(self.team_page, 'Team Overview')
         self.notebook.AddPage(self.reports_page, 'Reports')
         notebook_sizer = wx.BoxSizer(wx.VERTICAL)
         notebook_sizer.Add(self.notebook, 1, wx.EXPAND, 0)

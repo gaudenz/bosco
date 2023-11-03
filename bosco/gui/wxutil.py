@@ -7,7 +7,6 @@ from bosco.util import load_config
 
 conf = load_config()
 
-
 class EditingPanel(ScrolledPanel):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -24,7 +23,7 @@ class EditingPanel(ScrolledPanel):
             label.SetForegroundColour('Red')
 
 
-class RunPanel(EditingPanel):
+class BaseRunPanel(EditingPanel):
     def __init__(self, *args, **kwargs):
 
         super().__init__(*args, **kwargs)
@@ -121,28 +120,9 @@ class RunSearchWidget(wx.SearchCtrl):
     def SetFinder(self, finder):
         self._finder = finder
         if finder is not None:
-
-            # construct the search domain menu
-            self._menu = wx.Menu()
-            self._search_domains = self._finder.get_search_domains()
-            for m in self._search_domains:
-                item = self._menu.AppendRadioItem(-1, m[1])
-                self.Bind(wx.EVT_MENU, self.SetSearchDomain, item)
-                # set search domain to runner
-                if m[0] == 'runner':
-                    item.Check()
-            self.SetMenu(self._menu)
             self.Enable()
         else:
             self.Disable()
-
-    def SetSearchDomain(self, event):
-        for i, item in enumerate(self.GetMenu().GetMenuItems()):
-            if item.IsChecked():
-                self._finder.set_search_domain(self._search_domains[i][0])
-                self.SetDescriptiveText(
-                    f'Search in {self._search_domains[i][1]}',
-                )
 
     def SetSearchTerm(self, event):
         self._finder.set_search_term(self.GetValue())
