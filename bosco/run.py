@@ -166,7 +166,15 @@ class Run(MyStorm, RankableItem):
             return '%s %s' % (runner.given_name, runner.surname)
         else:
             return 'SI-Card: %s' % self.sicard.id
-    
+
+    @property
+    def start_time(self):
+        return self.manual_start_time or self.card_start_time
+
+    @property
+    def finish_time(self):
+        return self.manual_finish_time or self.card_finish_time
+
     def add_punch(self, punch, sequence_nr=None):
         """Adds a (stationnumber, punchtime) tuple to the run."""
 
