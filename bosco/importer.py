@@ -477,7 +477,7 @@ class TeamRelayImporter(RunnerImporter):
             except (DataError, IntegrityError) as e:
                 print(("Error importing team %s (%s) on line %i: %s\n"
                        "Import aborted." %
-                       (t['Teamname'], t['AnmeldeNummer'], line+2, str(e).decode('utf-8', 'replace'))
+                       (t['Teamname'], t['AnmeldeNummer'], line+2, e)
                        ))
                 store.rollback()
                 return
