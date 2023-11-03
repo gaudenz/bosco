@@ -413,10 +413,10 @@ class TimeScoreing(AbstractScoreing):
         result['finish'] = obj.finish_time
         try:
             result['score'] = result['finish'] - result['start']
-        except TypeError:
-            # is this really the best thing to do?
-            result['score'] = timedelta(0)
-
+        except TypeError as e:
+            raise UnscoreableException(
+                f'Scoreing Error, runtime could not be calculated: {e}',
+            )
         if result['score'] < timedelta(0):
             raise UnscoreableException('Scoreing Error, negative runtime: %(finish)s - %(start)s = %(score)s'
                                        % result)
